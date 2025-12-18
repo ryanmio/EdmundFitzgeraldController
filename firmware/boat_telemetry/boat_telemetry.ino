@@ -18,14 +18,40 @@ unsigned long startTime;
 bool ledRunningState = false;
 bool ledFloodState = false;
 
-// ==================== WIFI CONNECT (SIMPLE) ====================
+// ==================== WIFI CONNECT (SCAN + MATCH) ====================
 void connectWiFi() {
   Serial.println();
-  Serial.print("Connecting to WiFi: ");
-  Serial.println(WIFI_SSID);
+  Serial.println("Scanning for WiFi networks...");
 
   WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  int numNetworks = WiFi.scanNetworks();
+  
+  String ssidToConnect = "";
+  
+  // Scan for a network that contains "iPhone" (to handle apostrophe variants)
+  for (int i = 0; i < numNetworks; i++) {
+    String scannedSSID = WiFi.SSID(i);
+    Serial.print("Found: ");
+    Serial.println(scannedSSID);
+    
+    if (scannedSSID.indexOf("iPhone") >= 0) {
+      ssidToConnect = scannedSSID;
+      Serial.print("Matched iPhone hotspot: ");
+      Serial.println(ssidToConnect);
+      break;
+    }
+  }
+  
+  if (ssidToConnect.length() == 0) {
+    // Fallback: use the configured SSID directly
+    ssidToConnect = WIFI_SSID;
+    Serial.print("No iPhone hotspot found. Using configured SSID: ");
+    Serial.println(ssidToConnect);
+  }
+
+  Serial.print("Connecting to: ");
+  Serial.println(ssidToConnect);
+  WiFi.begin(ssidToConnect.c_str(), WIFI_PASSWORD);
 
   int attempts = 0;
   while (WiFi.status() != WL_CONNECTED && attempts < 40) {
@@ -151,6 +177,7 @@ void setup() {
 unsigned long lastWiFiCheck = 0;
 
 void loop() {
+  // Always handle HTTP requests (whether WiFi is connected or not)
   server.handleClient();
 
   // Retry WiFi every 30 seconds if disconnected
@@ -158,7 +185,14 @@ void loop() {
     lastWiFiCheck = millis();
     Serial.println("WiFi disconnected. Reconnecting...");
     WiFi.disconnect();
-    delay(1000);
+    delay(100);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  }
+
+  // Keep alive marker every 5 seconds
+  static unsigned long lastKeepAlive = 0;
+  if (millis() - lastKeepAlive > 5000) {
+    lastKeepAlive = millis();
+    Serial.print(".");
   }
 }

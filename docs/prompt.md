@@ -138,6 +138,22 @@ Identify all required sensors, present options, scope costs, and create a unifie
 **Your Task in This Phase:**
 Write, test, and deploy ESP32 firmware that provides camera streaming, telemetry, LED control, and auto-WiFi connection.
 
+### ✅ Phase 2 Checkpoint: WiFi Auto-Connect Working
+
+**Status as of this session:**
+- ESP32 dev board successfully connects to iPhone hotspot (`Ryan's iPhone 17 Pro`)
+- HTTP server starts on port 80 and is reachable at `172.20.10.4`
+- Firmware includes all endpoint stubs: `/status`, `/telemetry`, `/led`, `/stream`
+- LED control GPIO pins defined (GPIO 2 for running, GPIO 4 for flood)
+- WiFi reconnection logic in place (retries every 30s if disconnected)
+
+**Next immediate steps (before camera hardware arrives):**
+1. Test LED toggle via HTTP `/led` endpoint (curl or browser)
+2. Verify `/status` and `/telemetry` endpoints return JSON
+3. Wire in battery voltage divider (100kΩ + 47kΩ resistors, sense to GPIO 34)
+4. Add ADC reading to `/telemetry` response
+5. Test from iPhone (Expo app skeleton or curl from iPhone hotspot)
+
 ### Architecture
 
 ```

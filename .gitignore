@@ -4,4 +4,9 @@ firmware/**/secrets.h
 # macOS
 .DS_Store
 
-
+# Expo / React Native
+boat-telemetry-app/node_modules/
+boat-telemetry-app/.expo/
+boat-telemetry-app/dist/
+boat-telemetry-app/npm-debug.*
+boat-telemetry-app/web-build/

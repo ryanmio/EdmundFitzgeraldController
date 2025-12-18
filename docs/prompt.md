@@ -138,21 +138,30 @@ Identify all required sensors, present options, scope costs, and create a unifie
 **Your Task in This Phase:**
 Write, test, and deploy ESP32 firmware that provides camera streaming, telemetry, LED control, and auto-WiFi connection.
 
-### ✅ Phase 2 Checkpoint: WiFi Auto-Connect Working
+### ✅ Phase 2 Checkpoint: Core HTTP API Working
 
 **Status as of this session:**
-- ESP32 dev board successfully connects to iPhone hotspot (`Ryan's iPhone 17 Pro`)
-- HTTP server starts on port 80 and is reachable at `172.20.10.4`
-- Firmware includes all endpoint stubs: `/status`, `/telemetry`, `/led`, `/stream`
-- LED control GPIO pins defined (GPIO 2 for running, GPIO 4 for flood)
-- WiFi reconnection logic in place (retries every 30s if disconnected)
+- ✅ ESP32 dev board successfully connects to iPhone hotspot (`Ryan's iPhone 17 Pro`)
+- ✅ WiFi connects via scan + name matching (handles apostrophe variants automatically)
+- ✅ HTTP server starts on port 80, reachable at `172.20.10.4`
+- ✅ All endpoints implemented and tested:
+  - `GET /status` → returns `{connected, ip_address, uptime_seconds, running_led, flood_led}`
+  - `GET /telemetry` → returns `{timestamp, battery_voltage, signal_strength, uptime_seconds, running_mode_state, flood_mode_state, connection_status, ip_address}`
+  - `POST /led` → accepts `{mode: "running"|"flood", state: "on"|"off"}` and toggles GPIO 2 / GPIO 4
+  - `GET /stream` → placeholder (will integrate ESP32-CAM later)
+- ✅ LED control working (tested via curl from Mac on same hotspot)
+- ✅ WiFi reconnection logic in place (retries every 30s if disconnected)
+- ✅ Keep-alive heartbeat prints every 5 seconds to Serial Monitor
 
-**Next immediate steps (before camera hardware arrives):**
-1. Test LED toggle via HTTP `/led` endpoint (curl or browser)
-2. Verify `/status` and `/telemetry` endpoints return JSON
-3. Wire in battery voltage divider (100kΩ + 47kΩ resistors, sense to GPIO 34)
-4. Add ADC reading to `/telemetry` response
-5. Test from iPhone (Expo app skeleton or curl from iPhone hotspot)
+**Known limitation (by design):**
+- Battery voltage currently shows `0.0V` in `/telemetry` (ADC not wired yet)
+- Signal strength reading may be inaccurate (minor firmware quirk, not critical)
+
+**Next steps (before camera hardware arrives):**
+1. Wire battery voltage divider (100kΩ + 47kΩ resistors to GPIO 34)
+2. Add ADC reading code to `/telemetry` response
+3. Test LED physical hardware (scope/meter on GPIO 2 and 4)
+4. Build minimal Expo app to test `/telemetry` polling and `/led` control from iPhone
 
 ### Architecture
 

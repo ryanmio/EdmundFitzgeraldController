@@ -26,32 +26,65 @@ void connectWiFi() {
   WiFi.mode(WIFI_STA);
   int numNetworks = WiFi.scanNetworks();
   
-  String ssidToConnect = "";
+  Serial.print("Scan complete. Networks found: ");
+  Serial.println(numNetworks);
   
-  // Scan for a network that contains "iPhone" (to handle apostrophe variants)
+  String ssidToConnect = "";
+  bool foundHomeWiFi = false;
+  
+  // First pass: look for home WiFi (.hidden network)
   for (int i = 0; i < numNetworks; i++) {
     String scannedSSID = WiFi.SSID(i);
-    Serial.print("Found: ");
-    Serial.println(scannedSSID);
+    Serial.print("[");
+    Serial.print(i);
+    Serial.print("] SSID: '");
+    Serial.print(scannedSSID);
+    Serial.print("' | RSSI: ");
+    Serial.println(WiFi.RSSI(i));
     
-    if (scannedSSID.indexOf("iPhone") >= 0) {
+    if (scannedSSID == ".hidden") {
       ssidToConnect = scannedSSID;
-      Serial.print("Matched iPhone hotspot: ");
+      foundHomeWiFi = true;
+      Serial.print("Matched home WiFi: ");
       Serial.println(ssidToConnect);
       break;
     }
   }
   
+  // Second pass: if home WiFi not found, look for iPhone hotspot
+  if (!foundHomeWiFi) {
+    for (int i = 0; i < numNetworks; i++) {
+      String scannedSSID = WiFi.SSID(i);
+      if (scannedSSID.indexOf("iPhone") >= 0) {
+        ssidToConnect = scannedSSID;
+        Serial.print("Home WiFi not found. Using iPhone hotspot: ");
+        Serial.println(ssidToConnect);
+        break;
+      }
+    }
+  }
+  
   if (ssidToConnect.length() == 0) {
-    // Fallback: use the configured SSID directly
+    // Final fallback: use the configured SSID directly
     ssidToConnect = WIFI_SSID;
-    Serial.print("No iPhone hotspot found. Using configured SSID: ");
+    Serial.print("No known networks found. Using configured SSID: ");
     Serial.println(ssidToConnect);
   }
 
   Serial.print("Connecting to: ");
   Serial.println(ssidToConnect);
-  WiFi.begin(ssidToConnect.c_str(), WIFI_PASSWORD);
+  
+  // Use appropriate password based on which network we're connecting to
+  String passwordToUse = WIFI_PASSWORD;
+  if (foundHomeWiFi) {
+    Serial.println("Using HOME_WIFI_PASSWORD");
+    passwordToUse = HOME_WIFI_PASSWORD;
+  } else {
+    Serial.println("Using WIFI_PASSWORD (iPhone hotspot)");
+  }
+  
+  WiFi.begin(ssidToConnect.c_str(), passwordToUse.c_str());
+  Serial.print("Attempting connection");
 
   int attempts = 0;
   while (WiFi.status() != WL_CONNECTED && attempts < 40) {
@@ -73,8 +106,16 @@ void connectWiFi() {
   }
 }
 
+// ==================== CORS HELPER ====================
+void addCORSHeaders() {
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
 // ==================== HTTP HANDLERS ====================
 void handleStatus() {
+  addCORSHeaders();
   unsigned long uptimeSec = (millis() - startTime) / 1000;
   String json = "{";
   json += "\"connected\":" + String(WiFi.status() == WL_CONNECTED ? "true" : "false") + ",";
@@ -87,6 +128,7 @@ void handleStatus() {
 }
 
 void handleTelemetry() {
+  addCORSHeaders();
   unsigned long uptimeSec = (millis() - startTime) / 1000;
   int rssi = WiFi.RSSI();
   
@@ -107,6 +149,7 @@ void handleTelemetry() {
 }
 
 void handleLed() {
+  addCORSHeaders();
   if (server.method() != HTTP_POST) {
     server.send(405, "application/json", "{\"error\":\"POST required\"}");
     return;
@@ -136,11 +179,18 @@ void handleLed() {
 }
 
 void handleStream() {
+  addCORSHeaders();
   // Placeholder until camera hardware arrives
   server.send(200, "text/plain", "Camera not connected. Stream will be available after ESP32-CAM integration.");
 }
 
+void handleOptions() {
+  addCORSHeaders();
+  server.send(200);
+}
+
 void handleNotFound() {
+  addCORSHeaders();
   server.send(404, "application/json", "{\"error\":\"not found\"}");
 }
 
@@ -167,6 +217,10 @@ void setup() {
   server.on("/telemetry", HTTP_GET, handleTelemetry);
   server.on("/led", HTTP_POST, handleLed);
   server.on("/stream", HTTP_GET, handleStream);
+  server.on("/status", HTTP_OPTIONS, handleOptions);
+  server.on("/telemetry", HTTP_OPTIONS, handleOptions);
+  server.on("/led", HTTP_OPTIONS, handleOptions);
+  server.on("/stream", HTTP_OPTIONS, handleOptions);
   server.onNotFound(handleNotFound);
 
   server.begin();

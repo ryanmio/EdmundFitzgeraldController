@@ -49,16 +49,54 @@ Identify all required sensors, present options, scope costs, and create a unifie
 
 **Status:** ESP32 is connected but HAS NO SENSORS yet. This phase covers both sensor selection AND camera module selection.
 
+### Phase 1 Decisions (Locked In With Ryan)
+
+- **Boat use case**: Surface-only operation (no intentional submersion).
+- **Budget**: Target <$100 for camera + sensors + basic accessories.
+- **Camera**:
+  - **Start** with **ESP32-CAM + MB programmer** using **OV2640** (avoid OV3660 for first iteration).
+  - **Do not** plan around a “long OV2640 ribbon extension” (often unreliable/hard to source).
+  - **Preferred physical design**: keep the camera ribbon short; mount the ESP32-CAM near a lens/window and run longer *power/signal wires* instead.
+- **Telemetry scope (keep it simple)**:
+  - **Must-have**: battery voltage + WiFi RSSI + uptime
+  - **Nice-to-have**: basic water intrusion/leak detection
+  - **Optional**: motor temperature *only if easy* (DS18B20 probe); otherwise defer
+  - **Skip**: GPS and IMU/heading unless future needs change
+- **Power**:
+  - Use ESC/BEC **5V** initially if available.
+  - Add a **470–1000µF capacitor** near ESP32-CAM power input to reduce brownouts.
+  - Only add a dedicated 5V buck regulator if instability/reboots appear during testing.
+
+### Keep-It-Simple Shopping List (Minimum)
+
+- **ESP32-CAM + MB programmer kit (OV2640)** (1x)
+  - Goal: get `/stream` + basic `/status` working first.
+- **470–1000µF electrolytic capacitor (≥10V)** (1x)
+  - Across 5V/GND near the ESP32-CAM to prevent brownouts.
+- **Battery voltage divider parts** (pick one approach):
+  - **Option A (simplest):** resistor kit (assorted) + breadboard/jumpers
+  - **Option B (cleaner):** 2 resistors + small perfboard (final install)
+- **Basic wiring kit**
+  - hookup wire, heat shrink, a few crimp connectors (or Wago lever nuts)
+
+### Optional Add-Ons (Only If You Want Them Now)
+
+- **Water intrusion / leak detect**: 2 stainless screws + 2 wires (DIY probes) *or* a simple water sensor module
+- **Motor temp**: DS18B20 waterproof probe (3-wire)
+- **MicroSD card** (optional): only if you want onboard recording later (not required for streaming)
+- **5V buck converter (2–3A)**: only if ESC/BEC 5V proves unstable during testing
+
 ### 1A: Sensor Requirements Analysis
 
 1. **Required Sensors (Telemetry)**
    - Battery voltage monitoring (ADC input)
+     - *Note:* ESP32 ADC cannot read 8.4V directly — requires a simple **voltage divider** and a **sense wire from the battery** (because the ESP32 is powered from ESC 5V).
    - WiFi signal strength (from WiFi library, no sensor needed)
    - Uptime tracking (from millis(), no sensor needed)
    
 2. **Optional Sensors for Future Phases**
-   - Water level sensor (if boat will submerge)
-   - Temperature sensor (ambient or motor temp)
+   - Water intrusion / leak detect (recommended even for surface boats; keep it simple: 2 probes/screws + GPIO input)
+   - Temperature sensor (motor temp only if easy)
    - Compass/IMU (for heading/orientation)
    - Pressure sensor (for depth if applicable)
    
@@ -77,6 +115,7 @@ Identify all required sensors, present options, scope costs, and create a unifie
 
 2. **Recommended Starting Options**
    - **Option A:** ESP32-CAM (all-in-one, cheapest ~$15-20, easiest software)
+     - *Note:* Prefer buying a kit that includes the **MB USB programmer**.
    - **Option B:** OV2640 module + breadboard setup (modular, ~$20-30)
    - **Option C:** USB camera + alternative driver (if user wants familiarity)
 

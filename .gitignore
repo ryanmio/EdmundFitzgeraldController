@@ -1,0 +1,7 @@
+# Arduino / local secrets
+firmware/**/secrets.h
+
+# macOS
+.DS_Store
+
+

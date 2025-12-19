@@ -8,7 +8,7 @@ import DashboardScreen from './src/screens/DashboardScreen';
 // Type definitions for navigation
 export type RootStackParamList = {
   Connection: undefined;
-  Dashboard: { ip: string };
+  Dashboard: { ip: string; cameraIP: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

@@ -8,15 +8,16 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { checkConnection } from '../services/esp32Service';
-import { saveIP, loadIP } from '../services/storageService';
+import { saveIP, loadIP, saveCameraIP, loadCameraIP } from '../services/storageService';
 import { ConnectionStatus } from '../types';
 
 type RootStackParamList = {
   Connection: undefined;
-  Dashboard: { ip: string };
+  Dashboard: { ip: string; cameraIP: string };
 };
 
 type Props = {
@@ -24,22 +25,24 @@ type Props = {
 };
 
 export default function ConnectionScreen({ navigation }: Props) {
-  const [ip, setIP] = useState('172.20.10.4');
+  const [ip, setIP] = useState('192.168.1.178');
+  const [cameraIP, setCameraIP] = useState('');
   const [status, setStatus] = useState<ConnectionStatus>('idle');
   const [error, setError] = useState<string | null>(null);
 
-  // Load saved IP on mount
+  // Load saved IPs on mount
   useEffect(() => {
     loadIP().then((savedIP) => {
-      if (savedIP) {
-        setIP(savedIP);
-      }
+      if (savedIP) setIP(savedIP);
+    });
+    loadCameraIP().then((savedCameraIP) => {
+      if (savedCameraIP) setCameraIP(savedCameraIP);
     });
   }, []);
 
   const handleConnect = async () => {
     if (!ip.trim()) {
-      setError('Please enter an IP address');
+      setError('Please enter a telemetry IP address');
       return;
     }
 
@@ -50,10 +53,13 @@ export default function ConnectionScreen({ navigation }: Props) {
       await checkConnection(ip);
       setStatus('connected');
       await saveIP(ip);
+      if (cameraIP.trim()) {
+        await saveCameraIP(cameraIP);
+      }
       
       // Navigate to dashboard after brief success display
       setTimeout(() => {
-        navigation.replace('Dashboard', { ip });
+        navigation.replace('Dashboard', { ip, cameraIP: cameraIP.trim() });
       }, 500);
     } catch (err) {
       setStatus('failed');
@@ -64,13 +70,13 @@ export default function ConnectionScreen({ navigation }: Props) {
   const getStatusColor = () => {
     switch (status) {
       case 'connecting':
-        return '#F59E0B'; // amber
+        return '#F59E0B';
       case 'connected':
-        return '#10B981'; // green
+        return '#10B981';
       case 'failed':
-        return '#EF4444'; // red
+        return '#EF4444';
       default:
-        return '#6B7280'; // gray
+        return '#6B7280';
     }
   };
 
@@ -92,56 +98,76 @@ export default function ConnectionScreen({ navigation }: Props) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.content}>
-        {/* Header */}
-        <Text style={styles.title}>Boat Telemetry</Text>
-        <Text style={styles.subtitle}>Connect to your ESP32</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.content}>
+          {/* Header */}
+          <Text style={styles.title}>Edmund Fitzgerald</Text>
+          <Text style={styles.subtitle}>Connect to your boat</Text>
 
-        {/* IP Input */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>ESP32 IP Address</Text>
-          <TextInput
-            style={styles.input}
-            value={ip}
-            onChangeText={setIP}
-            placeholder="172.20.10.4"
-            placeholderTextColor="#6B7280"
-            keyboardType="numeric"
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={status !== 'connecting'}
-          />
-        </View>
+          {/* Telemetry IP Input */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Telemetry ESP32 IP</Text>
+            <TextInput
+              style={styles.input}
+              value={ip}
+              onChangeText={setIP}
+              placeholder="192.168.1.178"
+              placeholderTextColor="#6B7280"
+              keyboardType="numeric"
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={status !== 'connecting'}
+            />
+            <Text style={styles.hint}>Controls, sensors, and LED status</Text>
+          </View>
 
-        {/* Status Indicator */}
-        <View style={styles.statusContainer}>
-          <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
-          <Text style={[styles.statusText, { color: getStatusColor() }]}>
-            {getStatusText()}
-          </Text>
-        </View>
+          {/* Camera IP Input */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Camera ESP32 IP (optional)</Text>
+            <TextInput
+              style={styles.input}
+              value={cameraIP}
+              onChangeText={setCameraIP}
+              placeholder="192.168.1.xxx"
+              placeholderTextColor="#6B7280"
+              keyboardType="numeric"
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={status !== 'connecting'}
+            />
+            <Text style={styles.hint}>Leave empty if no camera connected</Text>
+          </View>
 
-        {/* Error Message */}
-        {error && (
-          <Text style={styles.errorText}>{error}</Text>
-        )}
+          {/* Status Indicator */}
+          <View style={styles.statusContainer}>
+            <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
+            <Text style={[styles.statusText, { color: getStatusColor() }]}>
+              {getStatusText()}
+            </Text>
+          </View>
 
-        {/* Connect Button */}
-        <TouchableOpacity
-          style={[
-            styles.button,
-            status === 'connecting' && styles.buttonDisabled,
-          ]}
-          onPress={handleConnect}
-          disabled={status === 'connecting'}
-        >
-          {status === 'connecting' ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.buttonText}>Connect</Text>
+          {/* Error Message */}
+          {error && (
+            <Text style={styles.errorText}>{error}</Text>
           )}
-        </TouchableOpacity>
-      </View>
+
+          {/* Connect Button */}
+          <TouchableOpacity
+            style={[
+              styles.button,
+              status === 'connecting' && styles.buttonDisabled,
+            ]}
+            onPress={handleConnect}
+            disabled={status === 'connecting'}
+          >
+            {status === 'connecting' ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.buttonText}>Connect</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -149,12 +175,15 @@ export default function ConnectionScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A', // Dark navy
+    backgroundColor: '#0C1222',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
   },
   content: {
-    flex: 1,
-    justifyContent: 'center',
     paddingHorizontal: 32,
+    paddingVertical: 48,
   },
   title: {
     fontSize: 32,
@@ -167,15 +196,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#94A3B8',
     textAlign: 'center',
-    marginBottom: 48,
+    marginBottom: 40,
   },
   inputContainer: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   label: {
     fontSize: 14,
     color: '#94A3B8',
     marginBottom: 8,
+    fontWeight: '500',
   },
   input: {
     backgroundColor: '#1E293B',
@@ -185,12 +215,19 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#334155',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  hint: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 6,
   },
   statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+    marginTop: 8,
   },
   statusDot: {
     width: 12,
@@ -224,4 +261,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

@@ -25,9 +25,20 @@ interface LogEntry extends TelemetryResponse {
 const LOG_STORAGE_KEY = '@boat_telemetry_log';
 const LOG_STATE_KEY = '@boat_telemetry_log_state';
 
+function debugLog(message: string) {
+  const timestamp = new Date().toISOString();
+  const msg = `[${timestamp}] ${message}`;
+  console.log(msg);
+  if (Platform.OS === 'web') {
+    // Also log to browser console
+    (window as any).debugLogs = (window as any).debugLogs || [];
+    (window as any).debugLogs.push(msg);
+  }
+}
+
 type RootStackParamList = {
   Connection: undefined;
-  Dashboard: { ip: string };
+  Dashboard: { ip: string; cameraIP: string };
 };
 
 type Props = {
@@ -59,7 +70,14 @@ function getSignalBars(rssi: string): number {
 }
 
 export default function DashboardScreen({ navigation, route }: Props) {
-  const { ip } = route.params;
+  const { ip, cameraIP: rawCameraIP } = route.params;
+  
+  // Clean camera IP (remove http:// prefix if user added it)
+  const cameraIP = rawCameraIP && rawCameraIP.replace(/^https?:\/\//, '').trim();
+  const hasCameraIP = cameraIP && cameraIP.length > 0;
+  const streamUrl = hasCameraIP ? `http://${cameraIP}/stream` : null;
+  
+  debugLog(`Dashboard initialized - Telemetry IP: ${ip}, Camera IP: ${cameraIP}, Stream URL: ${streamUrl}`);
   const [telemetry, setTelemetry] = useState<TelemetryResponse | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(true);
@@ -345,13 +363,46 @@ export default function DashboardScreen({ navigation, route }: Props) {
       )}
 
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
+        {/* Debug Info (web only) */}
+        {Platform.OS === 'web' && (
+          <View style={styles.debugPanel}>
+            <Text style={styles.debugTitle}>📡 Debug Info</Text>
+            <Text style={styles.debugText}>Telemetry: {ip}</Text>
+            <Text style={styles.debugText}>Camera: {cameraIP || 'None'}</Text>
+            <Text style={styles.debugText}>Stream URL: {streamUrl || 'N/A'}</Text>
+          </View>
+        )}
         {/* Camera Feed */}
         <View style={styles.cameraContainer}>
-          <View style={styles.cameraPlaceholder}>
-            <Text style={styles.cameraIcon}>📷</Text>
-            <Text style={styles.cameraText}>Camera Feed</Text>
-            <Text style={styles.cameraSubtext}>Awaiting ESP32-CAM hardware</Text>
-          </View>
+          {streamUrl ? (
+            <View style={styles.cameraWrapper}>
+              {Platform.OS === 'web' ? (
+                <img 
+                  src={streamUrl}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#000' }}
+                />
+              ) : (
+                <Image
+                  source={{ uri: streamUrl }}
+                  style={styles.cameraStream}
+                  resizeMode="contain"
+                />
+              )}
+              <View style={styles.cameraOverlay}>
+                <View style={styles.liveIndicator}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveText}>LIVE</Text>
+                </View>
+                <Text style={styles.cameraIPText}>{cameraIP}</Text>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.cameraPlaceholder}>
+              <Text style={styles.cameraIcon}>📷</Text>
+              <Text style={styles.cameraText}>No Camera Connected</Text>
+              <Text style={styles.cameraSubtext}>Add Camera IP on connection screen</Text>
+            </View>
+          )}
         </View>
 
         {/* LED Controls */}
@@ -638,8 +689,89 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 32,
   },
+  debugPanel: {
+    backgroundColor: '#1A2332',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  debugTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 8,
+  },
+  debugText: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontFamily: 'monospace',
+    marginBottom: 4,
+  },
   cameraContainer: {
     marginBottom: 20,
+  },
+  cameraWrapper: {
+    aspectRatio: 16 / 9,
+    backgroundColor: '#000000',
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  cameraStream: {
+    width: '100%',
+    height: '100%',
+  },
+  cameraStreamWeb: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'contain',
+    backgroundColor: '#000000',
+  },
+  cameraIframe: {
+    width: '100%',
+    height: '100%',
+    border: 'none',
+    backgroundColor: '#000000',
+  },
+  cameraOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  liveIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(220, 38, 38, 0.9)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+    marginRight: 6,
+  },
+  liveText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 1,
+  },
+  cameraIPText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontFamily: 'monospace',
+    opacity: 0.8,
   },
   cameraPlaceholder: {
     aspectRatio: 16 / 9,

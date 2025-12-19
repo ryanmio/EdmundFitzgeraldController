@@ -9,11 +9,21 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  Platform,
+  Share,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getTelemetry, setLED } from '../services/esp32Service';
 import { TelemetryResponse } from '../types';
+
+interface LogEntry extends TelemetryResponse {
+  log_timestamp: string;
+}
+
+const LOG_STORAGE_KEY = '@boat_telemetry_log';
+const LOG_STATE_KEY = '@boat_telemetry_log_state';
 
 type RootStackParamList = {
   Connection: undefined;
@@ -55,7 +65,61 @@ export default function DashboardScreen({ navigation, route }: Props) {
   const [isConnected, setIsConnected] = useState(true);
   const [togglingRunning, setTogglingRunning] = useState(false);
   const [togglingFlood, setTogglingFlood] = useState(false);
+  const [isLogging, setIsLogging] = useState(false);
+  const [logData, setLogData] = useState<LogEntry[]>([]);
+  const [logStartTime, setLogStartTime] = useState<Date | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Load saved log data on mount
+  useEffect(() => {
+    const loadSavedLog = async () => {
+      try {
+        const savedLog = await AsyncStorage.getItem(LOG_STORAGE_KEY);
+        const savedState = await AsyncStorage.getItem(LOG_STATE_KEY);
+        
+        if (savedLog) {
+          const parsed = JSON.parse(savedLog);
+          setLogData(parsed);
+        }
+        if (savedState) {
+          const state = JSON.parse(savedState);
+          if (state.isLogging) {
+            setIsLogging(true);
+            setLogStartTime(new Date(state.startTime));
+          }
+        }
+      } catch (err) {
+        console.log('Failed to load saved log:', err);
+      }
+    };
+    loadSavedLog();
+  }, []);
+
+  // Save log data periodically (debounced to avoid too many writes)
+  useEffect(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await AsyncStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(logData));
+        await AsyncStorage.setItem(LOG_STATE_KEY, JSON.stringify({
+          isLogging,
+          startTime: logStartTime?.toISOString(),
+        }));
+      } catch (err) {
+        console.log('Failed to save log:', err);
+      }
+    }, 2000); // Save every 2 seconds max
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [logData, isLogging, logStartTime]);
 
   const fetchTelemetry = useCallback(async () => {
     try {
@@ -63,11 +127,20 @@ export default function DashboardScreen({ navigation, route }: Props) {
       setTelemetry(data);
       setLastError(null);
       setIsConnected(true);
+      
+      // Log data if logging is enabled
+      if (isLogging) {
+        const entry: LogEntry = {
+          ...data,
+          log_timestamp: new Date().toISOString(),
+        };
+        setLogData(prev => [...prev, entry]);
+      }
     } catch (err) {
       setLastError(err instanceof Error ? err.message : 'Connection lost');
       setIsConnected(false);
     }
-  }, [ip]);
+  }, [ip, isLogging]);
 
   useEffect(() => {
     fetchTelemetry();
@@ -78,21 +151,29 @@ export default function DashboardScreen({ navigation, route }: Props) {
   }, [fetchTelemetry]);
 
   const handleDisconnect = () => {
-    Alert.alert(
-      'Disconnect',
-      'Are you sure you want to disconnect from the boat?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Disconnect',
-          style: 'destructive',
-          onPress: () => {
-            if (intervalRef.current) clearInterval(intervalRef.current);
-            navigation.replace('Connection');
+    const confirmDisconnect = () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      navigation.replace('Connection');
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Disconnect from the boat? You\'ll need to reconnect from the home screen.')) {
+        confirmDisconnect();
+      }
+    } else {
+      Alert.alert(
+        'Disconnect',
+        'Are you sure you want to disconnect from the boat?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Disconnect',
+            style: 'destructive',
+            onPress: confirmDisconnect,
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const toggleRunningLED = async () => {
@@ -124,6 +205,112 @@ export default function DashboardScreen({ navigation, route }: Props) {
   };
 
   const signalBars = telemetry ? getSignalBars(telemetry.signal_strength) : 0;
+
+  const toggleLogging = () => {
+    if (isLogging) {
+      setIsLogging(false);
+    } else {
+      setIsLogging(true);
+      setLogStartTime(new Date());
+    }
+  };
+
+  const clearLog = async () => {
+    const doClear = async () => {
+      setLogData([]);
+      setLogStartTime(null);
+      setIsLogging(false);
+      try {
+        await AsyncStorage.removeItem(LOG_STORAGE_KEY);
+        await AsyncStorage.removeItem(LOG_STATE_KEY);
+      } catch (err) {
+        console.log('Failed to clear storage:', err);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Clear ${logData.length} log entries?`)) {
+        await doClear();
+      }
+    } else {
+      Alert.alert('Clear Log', `Clear ${logData.length} log entries?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Clear', style: 'destructive', onPress: doClear },
+      ]);
+    }
+  };
+
+  const exportCSV = async () => {
+    if (logData.length === 0) {
+      if (Platform.OS === 'web') {
+        window.alert('No data to export. Start logging first.');
+      } else {
+        Alert.alert('No Data', 'No data to export. Start logging first.');
+      }
+      return;
+    }
+
+    // Build CSV content
+    const headers = [
+      'log_timestamp',
+      'esp_timestamp',
+      'battery_voltage',
+      'signal_strength',
+      'uptime_seconds',
+      'running_led',
+      'flood_led',
+      'water_intrusion',
+      'water_sensor_raw',
+      'connection_status',
+      'ip_address',
+    ];
+    
+    const rows = logData.map(entry => [
+      entry.log_timestamp,
+      entry.timestamp,
+      entry.battery_voltage,
+      entry.signal_strength,
+      entry.uptime_seconds,
+      entry.running_mode_state ? '1' : '0',
+      entry.flood_mode_state ? '1' : '0',
+      entry.water_intrusion ? '1' : '0',
+      entry.water_sensor_raw,
+      entry.connection_status,
+      entry.ip_address,
+    ].join(','));
+
+    const csv = [headers.join(','), ...rows].join('\n');
+    const filename = `boat_telemetry_${new Date().toISOString().slice(0, 10)}.csv`;
+
+    if (Platform.OS === 'web') {
+      // Web: download as file
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      // Native: use Share
+      try {
+        await Share.share({
+          message: csv,
+          title: filename,
+        });
+      } catch (err) {
+        Alert.alert('Export Failed', 'Could not export data');
+      }
+    }
+  };
+
+  const getLogDuration = () => {
+    if (!logStartTime) return '--';
+    const seconds = Math.floor((Date.now() - logStartTime.getTime()) / 1000);
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
     <View style={styles.container}>
@@ -272,6 +459,70 @@ export default function DashboardScreen({ navigation, route }: Props) {
             ]}>
               {telemetry?.water_intrusion ? 'WET' : 'DRY'}
             </Text>
+          </View>
+        </View>
+
+        {/* Data Logging Section */}
+        <Text style={styles.sectionTitle}>Data Logging</Text>
+        <View style={styles.loggingCard}>
+          <View style={styles.loggingHeader}>
+            <View style={styles.loggingStatus}>
+              <View style={[
+                styles.loggingIndicator,
+                { backgroundColor: isLogging ? '#10B981' : '#4B5563' }
+              ]} />
+              <Text style={styles.loggingStatusText}>
+                {isLogging ? 'Recording' : 'Stopped'}
+              </Text>
+            </View>
+            <View style={styles.loggingStats}>
+              <Text style={styles.loggingStatValue}>{logData.length}</Text>
+              <Text style={styles.loggingStatLabel}>entries</Text>
+            </View>
+            <View style={styles.loggingStats}>
+              <Text style={styles.loggingStatValue}>{getLogDuration()}</Text>
+              <Text style={styles.loggingStatLabel}>duration</Text>
+            </View>
+          </View>
+          
+          <View style={styles.loggingButtons}>
+            <TouchableOpacity
+              style={[
+                styles.loggingBtn,
+                isLogging ? styles.loggingBtnStop : styles.loggingBtnStart,
+              ]}
+              onPress={toggleLogging}
+            >
+              <Text style={styles.loggingBtnText}>
+                {isLogging ? '⏹ Stop' : '⏺ Record'}
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.loggingBtn, styles.loggingBtnExport]}
+              onPress={exportCSV}
+              disabled={logData.length === 0}
+            >
+              <Text style={[
+                styles.loggingBtnText,
+                logData.length === 0 && styles.loggingBtnTextDisabled
+              ]}>
+                📤 Export CSV
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.loggingBtn, styles.loggingBtnClear]}
+              onPress={clearLog}
+              disabled={logData.length === 0}
+            >
+              <Text style={[
+                styles.loggingBtnText,
+                logData.length === 0 && styles.loggingBtnTextDisabled
+              ]}>
+                🗑️
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -513,6 +764,87 @@ const styles = StyleSheet.create({
   },
   signalBarInactive: {
     backgroundColor: '#374151',
+  },
+  loggingCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
+    marginBottom: 20,
+  },
+  loggingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  loggingStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  loggingIndicator: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  loggingStatusText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  loggingStats: {
+    alignItems: 'center',
+  },
+  loggingStatValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  loggingStatLabel: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  loggingButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  loggingBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loggingBtnStart: {
+    backgroundColor: '#065F46',
+    borderWidth: 1,
+    borderColor: '#10B981',
+  },
+  loggingBtnStop: {
+    backgroundColor: '#7F1D1D',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  loggingBtnExport: {
+    backgroundColor: '#1E40AF',
+    borderWidth: 1,
+    borderColor: '#3B82F6',
+  },
+  loggingBtnClear: {
+    backgroundColor: '#374151',
+    borderWidth: 1,
+    borderColor: '#4B5563',
+    flex: 0.4,
+  },
+  loggingBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  loggingBtnTextDisabled: {
+    opacity: 0.4,
   },
   statusFooter: {
     flexDirection: 'row',

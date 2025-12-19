@@ -16,8 +16,7 @@ import { ConnectionStatus } from '../types';
 
 type RootStackParamList = {
   Connection: undefined;
-  Telemetry: { ip: string };
-  LEDControl: { ip: string };
+  Dashboard: { ip: string };
 };
 
 type Props = {
@@ -52,9 +51,9 @@ export default function ConnectionScreen({ navigation }: Props) {
       setStatus('connected');
       await saveIP(ip);
       
-      // Navigate to telemetry screen after brief success display
+      // Navigate to dashboard after brief success display
       setTimeout(() => {
-        navigation.replace('Telemetry', { ip });
+        navigation.replace('Dashboard', { ip });
       }, 500);
     } catch (err) {
       setStatus('failed');

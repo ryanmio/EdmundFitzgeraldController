@@ -11,6 +11,7 @@
 // ==================== PIN DEFINITIONS ====================
 #define LED_RUNNING_PIN  2   // Built-in LED on most dev boards
 #define LED_FLOOD_PIN    4   // External LED (optional)
+#define WATER_SENSOR_PIN 35  // Water intrusion sensor (ADC input)
 
 // ==================== GLOBALS ====================
 WebServer server(80);
@@ -134,6 +135,10 @@ void handleTelemetry() {
   
   // Placeholder battery voltage (will add ADC later)
   float batteryVoltage = 0.0;
+  
+  // Water intrusion sensor (analog read - high value = water detected)
+  int waterRaw = analogRead(WATER_SENSOR_PIN);
+  bool waterDetected = waterRaw > 1000; // threshold for water detection
 
   String json = "{";
   json += "\"timestamp\":\"" + String(millis()) + "\",";
@@ -142,6 +147,8 @@ void handleTelemetry() {
   json += "\"uptime_seconds\":" + String(uptimeSec) + ",";
   json += "\"running_mode_state\":" + String(ledRunningState ? "true" : "false") + ",";
   json += "\"flood_mode_state\":" + String(ledFloodState ? "true" : "false") + ",";
+  json += "\"water_intrusion\":" + String(waterDetected ? "true" : "false") + ",";
+  json += "\"water_sensor_raw\":" + String(waterRaw) + ",";
   json += "\"connection_status\":\"" + String(WiFi.status() == WL_CONNECTED ? "online" : "offline") + "\",";
   json += "\"ip_address\":\"" + WiFi.localIP().toString() + "\"";
   json += "}";
@@ -206,6 +213,9 @@ void setup() {
   pinMode(LED_FLOOD_PIN, OUTPUT);
   digitalWrite(LED_RUNNING_PIN, LOW);
   digitalWrite(LED_FLOOD_PIN, LOW);
+  
+  // Init water sensor pin
+  pinMode(WATER_SENSOR_PIN, INPUT);
 
   startTime = millis();
 

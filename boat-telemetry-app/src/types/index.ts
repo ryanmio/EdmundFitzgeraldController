@@ -15,6 +15,8 @@ export interface TelemetryResponse {
   uptime_seconds: number;
   running_mode_state: boolean;
   flood_mode_state: boolean;
+  water_intrusion: boolean;
+  water_sensor_raw: number;
   connection_status: string;
   ip_address: string;
 }
@@ -28,4 +30,3 @@ export type LEDMode = 'running' | 'flood';
 export type LEDState = 'on' | 'off';
 
 export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'failed';
-

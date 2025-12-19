@@ -3,14 +3,12 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import ConnectionScreen from './src/screens/ConnectionScreen';
-import TelemetryScreen from './src/screens/TelemetryScreen';
-import LEDControlScreen from './src/screens/LEDControlScreen';
+import DashboardScreen from './src/screens/DashboardScreen';
 
 // Type definitions for navigation
 export type RootStackParamList = {
   Connection: undefined;
-  Telemetry: { ip: string };
-  LEDControl: { ip: string };
+  Dashboard: { ip: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -27,8 +25,7 @@ export default function App() {
         }}
       >
         <Stack.Screen name="Connection" component={ConnectionScreen} />
-        <Stack.Screen name="Telemetry" component={TelemetryScreen} />
-        <Stack.Screen name="LEDControl" component={LEDControlScreen} />
+        <Stack.Screen name="Dashboard" component={DashboardScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

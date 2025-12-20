@@ -135,12 +135,12 @@ void handleTelemetry() {
   int rssi = WiFi.RSSI();
   
   // Battery voltage reading (GPIO 34 ADC)
-  // Voltage divider: 100kΩ + 47kΩ (divides by 3.14)
+  // Voltage divider: 100kΩ + 47kΩ
   // ADC: 0-4095 maps to 0-3.3V
-  // So actual voltage = (ADC / 4095) * 3.3 * 3.14
+  // Calibration: 3.3V input was reading 1.16V, so multiply by 3.3/1.16 = 2.84
   int adcValue = analogRead(BATTERY_ADC_PIN);
   float batteryPinVoltage = (adcValue / 4095.0) * 3.3;
-  float batteryVoltage = batteryPinVoltage * 3.14;
+  float batteryVoltage = batteryPinVoltage * 2.84;
   
   // Water intrusion sensor (digital read with pullup)
   // LOW = water detected (probe gap bridged by water)

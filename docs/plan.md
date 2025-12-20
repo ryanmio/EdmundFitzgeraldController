@@ -151,9 +151,13 @@ npx expo start --web
 - **Camera ESP32-CAM**: `192.168.1.187` - `/stream` (MJPEG)
 - **App**: Unified dashboard with live camera, telemetry cards, LED toggles
 
+**Sensors Verified:**
+- ✅ Water intrusion sensor: GPIO32 (has internal pull-up)
+- 🔄 Battery voltage ADC: GPIO34 (ready for voltage divider wiring)
+
 **Next Steps:**
-1. Battery voltage ADC implementation (GPIO 34 + voltage divider)
-2. Water intrusion sensor wiring (digital GPIO)
+1. Wire battery voltage divider to GPIO34 (100kΩ + 47kΩ)
+2. Test battery voltage reading in app
 3. Extended 15+ minute stability test
 4. Build for iPhone using Expo Go (QR code scan) or EAS Build (TestFlight)
 
@@ -179,7 +183,8 @@ npx expo start --web
 - [x] HTTP endpoints functional
 - [x] Web app built and running
 - [x] App connects to ESP32 successfully
-- [ ] Battery voltage ADC wired
+- [x] Water intrusion sensor pin identified and working (GPIO32)
+- [ ] Battery voltage divider wired to GPIO34
 - [ ] Extended stability testing
 - [ ] Camera hardware integrated
 - [ ] Native iOS build

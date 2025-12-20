@@ -9,8 +9,10 @@
 #include "secrets.h"
 
 // ==================== PIN DEFINITIONS ====================
-#define LED_RUNNING_PIN    2   // Built-in LED on most dev boards
-#define LED_FLOOD_PIN      4   // External LED (optional)
+#define LED_RUNNING_PIN    2   // Built-in LED on most dev boards (keep for testing)
+#define LED_FLOOD_PIN      4   // Legacy external LED pin (optional spare)
+#define RUNNING_OUT_PIN   16   // External Running lights control (MOSFET gate)
+#define FLOOD_OUT_PIN     17   // External Flood lights control (MOSFET gate)
 #define BATTERY_ADC_PIN   34   // Battery voltage sense (ADC)
 #define WATER_SENSOR_PIN  32   // Water intrusion sensor (digital input with pullup) - GPIO32 has internal pullup, GPIO34/35/36/39 do NOT
 
@@ -181,10 +183,14 @@ void handleLed() {
 
   if (modeRunning) {
     ledRunningState = stateOn;
+    // Keep onboard LED for quick visual testing AND drive external MOSFET gate
     digitalWrite(LED_RUNNING_PIN, ledRunningState ? HIGH : LOW);
+    digitalWrite(RUNNING_OUT_PIN, ledRunningState ? HIGH : LOW);
   }
   if (modeFlood) {
     ledFloodState = stateOn;
+    // Drive external MOSFET gate; keep legacy GPIO4 as optional spare output
+    digitalWrite(FLOOD_OUT_PIN, ledFloodState ? HIGH : LOW);
     digitalWrite(LED_FLOOD_PIN, ledFloodState ? HIGH : LOW);
   }
 
@@ -221,8 +227,12 @@ void setup() {
   // Init LED pins
   pinMode(LED_RUNNING_PIN, OUTPUT);
   pinMode(LED_FLOOD_PIN, OUTPUT);
+  pinMode(RUNNING_OUT_PIN, OUTPUT);
+  pinMode(FLOOD_OUT_PIN, OUTPUT);
   digitalWrite(LED_RUNNING_PIN, LOW);
   digitalWrite(LED_FLOOD_PIN, LOW);
+  digitalWrite(RUNNING_OUT_PIN, LOW);
+  digitalWrite(FLOOD_OUT_PIN, LOW);
   
   // Init water sensor pin (digital with internal pullup)
   pinMode(WATER_SENSOR_PIN, INPUT_PULLUP);

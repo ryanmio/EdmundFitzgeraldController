@@ -152,14 +152,17 @@ npx expo start --web
 - **App**: Unified dashboard with live camera, telemetry cards, LED toggles
 
 **Sensors Verified:**
-- ✅ Water intrusion sensor: GPIO32 (has internal pull-up)
-- 🔄 Battery voltage ADC: GPIO34 (ready for voltage divider wiring)
+- ✅ Water intrusion sensor: GPIO32 (has internal pull-up) - working
+- ✅ Battery voltage ADC: GPIO34 with 100kΩ + 47kΩ divider - calibrated & working
+
+**Hardware Status:**
+- Telemetry ESP32 fully operational with both sensors
+- All telemetry fields displaying correctly in app
+- Ready for extended field testing (15+ minutes)
 
 **Next Steps:**
-1. Wire battery voltage divider to GPIO34 (100kΩ + 47kΩ)
-2. Test battery voltage reading in app
-3. Extended 15+ minute stability test
-4. Build for iPhone using Expo Go (QR code scan) or EAS Build (TestFlight)
+1. Extended 15+ minute stability test
+2. Build for iPhone using Expo Go (QR code scan) or EAS Build (TestFlight)
 
 **Xcode Limitation:**
 - Mac runs macOS too old for Xcode 16.1+ (required for local iOS builds)
@@ -184,8 +187,8 @@ npx expo start --web
 - [x] Web app built and running
 - [x] App connects to ESP32 successfully
 - [x] Water intrusion sensor pin identified and working (GPIO32)
-- [ ] Battery voltage divider wired to GPIO34
-- [ ] Extended stability testing
+- [x] Battery voltage divider wired to GPIO34 (calibrated)
+- [ ] Extended stability testing (15+ minutes)
 - [ ] Camera hardware integrated
 - [ ] Native iOS build
 - [ ] TestFlight deployment
@@ -271,11 +274,14 @@ npx expo start --web
 
 ## NOTES
 
-- **Working IP**: `192.168.1.178` (home WiFi)
+- **Working IP**: `192.168.1.185` (telemetry ESP32)
+- **Camera IP**: `192.168.1.187` (ESP32-CAM)
 - **App Running**: `http://localhost:8081` (web build)
 - **Serial Baud**: 115200
 - **API Timeout**: 5 seconds
 - **Telemetry Poll**: 1 second
+- **Battery ADC Calibration**: multiplier = 2.84 (for 100kΩ + 47kΩ divider)
+- **Water Sensor Pin**: GPIO32 (has internal pull-up)
 
-All systems functional and ready for extended field testing! 🚀
+✅ **Hardware fully assembled and tested. Ready for field deployment!**
 

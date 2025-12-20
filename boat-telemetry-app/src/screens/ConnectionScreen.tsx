@@ -14,6 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { checkConnection } from '../services/esp32Service';
 import { saveIP, loadIP, saveCameraIP, loadCameraIP } from '../services/storageService';
 import { ConnectionStatus } from '../types';
+import { COLORS, FONTS } from '../constants/Theme';
 
 type RootStackParamList = {
   Connection: undefined;
@@ -42,7 +43,7 @@ export default function ConnectionScreen({ navigation }: Props) {
 
   const handleConnect = async () => {
     if (!ip.trim()) {
-      setError('Please enter a telemetry IP address');
+      setError('PLEASE ENTER TELEMETRY IP');
       return;
     }
 
@@ -60,36 +61,36 @@ export default function ConnectionScreen({ navigation }: Props) {
       // Navigate to dashboard after brief success display
       setTimeout(() => {
         navigation.replace('Dashboard', { ip, cameraIP: cameraIP.trim() });
-      }, 500);
+      }, 800);
     } catch (err) {
       setStatus('failed');
-      setError(err instanceof Error ? err.message : 'Connection failed');
+      setError(err instanceof Error ? err.message.toUpperCase() : 'CONNECTION FAILED');
     }
   };
 
   const getStatusColor = () => {
     switch (status) {
       case 'connecting':
-        return '#F59E0B';
+        return COLORS.text;
       case 'connected':
-        return '#10B981';
+        return COLORS.accent;
       case 'failed':
-        return '#EF4444';
+        return COLORS.alert;
       default:
-        return '#6B7280';
+        return COLORS.secondary;
     }
   };
 
   const getStatusText = () => {
     switch (status) {
       case 'connecting':
-        return 'Connecting...';
+        return '> ESTABLISHING LINK...';
       case 'connected':
-        return 'Connected!';
+        return '> CONNECTION SECURE';
       case 'failed':
-        return 'Connection Failed';
+        return '> LINK FAILURE';
       default:
-        return 'Ready to Connect';
+        return '> SYSTEM READY';
     }
   };
 
@@ -98,49 +99,70 @@ export default function ConnectionScreen({ navigation }: Props) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      <View style={styles.scanlines} pointerEvents="none" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           {/* Header */}
-          <Text style={styles.title}>Edmund Fitzgerald</Text>
-          <Text style={styles.subtitle}>Connect to your boat</Text>
+          <View style={styles.shipLogoContainer}>
+            <View style={styles.shipHull} />
+            <View style={styles.shipCabin} />
+            <View style={styles.shipMast} />
+          </View>
+          
+          <Text style={styles.title}>EDMUND FITZGERALD</Text>
+          <Text style={styles.subtitle}>BRIDGE CONSOLE v1.0 [1975]</Text>
 
           {/* Telemetry IP Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Telemetry ESP32 IP</Text>
-            <TextInput
-              style={styles.input}
-              value={ip}
-              onChangeText={setIP}
-              placeholder="192.168.1.178"
-              placeholderTextColor="#6B7280"
-              keyboardType="numeric"
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={status !== 'connecting'}
-            />
-            <Text style={styles.hint}>Controls, sensors, and LED status</Text>
+            <View style={styles.labelRow}>
+              <View style={styles.labelDecorator} />
+              <Text style={styles.label}>TELEMETRY ESP32 IP</Text>
+            </View>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                value={ip}
+                onChangeText={setIP}
+                placeholder="000.000.0.000"
+                placeholderTextColor="#4a5f7f"
+                keyboardType="numeric"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={status !== 'connecting'}
+              />
+            </View>
+            <Text style={styles.hint}>PRIMARY SENSOR INTERFACE</Text>
           </View>
 
           {/* Camera IP Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Camera ESP32 IP (optional)</Text>
-            <TextInput
-              style={styles.input}
-              value={cameraIP}
-              onChangeText={setCameraIP}
-              placeholder="192.168.1.xxx"
-              placeholderTextColor="#6B7280"
-              keyboardType="numeric"
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={status !== 'connecting'}
-            />
-            <Text style={styles.hint}>Leave empty if no camera connected</Text>
+            <View style={styles.labelRow}>
+              <View style={styles.labelDecorator} />
+              <Text style={styles.label}>CAMERA ESP32 IP (OPTIONAL)</Text>
+            </View>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                value={cameraIP}
+                onChangeText={setCameraIP}
+                placeholder="000.000.0.000"
+                placeholderTextColor="#4a5f7f"
+                keyboardType="numeric"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={status !== 'connecting'}
+              />
+            </View>
+            <Text style={styles.hint}>VISUAL FEED RELAY</Text>
           </View>
 
           {/* Status Indicator */}
           <View style={styles.statusContainer}>
-            <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
+            <View style={[styles.statusLED, { 
+              backgroundColor: getStatusColor(),
+              shadowColor: getStatusColor(),
+              shadowOpacity: status !== 'idle' ? 0.8 : 0.3,
+            }]} />
             <Text style={[styles.statusText, { color: getStatusColor() }]}>
               {getStatusText()}
             </Text>
@@ -148,7 +170,9 @@ export default function ConnectionScreen({ navigation }: Props) {
 
           {/* Error Message */}
           {error && (
-            <Text style={styles.errorText}>{error}</Text>
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>[!] ERROR: {error}</Text>
+            </View>
           )}
 
           {/* Connect Button */}
@@ -159,11 +183,12 @@ export default function ConnectionScreen({ navigation }: Props) {
             ]}
             onPress={handleConnect}
             disabled={status === 'connecting'}
+            activeOpacity={0.8}
           >
             {status === 'connecting' ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={COLORS.background} />
             ) : (
-              <Text style={styles.buttonText}>Connect</Text>
+              <Text style={styles.buttonText}>INITIALIZE CONNECTION</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -175,7 +200,15 @@ export default function ConnectionScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0C1222',
+    backgroundColor: COLORS.background,
+  },
+  scanlines: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
+    zIndex: 999,
+    // Note: True scanlines would need a repeating linear gradient or an image
+    // For now, we'll use a very subtle overlay
+    opacity: 0.05,
   },
   scrollContent: {
     flexGrow: 1,
@@ -185,79 +218,152 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingVertical: 48,
   },
+  shipLogoContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+    height: 60,
+    justifyContent: 'flex-end',
+  },
+  shipHull: {
+    width: 120,
+    height: 20,
+    backgroundColor: COLORS.secondary,
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
+  },
+  shipCabin: {
+    width: 40,
+    height: 20,
+    backgroundColor: COLORS.secondary,
+    marginBottom: -2,
+    marginLeft: 40,
+  },
+  shipMast: {
+    width: 2,
+    height: 30,
+    backgroundColor: COLORS.secondary,
+    marginBottom: -2,
+    marginLeft: 50,
+  },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: COLORS.text,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
+    fontFamily: FONTS.monospace,
+    letterSpacing: 2,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#94A3B8',
+    fontSize: 12,
+    color: COLORS.secondary,
     textAlign: 'center',
     marginBottom: 40,
+    fontFamily: FONTS.monospace,
+    letterSpacing: 1,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 24,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  labelDecorator: {
+    width: 4,
+    height: 14,
+    backgroundColor: COLORS.text,
+    marginRight: 8,
   },
   label: {
-    fontSize: 14,
-    color: '#94A3B8',
-    marginBottom: 8,
-    fontWeight: '500',
+    fontSize: 12,
+    color: COLORS.text,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
+  },
+  inputWrapper: {
+    backgroundColor: '#05070a',
+    borderWidth: 1,
+    borderColor: COLORS.secondary,
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.text,
   },
   input: {
-    backgroundColor: '#1E293B',
-    borderRadius: 12,
-    padding: 16,
+    paddingVertical: 12,
     fontSize: 18,
-    color: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#334155',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    color: COLORS.text,
+    fontFamily: FONTS.monospace,
   },
   hint: {
-    fontSize: 12,
-    color: '#64748B',
+    fontSize: 10,
+    color: COLORS.secondary,
     marginTop: 6,
+    fontFamily: FONTS.monospace,
+    textAlign: 'right',
   },
   statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    marginTop: 8,
+    justifyContent: 'flex-start',
+    marginBottom: 24,
+    backgroundColor: '#05070a',
+    padding: 12,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#1a2332',
   },
-  statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
+  statusLED: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 12,
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 4,
+    elevation: 4,
   },
   statusText: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 14,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(255, 51, 51, 0.1)',
+    padding: 12,
+    borderRadius: 4,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: COLORS.alert,
   },
   errorText: {
-    color: '#EF4444',
-    textAlign: 'center',
-    marginBottom: 16,
-    fontSize: 14,
+    color: COLORS.alert,
+    textAlign: 'left',
+    fontSize: 12,
+    fontFamily: FONTS.monospace,
   },
   button: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: COLORS.text,
+    borderRadius: 4,
+    padding: 18,
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 8,
+    shadowColor: COLORS.text,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   buttonDisabled: {
-    backgroundColor: '#1E40AF',
+    opacity: 0.5,
   },
   buttonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
+    color: COLORS.background,
+    fontSize: 16,
+    fontWeight: 'bold',
+    fontFamily: FONTS.monospace,
+    letterSpacing: 1,
   },
 });
+

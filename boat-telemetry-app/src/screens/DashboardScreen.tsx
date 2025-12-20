@@ -17,6 +17,7 @@ import { RouteProp } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getTelemetry, setLED } from '../services/esp32Service';
 import { TelemetryResponse } from '../types';
+import { COLORS, FONTS } from '../constants/Theme';
 
 interface LogEntry extends TelemetryResponse {
   log_timestamp: string;
@@ -53,12 +54,7 @@ function formatUptime(seconds: number): string {
   const minutes = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;
   
-  if (hours > 0) {
-    return `${hours}h ${minutes}m ${secs}s`;
-  } else if (minutes > 0) {
-    return `${minutes}m ${secs}s`;
-  }
-  return `${secs}s`;
+  return `${hours.toString().padStart(2, '0')}${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
 function getSignalBars(rssi: string): number {
@@ -69,15 +65,26 @@ function getSignalBars(rssi: string): number {
   return 1;
 }
 
+// Custom Panel Component for the Bridge Console
+const ConsolePanel = ({ title, children, style, alert = false }: any) => (
+  <View style={[styles.panel, style, alert && styles.panelAlert]}>
+    <View style={styles.panelHeader}>
+      <View style={styles.panelHeaderDecorator} />
+      <Text style={styles.panelTitle}>{title.toUpperCase()}</Text>
+    </View>
+    <View style={styles.panelContent}>
+      {children}
+    </View>
+  </View>
+);
+
 export default function DashboardScreen({ navigation, route }: Props) {
   const { ip, cameraIP: rawCameraIP } = route.params;
   
-  // Clean camera IP (remove http:// prefix if user added it)
   const cameraIP = rawCameraIP && rawCameraIP.replace(/^https?:\/\//, '').trim();
   const hasCameraIP = cameraIP && cameraIP.length > 0;
   const streamUrl = hasCameraIP ? `http://${cameraIP}/stream` : null;
   
-  debugLog(`Dashboard initialized - Telemetry IP: ${ip}, Camera IP: ${cameraIP}, Stream URL: ${streamUrl}`);
   const [telemetry, setTelemetry] = useState<TelemetryResponse | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(true);
@@ -86,8 +93,18 @@ export default function DashboardScreen({ navigation, route }: Props) {
   const [isLogging, setIsLogging] = useState(false);
   const [logData, setLogData] = useState<LogEntry[]>([]);
   const [logStartTime, setLogStartTime] = useState<Date | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const clockIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    clockIntervalRef.current = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => {
+      if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
+    };
+  }, []);
 
   // Load saved log data on mount
   useEffect(() => {
@@ -335,257 +352,236 @@ export default function DashboardScreen({ navigation, route }: Props) {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.title}>Edmund Fitzgerald</Text>
-          <View style={styles.connectionInfo}>
-            <View style={[styles.statusDot, { backgroundColor: isConnected ? '#10B981' : '#EF4444' }]} />
-            <Text style={styles.ipText}>{ip}</Text>
-          </View>
+          <Text style={styles.shipName}>S.S. EDMUND FITZGERALD</Text>
+          <Text style={styles.bridgeStatus}>BRIDGE CONSOLE ACITVE</Text>
         </View>
-        <TouchableOpacity style={styles.disconnectBtn} onPress={handleDisconnect}>
-          <Text style={styles.disconnectText}>⏻</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <View style={styles.chronometerContainer}>
+            <Text style={styles.chronometerLabel}>SHIP TIME</Text>
+            <Text style={styles.chronometer}>
+              {currentTime.getHours().toString().padStart(2, '0')}
+              {currentTime.getMinutes().toString().padStart(2, '0')}
+              <Text style={styles.chronometerSeconds}>
+                :{currentTime.getSeconds().toString().padStart(2, '0')}
+              </Text>
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.powerButton} onPress={handleDisconnect}>
+            <View style={styles.powerButtonInner}>
+              <Text style={styles.powerIcon}>⏻</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Error Banner */}
-      {lastError && (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={styles.errorText}>{lastError}</Text>
-        </View>
-      )}
-
-      {/* Water Intrusion Alert */}
-      {telemetry?.water_intrusion && (
-        <View style={styles.waterAlert}>
-          <Text style={styles.waterAlertIcon}>🚨</Text>
-          <Text style={styles.waterAlertText}>WATER INTRUSION DETECTED!</Text>
-        </View>
-      )}
-
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-        {/* Debug Info (web only) */}
-        {Platform.OS === 'web' && (
-          <View style={styles.debugPanel}>
-            <Text style={styles.debugTitle}>📡 Debug Info</Text>
-            <Text style={styles.debugText}>Telemetry: {ip}</Text>
-            <Text style={styles.debugText}>Camera: {cameraIP || 'None'}</Text>
-            <Text style={styles.debugText}>Stream URL: {streamUrl || 'N/A'}</Text>
-          </View>
-        )}
-        {/* Camera Feed */}
-        <View style={styles.cameraContainer}>
-          {streamUrl ? (
-            <View style={styles.cameraWrapper}>
-              {Platform.OS === 'web' ? (
-                <img 
-                  src={streamUrl}
-                  style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#000' }}
-                />
-              ) : (
-                <Image
-                  source={{ uri: streamUrl }}
-                  style={styles.cameraStream}
-                  resizeMode="contain"
-                />
-              )}
-              <View style={styles.cameraOverlay}>
-                <View style={styles.liveIndicator}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveText}>LIVE</Text>
+        {/* Row 1: Critical Systems */}
+        <View style={styles.panelRow}>
+          <ConsolePanel title="Power Station" style={styles.flex1}>
+            <View style={styles.gaugeContainer}>
+              <View style={styles.analogGauge}>
+                <View style={styles.gaugeScale}>
+                  {[0, 2, 4, 6, 8, 10, 12, 14, 16].map((v) => (
+                    <Text key={v} style={[styles.gaugeMark, { left: `${(v / 16) * 100}%` }]}>
+                      {v % 4 === 0 ? v : ''}
+                    </Text>
+                  ))}
                 </View>
-                <Text style={styles.cameraIPText}>{cameraIP}</Text>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.cameraPlaceholder}>
-              <Text style={styles.cameraIcon}>📷</Text>
-              <Text style={styles.cameraText}>No Camera Connected</Text>
-              <Text style={styles.cameraSubtext}>Add Camera IP on connection screen</Text>
-            </View>
-          )}
-        </View>
-
-        {/* LED Controls */}
-        <Text style={styles.sectionTitle}>Lights</Text>
-        <View style={styles.ledRow}>
-          <TouchableOpacity
-            style={[
-              styles.ledCard,
-              telemetry?.running_mode_state ? styles.ledCardOn : styles.ledCardOff,
-            ]}
-            onPress={toggleRunningLED}
-            disabled={togglingRunning}
-            activeOpacity={0.7}
-          >
-            {togglingRunning ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <>
-                <Text style={styles.ledIcon}>💡</Text>
-                <Text style={styles.ledLabel}>Running</Text>
-                <View style={[
-                  styles.ledIndicator,
-                  { backgroundColor: telemetry?.running_mode_state ? '#10B981' : '#4B5563' }
-                ]} />
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.ledCard,
-              telemetry?.flood_mode_state ? styles.ledCardOn : styles.ledCardOff,
-            ]}
-            onPress={toggleFloodLED}
-            disabled={togglingFlood}
-            activeOpacity={0.7}
-          >
-            {togglingFlood ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <>
-                <Text style={styles.ledIcon}>🔦</Text>
-                <Text style={styles.ledLabel}>Flood</Text>
-                <View style={[
-                  styles.ledIndicator,
-                  { backgroundColor: telemetry?.flood_mode_state ? '#F59E0B' : '#4B5563' }
-                ]} />
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Telemetry Grid */}
-        <Text style={styles.sectionTitle}>Telemetry</Text>
-        <View style={styles.telemetryGrid}>
-          {/* Battery */}
-          <View style={styles.telemetryCard}>
-            <Text style={styles.telemetryIcon}>🔋</Text>
-            <Text style={styles.telemetryLabel}>Battery</Text>
-            <Text style={styles.telemetryValue}>
-              {telemetry?.battery_voltage || '--'}
-            </Text>
-          </View>
-
-          {/* Signal */}
-          <View style={styles.telemetryCard}>
-            <Text style={styles.telemetryIcon}>📶</Text>
-            <Text style={styles.telemetryLabel}>Signal</Text>
-            <View style={styles.signalBars}>
-              {[1, 2, 3, 4].map((bar) => (
-                <View
-                  key={bar}
+                <View style={styles.gaugeTrack} />
+                <View 
                   style={[
-                    styles.signalBar,
-                    { height: bar * 6 },
-                    bar <= signalBars ? styles.signalBarActive : styles.signalBarInactive,
-                  ]}
+                    styles.gaugeNeedle, 
+                    { left: `${Math.min(100, (parseFloat(telemetry?.battery_voltage || '0') / 16) * 100)}%` }
+                  ]} 
                 />
-              ))}
+              </View>
+              <Text style={styles.gaugeValue}>{telemetry?.battery_voltage || '--.-'}V</Text>
+              <Text style={styles.gaugeSublabel}>BATTERY POTENTIAL (0-16V)</Text>
             </View>
-            <Text style={styles.telemetrySubvalue}>
-              {telemetry?.signal_strength || '--'}
-            </Text>
-          </View>
+          </ConsolePanel>
 
-          {/* Uptime */}
-          <View style={styles.telemetryCard}>
-            <Text style={styles.telemetryIcon}>⏱️</Text>
-            <Text style={styles.telemetryLabel}>Uptime</Text>
-            <Text style={styles.telemetryValue}>
-              {telemetry ? formatUptime(telemetry.uptime_seconds) : '--'}
-            </Text>
-          </View>
-
-          {/* Water Sensor */}
-          <View style={[
-            styles.telemetryCard,
-            telemetry?.water_intrusion && styles.telemetryCardAlert
-          ]}>
-            <Text style={styles.telemetryIcon}>💧</Text>
-            <Text style={styles.telemetryLabel}>Hull</Text>
-            <Text style={[
-              styles.telemetryValue,
-              { color: telemetry?.water_intrusion ? '#EF4444' : '#10B981' }
-            ]}>
-              {telemetry?.water_intrusion ? 'WET' : 'DRY'}
-            </Text>
-          </View>
+          <ConsolePanel 
+            title="Hull Integrity" 
+            style={styles.flex1} 
+            alert={telemetry?.water_intrusion}
+          >
+            <View style={styles.statusDisplay}>
+              <Text style={[
+                styles.statusLargeText,
+                { color: telemetry?.water_intrusion ? COLORS.alert : COLORS.accent }
+              ]}>
+                {telemetry?.water_intrusion ? 'INTRUSION' : 'SECURE'}
+              </Text>
+              <View style={[
+                styles.statusIndicatorLarge,
+                { backgroundColor: telemetry?.water_intrusion ? COLORS.alert : COLORS.accent }
+              ]} />
+              <Text style={styles.statusSublabel}>BILGE SENSORS ACTIVE</Text>
+            </View>
+          </ConsolePanel>
         </View>
+
+        {/* Camera Feed */}
+        <ConsolePanel title="Visual Feed Relay">
+          <View style={styles.cameraContainer}>
+            {streamUrl ? (
+              <View style={styles.cameraWrapper}>
+                {Platform.OS === 'web' ? (
+                  <img 
+                    src={streamUrl}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#000' }}
+                  />
+                ) : (
+                  <Image
+                    source={{ uri: streamUrl }}
+                    style={styles.cameraStream}
+                    resizeMode="contain"
+                  />
+                )}
+                <View style={styles.cameraOverlay}>
+                  <Text style={styles.cameraIPText}>SOURCE: {cameraIP}</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.cameraPlaceholder}>
+                <Text style={styles.cameraText}>NO SIGNAL</Text>
+              </View>
+            )}
+          </View>
+        </ConsolePanel>
+
+        {/* Row 2: System Info */}
+        <View style={styles.panelRow}>
+          <ConsolePanel title="Chronometer" style={styles.flex1}>
+            <Text style={styles.telemetryValueLarge}>
+              {telemetry ? formatUptime(telemetry.uptime_seconds) : '0000:00'}
+            </Text>
+            <Text style={styles.telemetrySublabel}>OPERATIONAL HOURS</Text>
+          </ConsolePanel>
+
+          <ConsolePanel title="Signal Relay" style={styles.flex1}>
+            <View style={styles.signalContainer}>
+              <View style={styles.signalBars}>
+                {[1, 2, 3, 4].map((bar) => (
+                  <View
+                    key={bar}
+                    style={[
+                      styles.signalBar,
+                      { height: bar * 8 },
+                      bar <= signalBars ? styles.signalBarActive : styles.signalBarInactive,
+                    ]}
+                  />
+                ))}
+              </View>
+              <Text style={styles.telemetryValue}>
+                {telemetry?.signal_strength || '--'}
+              </Text>
+            </View>
+            <Text style={styles.telemetrySublabel}>LINK STRENGTH (dBm)</Text>
+          </ConsolePanel>
+        </View>
+
+        {/* Row 3: Control Switches */}
+        <ConsolePanel title="External Lighting Control">
+          <View style={styles.switchRow}>
+            <View style={styles.switchContainer}>
+              <Text style={styles.switchLabel}>RUNNING LIGHTS</Text>
+              <TouchableOpacity
+                style={[
+                  styles.industrialSwitch,
+                  telemetry?.running_mode_state ? styles.switchOn : styles.switchOff,
+                ]}
+                onPress={toggleRunningLED}
+                disabled={togglingRunning}
+              >
+                <View style={styles.switchHandle} />
+              </TouchableOpacity>
+              <View style={[
+                styles.ledIndicatorSmall,
+                { backgroundColor: telemetry?.running_mode_state ? COLORS.accent : COLORS.ledOff }
+              ]} />
+            </View>
+
+            <View style={styles.switchContainer}>
+              <Text style={styles.switchLabel}>FLOOD LIGHTS</Text>
+              <TouchableOpacity
+                style={[
+                  styles.industrialSwitch,
+                  telemetry?.flood_mode_state ? styles.switchOn : styles.switchOff,
+                ]}
+                onPress={toggleFloodLED}
+                disabled={togglingFlood}
+              >
+                <View style={styles.switchHandle} />
+              </TouchableOpacity>
+              <View style={[
+                styles.ledIndicatorSmall,
+                { backgroundColor: telemetry?.flood_mode_state ? COLORS.text : COLORS.ledOff }
+              ]} />
+            </View>
+          </View>
+        </ConsolePanel>
 
         {/* Data Logging Section */}
-        <Text style={styles.sectionTitle}>Data Logging</Text>
-        <View style={styles.loggingCard}>
-          <View style={styles.loggingHeader}>
-            <View style={styles.loggingStatus}>
-              <View style={[
-                styles.loggingIndicator,
-                { backgroundColor: isLogging ? '#10B981' : '#4B5563' }
-              ]} />
-              <Text style={styles.loggingStatusText}>
-                {isLogging ? 'Recording' : 'Stopped'}
-              </Text>
+        <ConsolePanel title="Data Logger / Recorder">
+          <View style={styles.loggingContent}>
+            <View style={styles.loggingHeader}>
+              <View style={styles.loggingStatus}>
+                <View style={[
+                  styles.loggingIndicator,
+                  { backgroundColor: isLogging ? COLORS.accent : COLORS.ledOff }
+                ]} />
+                <Text style={styles.loggingStatusText}>
+                  {isLogging ? 'RECORDING' : 'READY'}
+                </Text>
+              </View>
+              <View style={styles.loggingStats}>
+                <Text style={styles.loggingStatValue}>{logData.length}</Text>
+                <Text style={styles.loggingStatLabel}>ENTRIES</Text>
+              </View>
             </View>
-            <View style={styles.loggingStats}>
-              <Text style={styles.loggingStatValue}>{logData.length}</Text>
-              <Text style={styles.loggingStatLabel}>entries</Text>
-            </View>
-            <View style={styles.loggingStats}>
-              <Text style={styles.loggingStatValue}>{getLogDuration()}</Text>
-              <Text style={styles.loggingStatLabel}>duration</Text>
+            
+            <View style={styles.loggingButtons}>
+              <TouchableOpacity
+                style={[styles.consoleButton, isLogging ? styles.buttonStop : styles.buttonStart]}
+                onPress={toggleLogging}
+              >
+                <Text style={styles.consoleButtonText}>
+                  {isLogging ? 'STOP REC' : 'START REC'}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.consoleButton, styles.buttonSecondary]}
+                onPress={exportCSV}
+                disabled={logData.length === 0}
+              >
+                <Text style={styles.consoleButtonText}>EXPORT CSV</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.consoleButton, styles.buttonDanger]}
+                onPress={clearLog}
+                disabled={logData.length === 0}
+              >
+                <Text style={styles.consoleButtonText}>CLR</Text>
+              </TouchableOpacity>
             </View>
           </View>
-          
-          <View style={styles.loggingButtons}>
-            <TouchableOpacity
-              style={[
-                styles.loggingBtn,
-                isLogging ? styles.loggingBtnStop : styles.loggingBtnStart,
-              ]}
-              onPress={toggleLogging}
-            >
-              <Text style={styles.loggingBtnText}>
-                {isLogging ? '⏹ Stop' : '⏺ Record'}
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.loggingBtn, styles.loggingBtnExport]}
-              onPress={exportCSV}
-              disabled={logData.length === 0}
-            >
-              <Text style={[
-                styles.loggingBtnText,
-                logData.length === 0 && styles.loggingBtnTextDisabled
-              ]}>
-                📤 Export CSV
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.loggingBtn, styles.loggingBtnClear]}
-              onPress={clearLog}
-              disabled={logData.length === 0}
-            >
-              <Text style={[
-                styles.loggingBtnText,
-                logData.length === 0 && styles.loggingBtnTextDisabled
-              ]}>
-                🗑️
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        </ConsolePanel>
 
         {/* Status Footer */}
         <View style={styles.statusFooter}>
-          <Text style={styles.statusLabel}>ESP32 Status:</Text>
+          <View style={styles.footerDecorator} />
+          <Text style={styles.statusLabel}>BRIDGE STATUS:</Text>
           <Text style={[
             styles.statusValue,
-            { color: telemetry?.connection_status === 'online' ? '#10B981' : '#EF4444' }
+            { color: telemetry?.connection_status === 'online' ? COLORS.accent : COLORS.alert }
           ]}>
-            {telemetry?.connection_status?.toUpperCase() || 'UNKNOWN'}
+            {telemetry?.connection_status?.toUpperCase() || 'OFFLINE'}
           </Text>
+          <View style={styles.flex1} />
+          <Text style={styles.versionText}>SYS_REL_1975_v1.0</Text>
         </View>
       </ScrollView>
     </View>
@@ -595,7 +591,10 @@ export default function DashboardScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0C1222',
+    backgroundColor: COLORS.background,
+  },
+  flex1: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -603,398 +602,445 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 56,
-    paddingBottom: 16,
-    backgroundColor: '#141E30',
-    borderBottomWidth: 1,
-    borderBottomColor: '#243447',
+    paddingBottom: 20,
+    backgroundColor: COLORS.background,
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.secondary,
   },
   headerLeft: {
     flex: 1,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  connectionInfo: {
+  headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
+  shipName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    fontFamily: FONTS.monospace,
+    letterSpacing: 1,
   },
-  ipText: {
-    fontSize: 13,
-    color: '#8892A6',
-    fontFamily: 'monospace',
+  bridgeStatus: {
+    fontSize: 10,
+    color: COLORS.accent,
+    fontFamily: FONTS.monospace,
+    marginTop: 2,
   },
-  disconnectBtn: {
+  chronometerContainer: {
+    alignItems: 'flex-end',
+    marginRight: 16,
+  },
+  chronometerLabel: {
+    fontSize: 8,
+    color: COLORS.secondary,
+    fontFamily: FONTS.monospace,
+    marginBottom: 2,
+  },
+  chronometer: {
+    fontSize: 20,
+    color: COLORS.text,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
+  },
+  chronometerSeconds: {
+    fontSize: 14,
+    color: COLORS.secondary,
+  },
+  powerButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: '#1E293B',
+    borderRadius: 4,
+    backgroundColor: COLORS.secondary,
+    padding: 2,
+  },
+  powerButtonInner: {
+    flex: 1,
+    backgroundColor: '#3a4b63',
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 2,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#5a6f8f',
   },
-  disconnectText: {
+  powerIcon: {
     fontSize: 20,
-    color: '#94A3B8',
-  },
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#7F1D1D',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  errorIcon: {
-    fontSize: 14,
-    marginRight: 8,
-  },
-  errorText: {
-    color: '#FCA5A5',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  waterAlert: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#DC2626',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  waterAlertIcon: {
-    fontSize: 18,
-    marginRight: 10,
-  },
-  waterAlertText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 1,
+    color: COLORS.alert,
   },
   content: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  debugPanel: {
-    backgroundColor: '#1A2332',
-    borderRadius: 12,
     padding: 12,
-    marginBottom: 16,
+    paddingBottom: 40,
+  },
+  panelRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  panel: {
+    backgroundColor: COLORS.panel,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: COLORS.border,
+    borderRadius: 4,
+    marginBottom: 12,
+    overflow: 'hidden',
   },
-  debugTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B',
+  panelAlert: {
+    borderColor: COLORS.alert,
+    borderWidth: 2,
+  },
+  panelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#121926',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  panelHeaderDecorator: {
+    width: 3,
+    height: 12,
+    backgroundColor: COLORS.text,
+    marginRight: 8,
+  },
+  panelTitle: {
+    fontSize: 10,
+    color: COLORS.secondary,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  panelContent: {
+    padding: 12,
+  },
+  gaugeContainer: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  analogGauge: {
+    width: '100%',
+    height: 40,
+    backgroundColor: '#05070a',
+    borderRadius: 2,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: COLORS.secondary,
   },
-  debugText: {
-    fontSize: 11,
-    color: '#94A3B8',
-    fontFamily: 'monospace',
-    marginBottom: 4,
+  gaugeScale: {
+    position: 'absolute',
+    top: 4,
+    left: 10,
+    right: 10,
+    height: 10,
+  },
+  gaugeMark: {
+    fontSize: 8,
+    color: COLORS.secondary,
+    fontFamily: FONTS.monospace,
+    position: 'absolute',
+  },
+  gaugeTrack: {
+    height: 4,
+    backgroundColor: '#1a2332',
+    borderRadius: 2,
+    marginTop: 12,
+  },
+  gaugeNeedle: {
+    position: 'absolute',
+    width: 2,
+    height: 20,
+    backgroundColor: COLORS.alert,
+    top: 10,
+    marginLeft: -1,
+    shadowColor: COLORS.alert,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+  },
+  gaugeValue: {
+    fontSize: 24,
+    color: COLORS.text,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
+  },
+  gaugeSublabel: {
+    fontSize: 8,
+    color: COLORS.secondary,
+    fontFamily: FONTS.monospace,
+    marginTop: 2,
+  },
+  statusDisplay: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  statusLargeText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    fontFamily: FONTS.monospace,
+    marginBottom: 8,
+    letterSpacing: 1,
+  },
+  statusIndicatorLarge: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.2)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  statusSublabel: {
+    fontSize: 8,
+    color: COLORS.secondary,
+    fontFamily: FONTS.monospace,
+    marginTop: 10,
   },
   cameraContainer: {
-    marginBottom: 20,
+    width: '100%',
   },
   cameraWrapper: {
     aspectRatio: 16 / 9,
     backgroundColor: '#000000',
-    borderRadius: 16,
+    borderRadius: 2,
     overflow: 'hidden',
-    position: 'relative',
+    borderWidth: 1,
+    borderColor: COLORS.secondary,
   },
   cameraStream: {
     width: '100%',
     height: '100%',
   },
-  cameraStreamWeb: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'contain',
-    backgroundColor: '#000000',
-  },
-  cameraIframe: {
-    width: '100%',
-    height: '100%',
-    border: 'none',
-    backgroundColor: '#000000',
-  },
   cameraOverlay: {
     position: 'absolute',
-    top: 0,
+    bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  liveIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(220, 38, 38, 0.9)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFFFFF',
-    marginRight: 6,
-  },
-  liveText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 1,
+    padding: 6,
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
   cameraIPText: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    fontFamily: 'monospace',
-    opacity: 0.8,
+    fontSize: 10,
+    color: COLORS.text,
+    fontFamily: FONTS.monospace,
   },
   cameraPlaceholder: {
     aspectRatio: 16 / 9,
-    backgroundColor: '#1A2332',
-    borderRadius: 16,
+    backgroundColor: '#05070a',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#243447',
-    borderStyle: 'dashed',
-  },
-  cameraIcon: {
-    fontSize: 48,
-    marginBottom: 12,
-    opacity: 0.5,
+    borderWidth: 1,
+    borderColor: COLORS.secondary,
   },
   cameraText: {
-    fontSize: 18,
-    color: '#64748B',
-    fontWeight: '600',
+    fontSize: 14,
+    color: COLORS.secondary,
+    fontFamily: FONTS.monospace,
+    letterSpacing: 2,
   },
-  cameraSubtext: {
-    fontSize: 13,
-    color: '#475569',
-    marginTop: 4,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#64748B',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 12,
-    marginTop: 8,
-  },
-  ledRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  ledCard: {
-    flex: 1,
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    borderWidth: 2,
-  },
-  ledCardOn: {
-    backgroundColor: '#064E3B',
-    borderColor: '#10B981',
-  },
-  ledCardOff: {
-    backgroundColor: '#1E293B',
-    borderColor: '#334155',
-  },
-  ledIcon: {
-    fontSize: 28,
-    marginBottom: 8,
-  },
-  ledLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 12,
-  },
-  ledIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  telemetryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
-  },
-  telemetryCard: {
-    width: (width - 44) / 2,
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  telemetryCardAlert: {
-    backgroundColor: '#450A0A',
-    borderColor: '#DC2626',
-  },
-  telemetryIcon: {
-    fontSize: 24,
-    marginBottom: 8,
-  },
-  telemetryLabel: {
-    fontSize: 13,
-    color: '#64748B',
-    marginBottom: 8,
+  telemetryValueLarge: {
+    fontSize: 32,
+    color: COLORS.text,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   telemetryValue: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontSize: 20,
+    color: COLORS.text,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
   },
-  telemetrySubvalue: {
-    fontSize: 12,
-    color: '#64748B',
+  telemetrySublabel: {
+    fontSize: 8,
+    color: COLORS.secondary,
+    fontFamily: FONTS.monospace,
+    textAlign: 'center',
     marginTop: 4,
+  },
+  signalContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
   },
   signalBars: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 3,
-    marginBottom: 4,
   },
   signalBar: {
     width: 6,
-    borderRadius: 2,
+    backgroundColor: COLORS.ledOff,
   },
   signalBarActive: {
-    backgroundColor: '#10B981',
+    backgroundColor: COLORS.accent,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
   },
   signalBarInactive: {
-    backgroundColor: '#374151',
+    backgroundColor: COLORS.ledOff,
   },
-  loggingCard: {
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 16,
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 10,
+  },
+  switchContainer: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  switchLabel: {
+    fontSize: 9,
+    color: COLORS.secondary,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
+  },
+  industrialSwitch: {
+    width: 40,
+    height: 70,
+    backgroundColor: '#2a3547',
+    borderRadius: 4,
+    padding: 4,
+    borderWidth: 2,
+    borderColor: '#1a2332',
+  },
+  switchOn: {
+    justifyContent: 'flex-start',
+  },
+  switchOff: {
+    justifyContent: 'flex-end',
+  },
+  switchHandle: {
+    width: '100%',
+    height: '50%',
+    backgroundColor: COLORS.secondary,
+    borderRadius: 2,
     borderWidth: 1,
-    borderColor: '#334155',
-    marginBottom: 20,
+    borderColor: '#5a6f8f',
+  },
+  ledIndicatorSmall: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  loggingContent: {
+    width: '100%',
   },
   loggingHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    alignItems: 'center',
+    marginBottom: 12,
   },
   loggingStatus: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   loggingIndicator: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   loggingStatusText: {
-    fontSize: 14,
-    color: '#94A3B8',
-    fontWeight: '500',
+    fontSize: 10,
+    color: COLORS.text,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
   },
   loggingStats: {
-    alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
   },
   loggingStatValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontSize: 16,
+    color: COLORS.text,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
   },
   loggingStatLabel: {
-    fontSize: 11,
-    color: '#64748B',
+    fontSize: 8,
+    color: COLORS.secondary,
+    fontFamily: FONTS.monospace,
   },
   loggingButtons: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
-  loggingBtn: {
+  consoleButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: 10,
+    borderRadius: 2,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  loggingBtnStart: {
-    backgroundColor: '#065F46',
     borderWidth: 1,
-    borderColor: '#10B981',
   },
-  loggingBtnStop: {
-    backgroundColor: '#7F1D1D',
-    borderWidth: 1,
-    borderColor: '#EF4444',
+  consoleButtonText: {
+    fontSize: 10,
+    color: COLORS.background,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
   },
-  loggingBtnExport: {
-    backgroundColor: '#1E40AF',
-    borderWidth: 1,
-    borderColor: '#3B82F6',
+  buttonStart: {
+    backgroundColor: COLORS.accent,
+    borderColor: '#00a843',
   },
-  loggingBtnClear: {
-    backgroundColor: '#374151',
-    borderWidth: 1,
-    borderColor: '#4B5563',
+  buttonStop: {
+    backgroundColor: COLORS.alert,
+    borderColor: '#d82c2c',
+  },
+  buttonSecondary: {
+    backgroundColor: COLORS.text,
+    borderColor: '#d89600',
+  },
+  buttonDanger: {
+    backgroundColor: COLORS.secondary,
+    borderColor: COLORS.border,
     flex: 0.4,
-  },
-  loggingBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  loggingBtnTextDisabled: {
-    opacity: 0.4,
   },
   statusFooter: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: '#243447',
+    borderTopColor: COLORS.border,
     marginTop: 8,
   },
+  footerDecorator: {
+    width: 10,
+    height: 10,
+    backgroundColor: COLORS.secondary,
+    marginRight: 10,
+  },
   statusLabel: {
-    fontSize: 14,
-    color: '#64748B',
+    fontSize: 10,
+    color: COLORS.secondary,
+    fontFamily: FONTS.monospace,
     marginRight: 8,
   },
   statusValue: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 10,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
+  },
+  versionText: {
+    fontSize: 8,
+    color: COLORS.secondary,
+    fontFamily: FONTS.monospace,
+    opacity: 0.5,
   },
 });
+
 

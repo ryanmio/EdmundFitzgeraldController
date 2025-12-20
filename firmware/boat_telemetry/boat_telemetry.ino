@@ -9,9 +9,10 @@
 #include "secrets.h"
 
 // ==================== PIN DEFINITIONS ====================
-#define LED_RUNNING_PIN  2   // Built-in LED on most dev boards
-#define LED_FLOOD_PIN    4   // External LED (optional)
-#define WATER_SENSOR_PIN 35  // Water intrusion sensor (ADC input)
+#define LED_RUNNING_PIN    2   // Built-in LED on most dev boards
+#define LED_FLOOD_PIN      4   // External LED (optional)
+#define BATTERY_ADC_PIN   34   // Battery voltage sense (ADC)
+#define WATER_SENSOR_PIN  32   // Water intrusion sensor (digital input with pullup) - GPIO32 has internal pullup, GPIO34/35/36/39 do NOT
 
 // ==================== GLOBALS ====================
 WebServer server(80);
@@ -133,16 +134,25 @@ void handleTelemetry() {
   unsigned long uptimeSec = (millis() - startTime) / 1000;
   int rssi = WiFi.RSSI();
   
-  // Placeholder battery voltage (will add ADC later)
-  float batteryVoltage = 0.0;
+  // Battery voltage reading (GPIO 34 ADC)
+  // Voltage divider: 100kΩ + 47kΩ (divides by 3.14)
+  // ADC: 0-4095 maps to 0-3.3V
+  // So actual voltage = (ADC / 4095) * 3.3 * 3.14
+  int adcValue = analogRead(BATTERY_ADC_PIN);
+  float batteryPinVoltage = (adcValue / 4095.0) * 3.3;
+  float batteryVoltage = batteryPinVoltage * 3.14;
   
-  // Water intrusion sensor (analog read - high value = water detected)
-  int waterRaw = analogRead(WATER_SENSOR_PIN);
-  bool waterDetected = waterRaw > 1000; // threshold for water detection
+  // Water intrusion sensor (digital read with pullup)
+  // LOW = water detected (probe gap bridged by water)
+  // HIGH = dry (pullup resistance)
+  bool waterDetected = (digitalRead(WATER_SENSOR_PIN) == LOW);
+  int waterRaw = digitalRead(WATER_SENSOR_PIN); // 0 = WET, 1 = DRY (pullup)
 
   String json = "{";
   json += "\"timestamp\":\"" + String(millis()) + "\",";
-  json += "\"battery_voltage\":\"" + String(batteryVoltage, 1) + "V\",";
+  json += "\"battery_voltage\":\"" + String(batteryVoltage, 2) + "V\",";
+  json += "\"battery_pin_voltage\":\"" + String(batteryPinVoltage, 2) + "V\",";
+  json += "\"battery_adc_raw\":" + String(adcValue) + ",";
   json += "\"signal_strength\":\"" + String(rssi) + "dBm\",";
   json += "\"uptime_seconds\":" + String(uptimeSec) + ",";
   json += "\"running_mode_state\":" + String(ledRunningState ? "true" : "false") + ",";
@@ -214,8 +224,11 @@ void setup() {
   digitalWrite(LED_RUNNING_PIN, LOW);
   digitalWrite(LED_FLOOD_PIN, LOW);
   
-  // Init water sensor pin
-  pinMode(WATER_SENSOR_PIN, INPUT);
+  // Init water sensor pin (digital with internal pullup)
+  pinMode(WATER_SENSOR_PIN, INPUT_PULLUP);
+  
+  // Init battery ADC pin
+  pinMode(BATTERY_ADC_PIN, INPUT);
 
   startTime = millis();
 

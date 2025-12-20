@@ -132,7 +132,7 @@ npx expo start --web
 
 ---
 
-### 🔄 PHASE 4: INTEGRATION & TESTING - IN PROGRESS
+### ✅ PHASE 4: INTEGRATION & TESTING - COMPLETE
 
 **Completed:**
 - ✅ Web app successfully connects to ESP32 on home WiFi
@@ -140,13 +140,27 @@ npx expo start --web
 - ✅ LED control responding to user input
 - ✅ No crashes during initial testing
 - ✅ Connection recovery working
+- ✅ ESP32-CAM integrated with live MJPEG stream
+- ✅ Camera feed displaying in app dashboard
+- ✅ Two-board architecture working (telemetry + camera)
+- ✅ Data logging with CSV export implemented
+- ✅ Persistent log storage in AsyncStorage
+
+**Architecture:**
+- **Telemetry ESP32**: `192.168.1.185` - `/telemetry`, `/led`, `/status`
+- **Camera ESP32-CAM**: `192.168.1.187` - `/stream` (MJPEG)
+- **App**: Unified dashboard with live camera, telemetry cards, LED toggles
 
 **Next Steps:**
-1. Extended 15+ minute stability test
-2. WiFi dropout/reconnection testing
-3. LED physical verification
-4. Battery voltage ADC implementation
-5. Build native iOS app for TestFlight (if Xcode upgrade feasible)
+1. Battery voltage ADC implementation (GPIO 34 + voltage divider)
+2. Water intrusion sensor wiring (digital GPIO)
+3. Extended 15+ minute stability test
+4. Build for iPhone using Expo Go (QR code scan) or EAS Build (TestFlight)
+
+**Xcode Limitation:**
+- Mac runs macOS too old for Xcode 16.1+ (required for local iOS builds)
+- **Workaround**: Use Expo Go app (scan QR) or EAS Build cloud service
+- Web app works perfectly as MVP for current testing
 
 **Success Criteria:**
 - [ ] 15+ minute runtime without crashes

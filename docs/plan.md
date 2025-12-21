@@ -229,6 +229,7 @@ npx expo start --web
 **Docs:**
 - `docs/EXPO_APP_BUILD.md` - MVP requirements
 - `docs/plan.md` - This file (project plan & progress)
+- `docs/INTEGRATION_GUIDE.md` - Step-by-step hardware wiring guide
 
 ---
 

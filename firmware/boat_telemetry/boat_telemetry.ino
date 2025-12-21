@@ -15,6 +15,8 @@
 #define FLOOD_OUT_PIN     17   // External Flood lights control (MOSFET gate)
 #define BATTERY_ADC_PIN   34   // Battery voltage sense (ADC)
 #define WATER_SENSOR_PIN  32   // Water intrusion sensor (digital input with pullup) - GPIO32 has internal pullup, GPIO34/35/36/39 do NOT
+#define THROTTLE_PWM_PIN  18   // RC receiver throttle channel (PWM input)
+#define SERVO_PWM_PIN     19   // RC receiver servo/rudder channel (PWM input)
 
 // ==================== GLOBALS ====================
 WebServer server(80);
@@ -117,6 +119,16 @@ void addCORSHeaders() {
   server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
+// ==================== RC PWM READER ====================
+// Reads PWM pulse width in microseconds (typical RC: 1000-2000µs, 1500µs = center)
+unsigned int readPWM(int pin) {
+  unsigned long pulseWidth = pulseIn(pin, HIGH, 25000); // 25ms timeout (50Hz = 20ms period)
+  if (pulseWidth == 0) {
+    return 0; // No signal or timeout
+  }
+  return (unsigned int)pulseWidth;
+}
+
 // ==================== HTTP HANDLERS ====================
 void handleStatus() {
   addCORSHeaders();
@@ -150,6 +162,11 @@ void handleTelemetry() {
   bool waterDetected = (digitalRead(WATER_SENSOR_PIN) == LOW);
   int waterRaw = digitalRead(WATER_SENSOR_PIN); // 0 = WET, 1 = DRY (pullup)
 
+  // RC receiver PWM readings (pulse width in microseconds)
+  // Typical range: 1000-2000µs, 1500µs = center/neutral
+  unsigned int throttlePWM = readPWM(THROTTLE_PWM_PIN);
+  unsigned int servoPWM = readPWM(SERVO_PWM_PIN);
+
   String json = "{";
   json += "\"timestamp\":\"" + String(millis()) + "\",";
   json += "\"battery_voltage\":\"" + String(batteryVoltage, 2) + "V\",";
@@ -161,6 +178,8 @@ void handleTelemetry() {
   json += "\"flood_mode_state\":" + String(ledFloodState ? "true" : "false") + ",";
   json += "\"water_intrusion\":" + String(waterDetected ? "true" : "false") + ",";
   json += "\"water_sensor_raw\":" + String(waterRaw) + ",";
+  json += "\"throttle_pwm\":" + String(throttlePWM) + ",";
+  json += "\"servo_pwm\":" + String(servoPWM) + ",";
   json += "\"connection_status\":\"" + String(WiFi.status() == WL_CONNECTED ? "online" : "offline") + "\",";
   json += "\"ip_address\":\"" + WiFi.localIP().toString() + "\"";
   json += "}";
@@ -239,6 +258,10 @@ void setup() {
   
   // Init battery ADC pin
   pinMode(BATTERY_ADC_PIN, INPUT);
+  
+  // Init RC receiver PWM input pins (no pullup - receiver drives the signal)
+  pinMode(THROTTLE_PWM_PIN, INPUT);
+  pinMode(SERVO_PWM_PIN, INPUT);
 
   startTime = millis();
 

@@ -159,6 +159,7 @@ npx expo start --web
 - Telemetry ESP32 fully operational with both sensors
 - All telemetry fields displaying correctly in app
 - Ready for extended field testing (15+ minutes)
+- **Power Integration**: Both ESP32 boards powered from same BEC (5V) with shared ground; each board regulates its own 3.3V (no direct 3.3V cross-connections)
 
 **Next Steps:**
 1. Extended 15+ minute stability test

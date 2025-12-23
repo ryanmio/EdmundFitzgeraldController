@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { checkConnection } from '../services/esp32Service';
@@ -103,11 +104,13 @@ export default function ConnectionScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           {/* Header */}
-          <View style={styles.shipLogoContainer}>
-            <View style={styles.shipHull} />
-            <View style={styles.shipCabin} />
-            <View style={styles.shipMast} />
-          </View>
+        <View style={styles.shipLogoContainer}>
+          <Image 
+            source={require('../../assets/boat.png')} 
+            style={styles.boatImage}
+            resizeMode="contain"
+          />
+        </View>
           
           <Text style={styles.title}>EDMUND FITZGERALD</Text>
           <Text style={styles.subtitle}>BRIDGE CONSOLE v1.0 [1975]</Text>
@@ -221,29 +224,12 @@ const styles = StyleSheet.create({
   shipLogoContainer: {
     alignItems: 'center',
     marginBottom: 20,
-    height: 60,
-    justifyContent: 'flex-end',
+    height: 80,
+    justifyContent: 'center',
   },
-  shipHull: {
-    width: 120,
-    height: 20,
-    backgroundColor: COLORS.secondary,
-    borderBottomLeftRadius: 10,
-    borderBottomRightRadius: 10,
-  },
-  shipCabin: {
-    width: 40,
-    height: 20,
-    backgroundColor: COLORS.secondary,
-    marginBottom: -2,
-    marginLeft: 40,
-  },
-  shipMast: {
-    width: 2,
-    height: 30,
-    backgroundColor: COLORS.secondary,
-    marginBottom: -2,
-    marginLeft: 50,
+  boatImage: {
+    width: '80%',
+    height: '100%',
   },
   title: {
     fontSize: 28,

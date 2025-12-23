@@ -65,7 +65,7 @@ export default function ConnectionScreen({ navigation }: Props) {
       }, 800);
     } catch (err) {
       setStatus('failed');
-      setError(err instanceof Error ? err.message.toUpperCase() : 'CONNECTION FAILED');
+      setError(null); // Don't show error message, just use the failed status indicator
     }
   };
 

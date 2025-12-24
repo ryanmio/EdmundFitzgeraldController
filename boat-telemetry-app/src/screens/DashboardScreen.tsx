@@ -364,6 +364,10 @@ export default function DashboardScreen({ navigation, route }: Props) {
     
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
     
+    let checksPassed = 0;
+    let checksFailed = 0;
+    const totalChecks = 8;
+    
     addLog('═══════════════════════════════════════');
     addLog('EDMUND FITZGERALD PRE-FLIGHT CHECK');
     addLog('═══════════════════════════════════════');
@@ -382,14 +386,186 @@ export default function DashboardScreen({ navigation, route }: Props) {
       }
       const avg = Math.round(times.reduce((a, b) => a + b) / times.length);
       const max = Math.max(...times);
-      addLog(`  ✓ Link stable (avg: ${avg}ms, max: ${max}ms)`);
+      if (max > 3000) {
+        addLog(`  ✗ Link unstable (avg: ${avg}ms, max: ${max}ms)`);
+        checksFailed++;
+      } else {
+        addLog(`  ✓ Link stable (avg: ${avg}ms, max: ${max}ms)`);
+        checksPassed++;
+      }
     } catch (err) {
       addLog(`  ✗ Connection test failed`);
+      checksFailed++;
+    }
+    await delay(400);
+    
+    // Test 2: Hull Integrity
+    addLog('[2/8] Checking hull integrity...');
+    await delay(600);
+    if (telemetry) {
+      if (telemetry.water_intrusion) {
+        addLog(`  ✗ CRITICAL: Water intrusion detected`);
+        checksFailed++;
+      } else {
+        addLog(`  ✓ Hull secure - no intrusion`);
+        checksPassed++;
+      }
+    } else {
+      addLog(`  ⚠ No telemetry data available`);
+      checksFailed++;
+    }
+    await delay(400);
+    
+    // Test 3: Power Systems
+    addLog('[3/8] Measuring DC bus potential...');
+    await delay(600);
+    if (telemetry) {
+      const voltage = parseFloat(telemetry.battery_voltage);
+      if (voltage < 11.5) {
+        addLog(`  ✗ Low voltage warning (${telemetry.battery_voltage})`);
+        checksFailed++;
+      } else {
+        addLog(`  ✓ Nominal voltage (${telemetry.battery_voltage})`);
+        checksPassed++;
+      }
+    } else {
+      addLog(`  ⚠ No telemetry data available`);
+      checksFailed++;
+    }
+    await delay(400);
+    
+    // Test 4: RF Communications
+    addLog('[4/8] Analyzing signal strength...');
+    await delay(600);
+    if (telemetry) {
+      const rssi = parseInt(telemetry.signal_strength.replace('dBm', ''));
+      if (rssi < -85) {
+        addLog(`  ✗ Weak signal (${telemetry.signal_strength})`);
+        checksFailed++;
+      } else {
+        addLog(`  ✓ Signal adequate (${telemetry.signal_strength})`);
+        checksPassed++;
+      }
+    } else {
+      addLog(`  ⚠ No telemetry data available`);
+      checksFailed++;
+    }
+    await delay(400);
+    
+    // Test 5: RC Link
+    addLog('[5/8] Validating RC receiver...');
+    await delay(700);
+    if (telemetry) {
+      if (telemetry.throttle_pwm === 0 && telemetry.servo_pwm === 0) {
+        addLog(`  ✗ No RC signal detected`);
+        checksFailed++;
+      } else {
+        addLog(`  ✓ RC link established (THR:${telemetry.throttle_pwm}µs, SRV:${telemetry.servo_pwm}µs)`);
+        checksPassed++;
+      }
+    } else {
+      addLog(`  ⚠ No telemetry data available`);
+      checksFailed++;
+    }
+    await delay(400);
+    
+    // Test 6: Core Processor
+    addLog('[6/8] Checking processor health...');
+    await delay(600);
+    if (telemetry) {
+      const heapKB = Math.round(telemetry.free_heap / 1024);
+      if (telemetry.free_heap < 50000) {
+        addLog(`  ✗ Low memory (${heapKB}KB free)`);
+        checksFailed++;
+      } else {
+        addLog(`  ✓ Memory OK (${heapKB}KB free, uptime: ${telemetry.uptime_seconds}s)`);
+        checksPassed++;
+      }
+    } else {
+      addLog(`  ⚠ No telemetry data available`);
+      checksFailed++;
+    }
+    await delay(400);
+    
+    // Test 7: LED Functional Test
+    addLog('[7/8] Testing LED control path...');
+    await delay(500);
+    try {
+      const originalRunning = telemetry?.running_mode_state || false;
+      const originalFlood = telemetry?.flood_mode_state || false;
+      
+      // Cycle running lights
+      await setLED(ip, 'running', 'on');
+      await delay(300);
+      await setLED(ip, 'running', 'off');
+      await delay(300);
+      
+      // Cycle flood lights
+      await setLED(ip, 'flood', 'on');
+      await delay(300);
+      await setLED(ip, 'flood', 'off');
+      await delay(300);
+      
+      // Restore original states
+      await setLED(ip, 'running', originalRunning ? 'on' : 'off');
+      await setLED(ip, 'flood', originalFlood ? 'on' : 'off');
+      
+      addLog(`  ✓ Control path verified`);
+      checksPassed++;
+    } catch (err) {
+      addLog(`  ✗ Control path failure`);
+      checksFailed++;
+    }
+    await delay(400);
+    
+    // Test 8: Camera Feed (non-critical)
+    addLog('[8/8] Validating camera feed...');
+    await delay(600);
+    if (streamUrl) {
+      try {
+        const response = await fetch(streamUrl, { method: 'HEAD' });
+        if (response.ok) {
+          addLog(`  ✓ Camera feed active (${cameraIP})`);
+          checksPassed++;
+        } else {
+          addLog(`  ⚠ Camera unavailable (non-critical)`);
+          checksPassed++; // Non-critical, count as pass
+        }
+      } catch (err) {
+        addLog(`  ⚠ Camera not responding (non-critical)`);
+        checksPassed++; // Non-critical, count as pass
+      }
+    } else {
+      addLog(`  ⊘ No camera configured (skipped)`);
+      checksPassed++;
     }
     await delay(600);
     
+    // Final status
     addLog('═══════════════════════════════════════');
-    addLog('✓ Diagnostic complete');
+    if (checksPassed === totalChecks) {
+      addLog(`✓ ALL SYSTEMS NOMINAL (${checksPassed}/${totalChecks})`);
+      await delay(400);
+      
+      // Auto-start recording if not already logging
+      if (!isLogging) {
+        addLog('► Initiating telemetry recording...');
+        await delay(400);
+        toggleLogging();
+        addLog('► Black box recorder active');
+      } else {
+        addLog('► Telemetry already recording');
+      }
+      await delay(400);
+      addLog('═══════════════════════════════════════');
+      addLog('★ SHIP READY FOR DEPLOYMENT ★');
+    } else {
+      addLog(`✗ SYSTEM CHECK FAILED (${checksPassed}/${totalChecks} passed)`);
+      await delay(400);
+      addLog('═══════════════════════════════════════');
+      addLog('⚠ MISSION ABORT - RESOLVE FAILURES');
+    }
+    
     setPreFlightRunning(false);
   };
 

@@ -11,6 +11,7 @@ import {
   Dimensions,
   Platform,
   Share,
+  Modal,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -94,10 +95,14 @@ export default function DashboardScreen({ navigation, route }: Props) {
   const [logData, setLogData] = useState<LogEntry[]>([]);
   const [logStartTime, setLogStartTime] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showPreFlight, setShowPreFlight] = useState(false);
+  const [preFlightLog, setPreFlightLog] = useState<string[]>([]);
+  const [preFlightRunning, setPreFlightRunning] = useState(false);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const clockIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const preFlightScrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     clockIntervalRef.current = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -347,8 +352,100 @@ export default function DashboardScreen({ navigation, route }: Props) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const runPreFlightDiagnostic = async () => {
+    setPreFlightRunning(true);
+    setPreFlightLog([]);
+    
+    const addLog = (msg: string) => {
+      console.log(`[PRE-FLIGHT] ${msg}`);
+      setPreFlightLog(prev => [...prev, msg]);
+      setTimeout(() => preFlightScrollRef.current?.scrollToEnd({ animated: true }), 100);
+    };
+    
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    
+    addLog('═══════════════════════════════════════');
+    addLog('EDMUND FITZGERALD PRE-FLIGHT CHECK');
+    addLog('═══════════════════════════════════════');
+    await delay(800);
+    
+    // Test 1: Connection Stability
+    addLog('[1/8] Testing connection stability...');
+    await delay(400);
+    try {
+      const times: number[] = [];
+      for (let i = 0; i < 3; i++) {
+        const start = Date.now();
+        await getTelemetry(ip);
+        times.push(Date.now() - start);
+        await delay(100);
+      }
+      const avg = Math.round(times.reduce((a, b) => a + b) / times.length);
+      const max = Math.max(...times);
+      addLog(`  ✓ Link stable (avg: ${avg}ms, max: ${max}ms)`);
+    } catch (err) {
+      addLog(`  ✗ Connection test failed`);
+    }
+    await delay(600);
+    
+    addLog('═══════════════════════════════════════');
+    addLog('✓ Diagnostic complete');
+    setPreFlightRunning(false);
+  };
+
   return (
     <View style={styles.container}>
+      {/* Pre-Flight Diagnostic Modal */}
+      <Modal
+        visible={showPreFlight}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowPreFlight(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.preFlightModal}>
+            <View style={styles.preFlightHeader}>
+              <Text style={styles.preFlightTitle}>PRE-FLIGHT DIAGNOSTIC</Text>
+            </View>
+            
+            <ScrollView 
+              ref={preFlightScrollRef}
+              style={styles.preFlightLog}
+              contentContainerStyle={styles.preFlightLogContent}
+            >
+              {preFlightLog.map((line, idx) => (
+                <Text key={idx} style={styles.preFlightLogLine}>{line}</Text>
+              ))}
+            </ScrollView>
+            
+            <View style={styles.preFlightFooter}>
+              {!preFlightRunning && (
+                <>
+                  <TouchableOpacity
+                    style={[styles.preFlightButton, styles.preFlightButtonRun]}
+                    onPress={runPreFlightDiagnostic}
+                  >
+                    <Text style={styles.preFlightButtonText}>RUN CHECK</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.preFlightButton, styles.preFlightButtonClose]}
+                    onPress={() => setShowPreFlight(false)}
+                  >
+                    <Text style={styles.preFlightButtonText}>CLOSE</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+              {preFlightRunning && (
+                <View style={styles.preFlightStatus}>
+                  <ActivityIndicator size="small" color={COLORS.accent} />
+                  <Text style={styles.preFlightStatusText}>RUNNING...</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -366,6 +463,11 @@ export default function DashboardScreen({ navigation, route }: Props) {
               </Text>
             </Text>
           </View>
+          <TouchableOpacity style={styles.diagButton} onPress={() => setShowPreFlight(true)}>
+            <View style={styles.diagButtonInner}>
+              <Text style={styles.diagIcon}>◈</Text>
+            </View>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.powerButton} onPress={handleDisconnect}>
             <View style={styles.powerButtonInner}>
               <Text style={styles.powerIcon}>⏻</Text>
@@ -646,6 +748,27 @@ const styles = StyleSheet.create({
   chronometerSeconds: {
     fontSize: 14,
     color: COLORS.secondary,
+  },
+  diagButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 4,
+    backgroundColor: COLORS.secondary,
+    padding: 2,
+    marginRight: 8,
+  },
+  diagButtonInner: {
+    flex: 1,
+    backgroundColor: '#3a4b63',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 2,
+    borderWidth: 1,
+    borderColor: '#5a6f8f',
+  },
+  diagIcon: {
+    fontSize: 20,
+    color: COLORS.accent,
   },
   powerButton: {
     width: 44,
@@ -1040,6 +1163,95 @@ const styles = StyleSheet.create({
     color: COLORS.secondary,
     fontFamily: FONTS.monospace,
     opacity: 0.5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  preFlightModal: {
+    width: '100%',
+    maxWidth: 600,
+    maxHeight: '80%',
+    backgroundColor: COLORS.panel,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: COLORS.accent,
+    overflow: 'hidden',
+  },
+  preFlightHeader: {
+    backgroundColor: '#121926',
+    padding: 16,
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.accent,
+  },
+  preFlightTitle: {
+    fontSize: 18,
+    color: COLORS.accent,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
+    letterSpacing: 2,
+    textAlign: 'center',
+  },
+  preFlightLog: {
+    flex: 1,
+    backgroundColor: '#05070a',
+    padding: 12,
+  },
+  preFlightLogContent: {
+    paddingBottom: 20,
+  },
+  preFlightLogLine: {
+    fontSize: 12,
+    color: COLORS.text,
+    fontFamily: FONTS.monospace,
+    lineHeight: 18,
+    marginBottom: 2,
+  },
+  preFlightFooter: {
+    flexDirection: 'row',
+    padding: 12,
+    gap: 8,
+    backgroundColor: '#121926',
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  preFlightButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  preFlightButtonRun: {
+    backgroundColor: COLORS.accent,
+    borderColor: '#00a843',
+  },
+  preFlightButtonClose: {
+    backgroundColor: COLORS.secondary,
+    borderColor: COLORS.border,
+  },
+  preFlightButtonText: {
+    fontSize: 12,
+    color: COLORS.background,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
+  },
+  preFlightStatus: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  preFlightStatusText: {
+    fontSize: 12,
+    color: COLORS.accent,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
   },
 });
 

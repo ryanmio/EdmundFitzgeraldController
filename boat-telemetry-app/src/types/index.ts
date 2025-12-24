@@ -13,10 +13,13 @@ export interface TelemetryResponse {
   battery_voltage: string;
   signal_strength: string;
   uptime_seconds: number;
+  free_heap: number;
   running_mode_state: boolean;
   flood_mode_state: boolean;
   water_intrusion: boolean;
   water_sensor_raw: number;
+  throttle_pwm: number;
+  servo_pwm: number;
   connection_status: string;
   ip_address: string;
 }

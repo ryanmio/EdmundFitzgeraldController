@@ -167,6 +167,9 @@ void handleTelemetry() {
   unsigned int throttlePWM = readPWM(THROTTLE_PWM_PIN);
   unsigned int servoPWM = readPWM(SERVO_PWM_PIN);
 
+  // ESP32 diagnostics
+  uint32_t freeHeap = ESP.getFreeHeap();
+
   String json = "{";
   json += "\"timestamp\":\"" + String(millis()) + "\",";
   json += "\"battery_voltage\":\"" + String(batteryVoltage, 2) + "V\",";
@@ -174,6 +177,7 @@ void handleTelemetry() {
   json += "\"battery_adc_raw\":" + String(adcValue) + ",";
   json += "\"signal_strength\":\"" + String(rssi) + "dBm\",";
   json += "\"uptime_seconds\":" + String(uptimeSec) + ",";
+  json += "\"free_heap\":" + String(freeHeap) + ",";
   json += "\"running_mode_state\":" + String(ledRunningState ? "true" : "false") + ",";
   json += "\"flood_mode_state\":" + String(ledFloodState ? "true" : "false") + ",";
   json += "\"water_intrusion\":" + String(waterDetected ? "true" : "false") + ",";

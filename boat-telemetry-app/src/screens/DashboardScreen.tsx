@@ -524,26 +524,28 @@ export default function DashboardScreen({ navigation, route }: Props) {
     if (streamUrl) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout for actual GET
         
+        // Try GET request instead of HEAD (works better with streams)
         const response = await fetch(streamUrl, { 
-          method: 'HEAD',
+          method: 'GET',
           signal: controller.signal
         });
         clearTimeout(timeoutId);
         
-        if (response.ok) {
+        // If we got a response back (even if not all data), stream is responding
+        if (response.status === 200 || response.status === 206) {
           addLog(`  ✓ Camera feed active (${cameraIP})`);
           checksPassed++;
         } else {
-          addLog(`  ⚠ Camera unavailable (non-critical)`);
+          addLog(`  ⚠ Camera available but status ${response.status} (non-critical)`);
           checksPassed++; // Non-critical, count as pass
         }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
-          addLog(`  ⚠ Camera timeout after 30s (non-critical)`);
+          addLog(`  ⚠ Camera check timeout (feed may still be working, non-critical)`);
         } else {
-          addLog(`  ⚠ Camera not responding (non-critical)`);
+          addLog(`  ⚠ Camera validation failed (non-critical)`);
         }
         checksPassed++; // Non-critical, count as pass
       }

@@ -369,7 +369,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
     const totalChecks = 8;
     
     addLog('═══════════════════════════════════════');
-    addLog('EDMUND FITZGERALD PRE-FLIGHT CHECK');
+    addLog('EDMUND FITZGERALD SYSTEMS CHECK');
     addLog('═══════════════════════════════════════');
     await delay(800);
     
@@ -455,7 +455,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
     // Test 5: RC Link
     addLog('[5/8] Validating RC receiver...');
     await delay(700);
-    if (telemetry) {
+    if (telemetry && typeof telemetry.throttle_pwm === 'number' && typeof telemetry.servo_pwm === 'number') {
       if (telemetry.throttle_pwm === 0 && telemetry.servo_pwm === 0) {
         addLog(`  ✗ No RC signal detected`);
         checksFailed++;
@@ -464,7 +464,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
         checksPassed++;
       }
     } else {
-      addLog(`  ⚠ No telemetry data available`);
+      addLog(`  ⚠ RC telemetry unavailable (flash firmware first)`);
       checksFailed++;
     }
     await delay(400);
@@ -472,7 +472,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
     // Test 6: Core Processor
     addLog('[6/8] Checking processor health...');
     await delay(600);
-    if (telemetry) {
+    if (telemetry && typeof telemetry.free_heap === 'number' && !isNaN(telemetry.free_heap)) {
       const heapKB = Math.round(telemetry.free_heap / 1024);
       if (telemetry.free_heap < 50000) {
         addLog(`  ✗ Low memory (${heapKB}KB free)`);
@@ -482,7 +482,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
         checksPassed++;
       }
     } else {
-      addLog(`  ⚠ No telemetry data available`);
+      addLog(`  ⚠ Heap telemetry unavailable (flash firmware first)`);
       checksFailed++;
     }
     await delay(400);
@@ -523,7 +523,15 @@ export default function DashboardScreen({ navigation, route }: Props) {
     await delay(600);
     if (streamUrl) {
       try {
-        const response = await fetch(streamUrl, { method: 'HEAD' });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        
+        const response = await fetch(streamUrl, { 
+          method: 'HEAD',
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
         if (response.ok) {
           addLog(`  ✓ Camera feed active (${cameraIP})`);
           checksPassed++;
@@ -532,7 +540,11 @@ export default function DashboardScreen({ navigation, route }: Props) {
           checksPassed++; // Non-critical, count as pass
         }
       } catch (err) {
-        addLog(`  ⚠ Camera not responding (non-critical)`);
+        if (err instanceof Error && err.name === 'AbortError') {
+          addLog(`  ⚠ Camera timeout after 30s (non-critical)`);
+        } else {
+          addLog(`  ⚠ Camera not responding (non-critical)`);
+        }
         checksPassed++; // Non-critical, count as pass
       }
     } else {
@@ -581,7 +593,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
         <View style={styles.modalOverlay}>
           <View style={styles.preFlightModal}>
             <View style={styles.preFlightHeader}>
-              <Text style={styles.preFlightTitle}>PRE-FLIGHT DIAGNOSTIC</Text>
+              <Text style={styles.preFlightTitle}>SYSTEMS CHECK</Text>
             </View>
             
             <ScrollView 

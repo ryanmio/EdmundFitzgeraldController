@@ -11,7 +11,6 @@ import {
   Dimensions,
   Platform,
   Share,
-  Modal,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -19,6 +18,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getTelemetry, setLED } from '../services/esp32Service';
 import { TelemetryResponse } from '../types';
 import { COLORS, FONTS } from '../constants/Theme';
+import { SystemsCheckModal } from '../components/SystemsCheckModal';
+import { useSystemsCheck } from '../hooks/useSystemsCheck';
 
 interface LogEntry extends TelemetryResponse {
   log_timestamp: string;
@@ -95,14 +96,11 @@ export default function DashboardScreen({ navigation, route }: Props) {
   const [logData, setLogData] = useState<LogEntry[]>([]);
   const [logStartTime, setLogStartTime] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [showPreFlight, setShowPreFlight] = useState(false);
-  const [preFlightLog, setPreFlightLog] = useState<string[]>([]);
-  const [preFlightRunning, setPreFlightRunning] = useState(false);
+  const [showSystemsCheck, setShowSystemsCheck] = useState(false);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const clockIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const preFlightScrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     clockIntervalRef.current = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -255,6 +253,9 @@ export default function DashboardScreen({ navigation, route }: Props) {
     }
   };
 
+  // Systems check hook (must be after toggleLogging is defined)
+  const systemsCheck = useSystemsCheck(ip, telemetry, isLogging, toggleLogging);
+
   const clearLog = async () => {
     const doClear = async () => {
       setLogData([]);
@@ -352,252 +353,16 @@ export default function DashboardScreen({ navigation, route }: Props) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const runPreFlightDiagnostic = async () => {
-    setPreFlightRunning(true);
-    setPreFlightLog([]);
-    
-    const addLog = (msg: string) => {
-      console.log(`[PRE-FLIGHT] ${msg}`);
-      setPreFlightLog(prev => [...prev, msg]);
-      setTimeout(() => preFlightScrollRef.current?.scrollToEnd({ animated: true }), 100);
-    };
-    
-    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-    
-    let checksPassed = 0;
-    let checksFailed = 0;
-    const totalChecks = 7;
-    
-    addLog('═══════════════════════════════════════');
-    addLog('EDMUND FITZGERALD SYSTEMS CHECK');
-    addLog('═══════════════════════════════════════');
-    await delay(800);
-    
-    // Test 1: Connection Stability
-    addLog('[1/7] Testing connection stability...');
-    await delay(400);
-    try {
-      const times: number[] = [];
-      for (let i = 0; i < 3; i++) {
-        const start = Date.now();
-        await getTelemetry(ip);
-        times.push(Date.now() - start);
-        await delay(100);
-      }
-      const avg = Math.round(times.reduce((a, b) => a + b) / times.length);
-      const max = Math.max(...times);
-      if (max > 3000) {
-        addLog(`  ✗ Link unstable (avg: ${avg}ms, max: ${max}ms)`);
-        checksFailed++;
-      } else {
-        addLog(`  ✓ Link stable (avg: ${avg}ms, max: ${max}ms)`);
-        checksPassed++;
-      }
-    } catch (err) {
-      addLog(`  ✗ Connection test failed`);
-      checksFailed++;
-    }
-    await delay(400);
-    
-    // Test 2: Hull Integrity
-    addLog('[2/7] Checking hull integrity...');
-    await delay(600);
-    if (telemetry) {
-      if (telemetry.water_intrusion) {
-        addLog(`  ✗ CRITICAL: Water intrusion detected`);
-        checksFailed++;
-      } else {
-        addLog(`  ✓ Hull secure - no intrusion`);
-        checksPassed++;
-      }
-    } else {
-      addLog(`  ⚠ No telemetry data available`);
-      checksFailed++;
-    }
-    await delay(400);
-    
-    // Test 3: Power Systems
-    addLog('[3/7] Measuring DC bus potential...');
-    await delay(600);
-    if (telemetry) {
-      const voltage = parseFloat(telemetry.battery_voltage);
-      if (voltage < 11.5) {
-        addLog(`  ✗ Low voltage warning (${telemetry.battery_voltage})`);
-        checksFailed++;
-      } else {
-        addLog(`  ✓ Nominal voltage (${telemetry.battery_voltage})`);
-        checksPassed++;
-      }
-    } else {
-      addLog(`  ⚠ No telemetry data available`);
-      checksFailed++;
-    }
-    await delay(400);
-    
-    // Test 4: RF Communications
-    addLog('[4/7] Analyzing signal strength...');
-    await delay(600);
-    if (telemetry) {
-      const rssi = parseInt(telemetry.signal_strength.replace('dBm', ''));
-      if (rssi < -85) {
-        addLog(`  ✗ Weak signal (${telemetry.signal_strength})`);
-        checksFailed++;
-      } else {
-        addLog(`  ✓ Signal adequate (${telemetry.signal_strength})`);
-        checksPassed++;
-      }
-    } else {
-      addLog(`  ⚠ No telemetry data available`);
-      checksFailed++;
-    }
-    await delay(400);
-    
-    // Test 5: RC Link
-    addLog('[5/7] Validating RC receiver...');
-    await delay(700);
-    if (telemetry && typeof telemetry.throttle_pwm === 'number' && typeof telemetry.servo_pwm === 'number') {
-      if (telemetry.throttle_pwm === 0 && telemetry.servo_pwm === 0) {
-        addLog(`  ✗ No RC signal detected`);
-        checksFailed++;
-      } else {
-        addLog(`  ✓ RC link established (THR:${telemetry.throttle_pwm}µs, SRV:${telemetry.servo_pwm}µs)`);
-        checksPassed++;
-      }
-    } else {
-      addLog(`  ⚠ RC telemetry unavailable`);
-      checksFailed++;
-    }
-    await delay(400);
-    
-    // Test 6: Core Processor
-    addLog('[6/7] Checking processor health...');
-    await delay(600);
-    if (telemetry && typeof telemetry.free_heap === 'number' && !isNaN(telemetry.free_heap)) {
-      const heapKB = Math.round(telemetry.free_heap / 1024);
-      if (telemetry.free_heap < 50000) {
-        addLog(`  ✗ Low memory (${heapKB}KB free)`);
-        checksFailed++;
-      } else {
-        addLog(`  ✓ Memory OK (${heapKB}KB free, uptime: ${telemetry.uptime_seconds}s)`);
-        checksPassed++;
-      }
-    } else {
-      addLog(`  ⚠ Heap telemetry unavailable`);
-      checksFailed++;
-    }
-    await delay(400);
-    
-    // Test 7: LED Functional Test
-    addLog('[7/7] Testing LED control path...');
-    await delay(500);
-    try {
-      const originalRunning = telemetry?.running_mode_state || false;
-      const originalFlood = telemetry?.flood_mode_state || false;
-      
-      // Cycle running lights
-      await setLED(ip, 'running', 'on');
-      await delay(300);
-      await setLED(ip, 'running', 'off');
-      await delay(300);
-      
-      // Cycle flood lights
-      await setLED(ip, 'flood', 'on');
-      await delay(300);
-      await setLED(ip, 'flood', 'off');
-      await delay(300);
-      
-      // Restore original states
-      await setLED(ip, 'running', originalRunning ? 'on' : 'off');
-      await setLED(ip, 'flood', originalFlood ? 'on' : 'off');
-      
-      addLog(`  ✓ Control path verified`);
-      checksPassed++;
-    } catch (err) {
-      addLog(`  ✗ Control path failure`);
-      checksFailed++;
-    }
-    await delay(400);
-    
-    // Final status
-    addLog('═══════════════════════════════════════');
-    if (checksPassed === totalChecks) {
-      addLog(`✓ ALL SYSTEMS NOMINAL (${checksPassed}/${totalChecks})`);
-      await delay(400);
-      
-      // Auto-start recording if not already logging
-      if (!isLogging) {
-        addLog('► Initiating telemetry recording...');
-        await delay(400);
-        toggleLogging();
-        addLog('► Black box recorder active');
-      } else {
-        addLog('► Telemetry already recording');
-      }
-      await delay(400);
-      addLog('═══════════════════════════════════════');
-      addLog('★ SHIP READY FOR DEPLOYMENT ★');
-    } else {
-      addLog(`✗ SYSTEM CHECK FAILED (${checksPassed}/${totalChecks} passed)`);
-      await delay(400);
-      addLog('═══════════════════════════════════════');
-      addLog('⚠ MISSION ABORT - RESOLVE FAILURES');
-    }
-    
-    setPreFlightRunning(false);
-  };
-
   return (
     <View style={styles.container}>
-      {/* Pre-Flight Diagnostic Modal */}
-      <Modal
-        visible={showPreFlight}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowPreFlight(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.preFlightModal}>
-            <View style={styles.preFlightHeader}>
-              <Text style={styles.preFlightTitle}>SYSTEMS CHECK</Text>
-            </View>
-            
-            <ScrollView 
-              ref={preFlightScrollRef}
-              style={styles.preFlightLog}
-              contentContainerStyle={styles.preFlightLogContent}
-            >
-              {preFlightLog.map((line, idx) => (
-                <Text key={idx} style={styles.preFlightLogLine}>{line}</Text>
-              ))}
-            </ScrollView>
-            
-            <View style={styles.preFlightFooter}>
-              {!preFlightRunning && (
-                <>
-                  <TouchableOpacity
-                    style={[styles.preFlightButton, styles.preFlightButtonRun]}
-                    onPress={runPreFlightDiagnostic}
-                  >
-                    <Text style={styles.preFlightButtonText}>RUN CHECK</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.preFlightButton, styles.preFlightButtonClose]}
-                    onPress={() => setShowPreFlight(false)}
-                  >
-                    <Text style={styles.preFlightButtonText}>CLOSE</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-              {preFlightRunning && (
-                <View style={styles.preFlightStatus}>
-                  <ActivityIndicator size="small" color={COLORS.accent} />
-                  <Text style={styles.preFlightStatusText}>RUNNING...</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <SystemsCheckModal
+        visible={showSystemsCheck}
+        onClose={() => setShowSystemsCheck(false)}
+        logs={systemsCheck.logs}
+        running={systemsCheck.running}
+        onRunChecks={systemsCheck.runChecks}
+        scrollRef={systemsCheck.scrollRef}
+      />
 
       {/* Header */}
       <View style={styles.header}>
@@ -616,7 +381,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
               </Text>
             </Text>
           </View>
-          <TouchableOpacity style={styles.diagButton} onPress={() => setShowPreFlight(true)}>
+          <TouchableOpacity style={styles.diagButton} onPress={() => setShowSystemsCheck(true)}>
             <View style={styles.diagButtonInner}>
               <Text style={styles.diagIcon}>◈</Text>
             </View>
@@ -1316,95 +1081,6 @@ const styles = StyleSheet.create({
     color: COLORS.secondary,
     fontFamily: FONTS.monospace,
     opacity: 0.5,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  preFlightModal: {
-    width: '100%',
-    maxWidth: 600,
-    maxHeight: '80%',
-    backgroundColor: COLORS.panel,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: COLORS.accent,
-    overflow: 'hidden',
-  },
-  preFlightHeader: {
-    backgroundColor: '#121926',
-    padding: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: COLORS.accent,
-  },
-  preFlightTitle: {
-    fontSize: 18,
-    color: COLORS.accent,
-    fontFamily: FONTS.monospace,
-    fontWeight: 'bold',
-    letterSpacing: 2,
-    textAlign: 'center',
-  },
-  preFlightLog: {
-    flex: 1,
-    backgroundColor: '#05070a',
-    padding: 12,
-  },
-  preFlightLogContent: {
-    paddingBottom: 20,
-  },
-  preFlightLogLine: {
-    fontSize: 12,
-    color: COLORS.text,
-    fontFamily: FONTS.monospace,
-    lineHeight: 18,
-    marginBottom: 2,
-  },
-  preFlightFooter: {
-    flexDirection: 'row',
-    padding: 12,
-    gap: 8,
-    backgroundColor: '#121926',
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-  preFlightButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  preFlightButtonRun: {
-    backgroundColor: COLORS.accent,
-    borderColor: '#00a843',
-  },
-  preFlightButtonClose: {
-    backgroundColor: COLORS.secondary,
-    borderColor: COLORS.border,
-  },
-  preFlightButtonText: {
-    fontSize: 12,
-    color: COLORS.background,
-    fontFamily: FONTS.monospace,
-    fontWeight: 'bold',
-  },
-  preFlightStatus: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  preFlightStatusText: {
-    fontSize: 12,
-    color: COLORS.accent,
-    fontFamily: FONTS.monospace,
-    fontWeight: 'bold',
   },
 });
 

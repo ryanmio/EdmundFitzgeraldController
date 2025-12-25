@@ -522,36 +522,17 @@ export default function DashboardScreen({ navigation, route }: Props) {
     addLog('[8/8] Validating camera feed...');
     await delay(600);
     if (streamUrl) {
-      try {
-        // Don't fetch the stream itself - just ping the camera host
-        // Extract host from URL (e.g., http://192.168.1.187/stream -> 192.168.1.187)
-        const urlObj = new URL(streamUrl);
-        const cameraHost = urlObj.hostname;
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-        
-        // Try a simple OPTIONS or HEAD request to the host root
-        const response = await fetch(`http://${cameraHost}/`, { 
-          method: 'HEAD',
-          signal: controller.signal,
-          mode: 'no-cors' // Prevents CORS issues
-        });
-        clearTimeout(timeoutId);
-        
-        addLog(`  ✓ Camera accessible (${cameraIP})`);
-        checksPassed++;
-      } catch (err) {
-        // Camera is likely live and working even if this check fails
-        // (streaming endpoints can be finicky with validation requests)
-        addLog(`  ⚠ Camera host unreachable (may still be working, non-critical)`);
-        checksPassed++; // Non-critical, count as pass
-      }
+      // Camera streams can't be reliably validated programmatically
+      // (MJPEG streams are infinite and don't trigger standard load events).
+      // If configured, verify visually in the dashboard that the feed is live.
+      addLog(`  ✓ Camera configured at ${cameraIP}`);
+      addLog(`     (Verify visually that feed is displaying)`);
+      checksPassed++;
     } else {
       addLog(`  ⊘ No camera configured (skipped)`);
       checksPassed++;
     }
-    await delay(600);
+    await delay(400);
     
     // Final status
     addLog('═══════════════════════════════════════');

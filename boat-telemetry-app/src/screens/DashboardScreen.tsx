@@ -374,7 +374,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
     await delay(800);
     
     // Test 1: Connection Stability
-    addLog('[1/8] Testing connection stability...');
+    addLog('[1/7] Testing connection stability...');
     await delay(400);
     try {
       const times: number[] = [];
@@ -400,7 +400,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
     await delay(400);
     
     // Test 2: Hull Integrity
-    addLog('[2/8] Checking hull integrity...');
+    addLog('[2/7] Checking hull integrity...');
     await delay(600);
     if (telemetry) {
       if (telemetry.water_intrusion) {
@@ -417,7 +417,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
     await delay(400);
     
     // Test 3: Power Systems
-    addLog('[3/8] Measuring DC bus potential...');
+    addLog('[3/7] Measuring DC bus potential...');
     await delay(600);
     if (telemetry) {
       const voltage = parseFloat(telemetry.battery_voltage);
@@ -435,7 +435,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
     await delay(400);
     
     // Test 4: RF Communications
-    addLog('[4/8] Analyzing signal strength...');
+    addLog('[4/7] Analyzing signal strength...');
     await delay(600);
     if (telemetry) {
       const rssi = parseInt(telemetry.signal_strength.replace('dBm', ''));
@@ -453,7 +453,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
     await delay(400);
     
     // Test 5: RC Link
-    addLog('[5/8] Validating RC receiver...');
+    addLog('[5/7] Validating RC receiver...');
     await delay(700);
     if (telemetry && typeof telemetry.throttle_pwm === 'number' && typeof telemetry.servo_pwm === 'number') {
       if (telemetry.throttle_pwm === 0 && telemetry.servo_pwm === 0) {
@@ -470,7 +470,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
     await delay(400);
     
     // Test 6: Core Processor
-    addLog('[6/8] Checking processor health...');
+    addLog('[6/7] Checking processor health...');
     await delay(600);
     if (telemetry && typeof telemetry.free_heap === 'number' && !isNaN(telemetry.free_heap)) {
       const heapKB = Math.round(telemetry.free_heap / 1024);
@@ -488,7 +488,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
     await delay(400);
     
     // Test 7: LED Functional Test
-    addLog('[7/8] Testing LED control path...');
+    addLog('[7/7] Testing LED control path...');
     await delay(500);
     try {
       const originalRunning = telemetry?.running_mode_state || false;

@@ -37,9 +37,20 @@
 
 ## LED LIGHT CONTROL (MOSFET OUTPUTS)
 
-12. **Running Lights MOSFET**: Connect MOSFET VIN+ to battery positive, VIN- to GND, OUT+ to light positive, OUT- to light negative, Gate to GPIO16 (HIGH = lights ON).
-13. **Flood Lights MOSFET**: Connect MOSFET VIN+ to battery positive, VIN- to GND, OUT+ to light positive, OUT- to light negative, Gate to GPIO17 (HIGH = lights ON).
-14. **Shared Ground**: Both MOSFETs VIN- must connect to the common GND (same as ESP32 GND and battery ground) for circuit completion.
+12. **Running Lights MOSFET**: 
+- VIN+ (screw) → Battery positive
+- VIN- (screw) → Battery negative
+- OUT+ (screw) → Light positive
+- OUT- (screw) → Light negative
+- GND pad (solder) → ESP32 GND
+- TRIG/PWM pad (solder) → ESP32 GPIO16
+13. **Flood Lights MOSFET**: 
+- VIN+ (screw) → Battery positive
+- VIN- (screw) → Battery negative
+- OUT+ (screw) → Light positive
+- OUT- (screw) → Light negative
+- GND pad (solder) → ESP32 GND
+- TRIG/PWM pad (solder) → ESP32 GPIO17
 
 ---
 

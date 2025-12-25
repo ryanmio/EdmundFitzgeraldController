@@ -8,7 +8,7 @@
 
 1. **BEC Power Distribution**: Connect BEC 5V output to both ESP32 telemetry board (5V pin) and ESP32-CAM board (5V pin) in parallel.
 2. **Shared Ground**: Connect BEC ground to both ESP32 boards' GND pins (common ground reference for all components).
-3. **BEC Capacitor**: Add 470µF capacitor across BEC 5V and GND for power stability (optional but recommended).
+3. **BEC Capacitor**: Connect 470µF electrolytic capacitor positive leg to BEC 5V output, negative leg to BEC GND (mount close to BEC for noise filtering).
 
 ---
 

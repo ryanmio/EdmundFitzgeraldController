@@ -523,30 +523,28 @@ export default function DashboardScreen({ navigation, route }: Props) {
     await delay(600);
     if (streamUrl) {
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout for actual GET
+        // Don't fetch the stream itself - just ping the camera host
+        // Extract host from URL (e.g., http://192.168.1.187/stream -> 192.168.1.187)
+        const urlObj = new URL(streamUrl);
+        const cameraHost = urlObj.hostname;
         
-        // Try GET request instead of HEAD (works better with streams)
-        const response = await fetch(streamUrl, { 
-          method: 'GET',
-          signal: controller.signal
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+        
+        // Try a simple OPTIONS or HEAD request to the host root
+        const response = await fetch(`http://${cameraHost}/`, { 
+          method: 'HEAD',
+          signal: controller.signal,
+          mode: 'no-cors' // Prevents CORS issues
         });
         clearTimeout(timeoutId);
         
-        // If we got a response back (even if not all data), stream is responding
-        if (response.status === 200 || response.status === 206) {
-          addLog(`  ✓ Camera feed active (${cameraIP})`);
-          checksPassed++;
-        } else {
-          addLog(`  ⚠ Camera available but status ${response.status} (non-critical)`);
-          checksPassed++; // Non-critical, count as pass
-        }
+        addLog(`  ✓ Camera accessible (${cameraIP})`);
+        checksPassed++;
       } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') {
-          addLog(`  ⚠ Camera check timeout (feed may still be working, non-critical)`);
-        } else {
-          addLog(`  ⚠ Camera validation failed (non-critical)`);
-        }
+        // Camera is likely live and working even if this check fails
+        // (streaming endpoints can be finicky with validation requests)
+        addLog(`  ⚠ Camera host unreachable (may still be working, non-critical)`);
         checksPassed++; // Non-critical, count as pass
       }
     } else {

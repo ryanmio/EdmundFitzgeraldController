@@ -366,7 +366,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
     
     let checksPassed = 0;
     let checksFailed = 0;
-    const totalChecks = 8;
+    const totalChecks = 7;
     
     addLog('═══════════════════════════════════════');
     addLog('EDMUND FITZGERALD SYSTEMS CHECK');
@@ -515,22 +515,6 @@ export default function DashboardScreen({ navigation, route }: Props) {
     } catch (err) {
       addLog(`  ✗ Control path failure`);
       checksFailed++;
-    }
-    await delay(400);
-    
-    // Test 8: Camera Feed (non-critical)
-    addLog('[8/8] Validating camera feed...');
-    await delay(600);
-    if (streamUrl) {
-      // Camera streams can't be reliably validated programmatically
-      // (MJPEG streams are infinite and don't trigger standard load events).
-      // If configured, verify visually in the dashboard that the feed is live.
-      addLog(`  ✓ Camera configured at ${cameraIP}`);
-      addLog(`     (Verify visually that feed is displaying)`);
-      checksPassed++;
-    } else {
-      addLog(`  ⊘ No camera configured (skipped)`);
-      checksPassed++;
     }
     await delay(400);
     

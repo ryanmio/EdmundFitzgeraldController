@@ -37,16 +37,17 @@
 
 ## LED LIGHT CONTROL (MOSFET OUTPUTS)
 
-12. **Running Lights MOSFET**: Connect MOSFET gate to GPIO16, source to GND, drain to running lights negative wire (lights positive to battery/5V).
-13. **Flood Lights MOSFET**: Connect MOSFET gate to GPIO17, source to GND, drain to flood lights negative wire (lights positive to battery/5V).
+12. **Running Lights MOSFET**: Connect MOSFET VIN+ to battery positive, VIN- to GND, OUT+ to light positive, OUT- to light negative, Gate to GPIO16 (HIGH = lights ON).
+13. **Flood Lights MOSFET**: Connect MOSFET VIN+ to battery positive, VIN- to GND, OUT+ to light positive, OUT- to light negative, Gate to GPIO17 (HIGH = lights ON).
+14. **Shared Ground**: Both MOSFETs VIN- must connect to the common GND (same as ESP32 GND and battery ground) for circuit completion.
 
 ---
 
 ## ESP32-CAM SETUP
 
-14. **Camera Power**: ESP32-CAM powered separately from same BEC 5V (see step 1) - no direct connections to telemetry board.
-15. **Camera Ground**: ESP32-CAM GND connected to shared ground (see step 2).
-16. **Camera Communication**: No wires needed - camera communicates with telemetry board and app via WiFi only.
+15. **Camera Power**: ESP32-CAM powered separately from same BEC 5V (see step 1) - no direct connections to telemetry board.
+16. **Camera Ground**: ESP32-CAM GND connected to shared ground (see step 2).
+17. **Camera Communication**: No wires needed - camera communicates with telemetry board and app via WiFi only.
 
 ---
 

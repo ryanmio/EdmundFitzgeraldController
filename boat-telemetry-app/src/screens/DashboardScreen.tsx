@@ -464,7 +464,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
         checksPassed++;
       }
     } else {
-      addLog(`  ⚠ RC telemetry unavailable (flash firmware first)`);
+      addLog(`  ⚠ RC telemetry unavailable`);
       checksFailed++;
     }
     await delay(400);
@@ -482,7 +482,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
         checksPassed++;
       }
     } else {
-      addLog(`  ⚠ Heap telemetry unavailable (flash firmware first)`);
+      addLog(`  ⚠ Heap telemetry unavailable`);
       checksFailed++;
     }
     await delay(400);

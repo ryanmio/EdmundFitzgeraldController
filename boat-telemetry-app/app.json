@@ -1,20 +1,22 @@
 {
   "expo": {
-    "name": "boat-telemetry-app",
-    "slug": "boat-telemetry-app",
+    "name": "Edmund Fitzgerald",
+    "slug": "edmund-fitzgerald-controller",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "scheme": "edmundfitzgerald",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.ryanmio.boattelemetryapp"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.ryanmio.edmundfitzgerald",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +25,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.ryanmio.boattelemetryapp"
+      "package": "com.ryanmio.edmundfitzgerald",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"

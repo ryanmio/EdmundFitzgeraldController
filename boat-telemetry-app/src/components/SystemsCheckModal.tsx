@@ -47,7 +47,15 @@ export function SystemsCheckModal({
             contentContainerStyle={styles.logContent}
           >
             {logs.map((line, idx) => (
-              <Text key={idx} style={styles.logLine}>{line}</Text>
+              <Text 
+                key={idx} 
+                style={[
+                  styles.logLine,
+                  (line.includes('✗') || line.includes('FAILED') || line.includes('CRITICAL')) && styles.failedLine
+                ]}
+              >
+                {line}
+              </Text>
             ))}
           </ScrollView>
           
@@ -127,6 +135,9 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.monospace,
     lineHeight: 18,
     marginBottom: 2,
+  },
+  failedLine: {
+    color: COLORS.alert,
   },
   footer: {
     flexDirection: 'row',

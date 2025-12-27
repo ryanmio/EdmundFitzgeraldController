@@ -21,9 +21,7 @@
   },
   "submit": {
     "production": {
-      "ios": {
-        "testFlightAudience": "internal"
-      }
+      "ios": {}
     }
   }
 }

@@ -14,6 +14,7 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { checkConnection } from '../services/esp32Service';
 import { saveIP, loadIP, saveCameraIP, loadCameraIP } from '../services/storageService';
+import { DeviceScannerModal } from '../components/DeviceScannerModal';
 import { ConnectionStatus } from '../types';
 import { COLORS, FONTS } from '../constants/Theme';
 
@@ -31,6 +32,8 @@ export default function ConnectionScreen({ navigation }: Props) {
   const [cameraIP, setCameraIP] = useState('');
   const [status, setStatus] = useState<ConnectionStatus>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [scannerVisible, setScannerVisible] = useState(false);
+  const [cameraScannerVisible, setCameraScannerVisible] = useState(false);
 
   // Load saved IPs on mount
   useEffect(() => {
@@ -95,6 +98,14 @@ export default function ConnectionScreen({ navigation }: Props) {
     }
   };
 
+  const handleScanSelect = (selectedIP: string) => {
+    setIP(selectedIP);
+  };
+
+  const handleCameraScanSelect = (selectedIP: string) => {
+    setCameraIP(selectedIP);
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -120,6 +131,13 @@ export default function ConnectionScreen({ navigation }: Props) {
             <View style={styles.labelRow}>
               <View style={styles.labelDecorator} />
               <Text style={styles.label}>TELEMETRY ESP32 IP</Text>
+              <TouchableOpacity
+                style={styles.scanButton}
+                onPress={() => setScannerVisible(true)}
+                disabled={status === 'connecting'}
+              >
+                <Text style={styles.scanButtonText}>🔍 SCAN</Text>
+              </TouchableOpacity>
             </View>
             <View style={styles.inputWrapper}>
               <TextInput
@@ -142,6 +160,13 @@ export default function ConnectionScreen({ navigation }: Props) {
             <View style={styles.labelRow}>
               <View style={styles.labelDecorator} />
               <Text style={styles.label}>CAMERA ESP32 IP (OPTIONAL)</Text>
+              <TouchableOpacity
+                style={styles.scanButton}
+                onPress={() => setCameraScannerVisible(true)}
+                disabled={status === 'connecting'}
+              >
+                <Text style={styles.scanButtonText}>🔍 SCAN</Text>
+              </TouchableOpacity>
             </View>
             <View style={styles.inputWrapper}>
               <TextInput
@@ -196,6 +221,23 @@ export default function ConnectionScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Device Scanner Modals */}
+      <DeviceScannerModal
+        visible={scannerVisible}
+        onSelectDevice={handleScanSelect}
+        onClose={() => setScannerVisible(false)}
+        deviceType="telemetry"
+        title="SCAN FOR TELEMETRY ESP32"
+      />
+      
+      <DeviceScannerModal
+        visible={cameraScannerVisible}
+        onSelectDevice={handleCameraScanSelect}
+        onClose={() => setCameraScannerVisible(false)}
+        deviceType="camera"
+        title="SCAN FOR CAMERA ESP32"
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -255,6 +297,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
+    justifyContent: 'space-between',
   },
   labelDecorator: {
     width: 4,
@@ -265,6 +308,20 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     color: COLORS.text,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  scanButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: COLORS.secondary,
+    borderRadius: 3,
+    marginLeft: 8,
+  },
+  scanButtonText: {
+    fontSize: 11,
+    color: COLORS.background,
     fontFamily: FONTS.monospace,
     fontWeight: 'bold',
   },

@@ -56,7 +56,7 @@ function formatUptime(seconds: number): string {
   const minutes = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;
   
-  return `${hours.toString().padStart(2, '0')}${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  return `${hours.toString().padStart(1, '0')}${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
 function getSignalBars(rssi: string): number {
@@ -474,7 +474,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
         <View style={styles.panelRow}>
           <ConsolePanel title="Chronometer" style={styles.flex1}>
             <Text style={styles.telemetryValueLarge}>
-              {telemetry ? formatUptime(telemetry.uptime_seconds) : '0000:00'}
+              {telemetry ? formatUptime(telemetry.uptime_seconds) : '000:00'}
             </Text>
             <Text style={styles.telemetrySublabel}>OPERATIONAL HOURS</Text>
           </ConsolePanel>

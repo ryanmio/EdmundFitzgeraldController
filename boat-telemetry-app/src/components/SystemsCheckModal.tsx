@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   modal: {
     width: '100%',
     maxWidth: 600,
-    maxHeight: '80%',
+    maxHeight: '95%',
     backgroundColor: COLORS.panel,
     borderRadius: 4,
     borderWidth: 2,

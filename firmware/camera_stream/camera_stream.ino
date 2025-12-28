@@ -321,11 +321,22 @@ void setup() {
   config.fb_count = 2;
   config.fb_location = CAMERA_FB_IN_PSRAM;
 
-  // Init camera
-  esp_err_t err = esp_camera_init(&config);
+  // Init camera with retry logic
+  esp_err_t err = ESP_FAIL;
+  int retries = 0;
+  while (err != ESP_OK && retries < 3) {
+    err = esp_camera_init(&config);
+    if (err != ESP_OK) {
+      Serial.printf("Camera init failed with error 0x%x (attempt %d/3)\n", err, retries + 1);
+      delay(1000);
+      retries++;
+    }
+  }
+  
   if (err != ESP_OK) {
-    Serial.printf("Camera init failed with error 0x%x\n", err);
-    return;
+    Serial.println("Camera init failed after 3 attempts. Rebooting...");
+    delay(1000);
+    ESP.restart();
   }
   Serial.println("Camera initialized");
 

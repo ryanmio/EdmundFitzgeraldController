@@ -12,6 +12,7 @@ import {
   Platform,
   Share,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -452,10 +453,25 @@ export default function DashboardScreen({ navigation, route }: Props) {
                     style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#000' }}
                   />
                 ) : (
-                  <Image
-                    source={{ uri: streamUrl }}
+                  <WebView
+                    source={{ html: `
+                      <!DOCTYPE html>
+                      <html>
+                        <head>
+                          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+                          <style>
+                            body { margin: 0; padding: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; }
+                            img { max-width: 100%; max-height: 100%; object-fit: contain; }
+                          </style>
+                        </head>
+                        <body>
+                          <img src="${streamUrl}" />
+                        </body>
+                      </html>
+                    ` }}
                     style={styles.cameraStream}
-                    resizeMode="contain"
+                    scrollEnabled={false}
+                    bounces={false}
                   />
                 )}
                 <View style={styles.cameraOverlay}>

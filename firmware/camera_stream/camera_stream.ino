@@ -339,6 +339,17 @@ void setup() {
     ESP.restart();
   }
   Serial.println("Camera initialized");
+  
+  // Verify camera can actually capture frames
+  Serial.println("Testing frame capture...");
+  camera_fb_t *test_fb = esp_camera_fb_get();
+  if (!test_fb) {
+    Serial.println("Camera init reported success but cannot capture frames! Rebooting...");
+    delay(1000);
+    ESP.restart();
+  }
+  esp_camera_fb_return(test_fb);
+  Serial.println("Frame capture verified - camera fully operational");
 
   // Apply additional sensor settings
   sensor_t *s = esp_camera_sensor_get();

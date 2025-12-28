@@ -98,9 +98,9 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modal: {
+    flex: 1,
     width: '100%',
     maxWidth: 600,
-    maxHeight: '95%',
     backgroundColor: COLORS.panel,
     borderRadius: 4,
     borderWidth: 2,

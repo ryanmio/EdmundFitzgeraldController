@@ -83,9 +83,9 @@ export async function checkPowerSystems(
   }
   
   const voltage = parseFloat(telemetry.battery_voltage);
-  if (voltage < 11.5) {
-    addLog(`  ✗ Low voltage warning (${telemetry.battery_voltage})`);
-    return { passed: false, message: `Low voltage warning (${telemetry.battery_voltage})` };
+  if (voltage < 8.1 || voltage > 8.8) {
+    addLog(`  ✗ Voltage out of range (${telemetry.battery_voltage})`);
+    return { passed: false, message: `Voltage out of range (${telemetry.battery_voltage})` };
   } else {
     addLog(`  ✓ Nominal voltage (${telemetry.battery_voltage})`);
     return { passed: true, message: `Nominal voltage (${telemetry.battery_voltage})` };

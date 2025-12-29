@@ -90,7 +90,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
   
   const [telemetry, setTelemetry] = useState<TelemetryResponse | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
   const [togglingRunning, setTogglingRunning] = useState(false);
   const [togglingFlood, setTogglingFlood] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
@@ -178,6 +178,8 @@ export default function DashboardScreen({ navigation, route }: Props) {
     } catch (err) {
       setLastError(err instanceof Error ? err.message : 'Connection lost');
       setIsConnected(false);
+      // Clear stale telemetry data when connection is lost
+      setTelemetry(null);
     }
   }, [ip, isLogging]);
 
@@ -364,6 +366,13 @@ export default function DashboardScreen({ navigation, route }: Props) {
         onRunChecks={systemsCheck.runChecks}
         scrollRef={systemsCheck.scrollRef}
       />
+
+      {/* Connection Lost Banner */}
+      {!isConnected && (
+        <View style={styles.connectionLostBanner}>
+          <Text style={styles.connectionLostText}>⚠ CONNECTION LOST</Text>
+        </View>
+      )}
 
       {/* Header */}
       <View style={styles.header}>
@@ -628,6 +637,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  connectionLostBanner: {
+    backgroundColor: COLORS.alert,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  connectionLostText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: COLORS.background,
+    fontFamily: FONTS.monospace,
+    letterSpacing: 1,
   },
   flex1: {
     flex: 1,

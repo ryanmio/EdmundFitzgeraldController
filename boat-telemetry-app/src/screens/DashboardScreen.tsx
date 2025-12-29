@@ -11,6 +11,7 @@ import {
   Dimensions,
   Platform,
   Share,
+  SafeAreaView,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -367,11 +368,13 @@ export default function DashboardScreen({ navigation, route }: Props) {
         scrollRef={systemsCheck.scrollRef}
       />
 
-      {/* Connection Lost Banner */}
+      {/* Connection Lost Banner - positioned above notch */}
       {!isConnected && (
-        <View style={styles.connectionLostBanner}>
-          <Text style={styles.connectionLostText}>⚠ CONNECTION LOST</Text>
-        </View>
+        <SafeAreaView style={styles.safeAreaBanner}>
+          <View style={styles.connectionLostBanner}>
+            <Text style={styles.connectionLostText}>⚠ CONNECTION LOST</Text>
+          </View>
+        </SafeAreaView>
       )}
 
       {/* Header */}
@@ -638,12 +641,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  safeAreaBanner: {
+    backgroundColor: COLORS.alert,
+  },
   connectionLostBanner: {
     backgroundColor: COLORS.alert,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'rgba(0,0,0,0.3)',
   },
   connectionLostText: {
     fontSize: 14,

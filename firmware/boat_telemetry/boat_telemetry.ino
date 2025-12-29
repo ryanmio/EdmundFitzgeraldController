@@ -24,6 +24,12 @@ unsigned long startTime;
 bool ledRunningState = false;
 bool ledFloodState = false;
 
+// Water sensor debouncing variables
+bool waterDebouncedState = false;  // Current debounced state (false = secure, true = breached)
+bool waterLastRawState = true;     // Last raw sensor reading (true = DRY, false = WET)
+unsigned long waterStateChangeTime = 0;  // Time when current raw state started
+const unsigned long WATER_DEBOUNCE_TIME = 10000;  // 10 seconds in milliseconds
+
 // ==================== WIFI CONNECT (SCAN + MATCH) ====================
 void connectWiFi() {
   Serial.println();
@@ -112,6 +118,31 @@ void connectWiFi() {
   }
 }
 
+// ==================== WATER SENSOR DEBOUNCING ====================
+// Updates the debounced water state based on raw sensor readings
+// Water must stay in same state for WATER_DEBOUNCE_TIME to register state change
+void updateWaterSensorDebounce() {
+  bool rawState = (digitalRead(WATER_SENSOR_PIN) == HIGH);  // true = dry, false = wet
+  unsigned long currentTime = millis();
+  
+  // Check if raw state has changed
+  if (rawState != waterLastRawState) {
+    // Raw state changed, reset the timer
+    waterLastRawState = rawState;
+    waterStateChangeTime = currentTime;
+  } else {
+    // Raw state is the same, check if debounce time has elapsed
+    unsigned long timeSinceChange = currentTime - waterStateChangeTime;
+    
+    if (timeSinceChange >= WATER_DEBOUNCE_TIME) {
+      // Debounce time elapsed, update the debounced state
+      // rawState = true means DRY, so waterDebouncedState = false (secure)
+      // rawState = false means WET, so waterDebouncedState = true (breached)
+      waterDebouncedState = !rawState;
+    }
+  }
+}
+
 // ==================== CORS HELPER ====================
 void addCORSHeaders() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
@@ -156,11 +187,11 @@ void handleTelemetry() {
   float batteryPinVoltage = (adcValue / 4095.0) * 3.3;
   float batteryVoltage = batteryPinVoltage * 2.84;
   
-  // Water intrusion sensor (digital read with pullup)
-  // LOW = water detected (probe gap bridged by water)
-  // HIGH = dry (pullup resistance)
-  bool waterDetected = (digitalRead(WATER_SENSOR_PIN) == LOW);
-  int waterRaw = digitalRead(WATER_SENSOR_PIN); // 0 = WET, 1 = DRY (pullup)
+  // Water intrusion sensor (debounced digital read with pullup)
+  // Debounced state: true = water breached hull, false = hull secure
+  // Takes 10 seconds of consistent state to register a change
+  bool waterDetected = waterDebouncedState;
+  int waterRaw = digitalRead(WATER_SENSOR_PIN); // 0 = WET, 1 = DRY (pullup) - raw instantaneous value
 
   // RC receiver PWM readings (pulse width in microseconds)
   // Typical range: 1000-2000µs, 1500µs = center/neutral
@@ -259,6 +290,10 @@ void setup() {
   
   // Init water sensor pin (digital with internal pullup)
   pinMode(WATER_SENSOR_PIN, INPUT_PULLUP);
+  // Initialize debouncing state (assume dry/secure at startup)
+  waterLastRawState = (digitalRead(WATER_SENSOR_PIN) == HIGH);  // true = dry
+  waterDebouncedState = false;  // Start as secure
+  waterStateChangeTime = millis();
   
   // Init battery ADC pin
   pinMode(BATTERY_ADC_PIN, INPUT);
@@ -293,6 +328,9 @@ unsigned long lastWiFiCheck = 0;
 void loop() {
   // Always handle HTTP requests (whether WiFi is connected or not)
   server.handleClient();
+  
+  // Update water sensor debouncing
+  updateWaterSensorDebounce();
 
   // Retry WiFi every 30 seconds if disconnected
   if (WiFi.status() != WL_CONNECTED && millis() - lastWiFiCheck > 30000) {

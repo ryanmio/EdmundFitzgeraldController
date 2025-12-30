@@ -7,16 +7,11 @@
 #include "esp_camera.h"
 #include <WiFi.h>
 #include "esp_http_server.h"
+#include "secrets.h"
 
 // ==================== CAMERA MODEL ====================
 #define CAMERA_MODEL_AI_THINKER
 #include "camera_pins.h"
-
-// ==================== WIFI CREDENTIALS ====================
-// Same credentials as telemetry ESP32 for same-network access
-const char* HOME_WIFI_SSID = ".hidden";
-const char* HOME_WIFI_PASSWORD = "Rich2993!";
-const char* HOTSPOT_PASSWORD = "ryanryan";
 
 // ==================== GLOBALS ====================
 httpd_handle_t stream_httpd = NULL;
@@ -57,7 +52,7 @@ void connectWiFi() {
   if (!foundHomeWiFi) {
     for (int i = 0; i < numNetworks; i++) {
       String scannedSSID = WiFi.SSID(i);
-      if (scannedSSID.indexOf("iPhone") >= 0) {
+      if (scannedSSID == HOTSPOT_SSID) {
         ssidToConnect = scannedSSID;
         passwordToUse = HOTSPOT_PASSWORD;
         Serial.print(">>> Using iPhone hotspot: ");

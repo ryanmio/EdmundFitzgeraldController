@@ -40,15 +40,15 @@
 12. **Running Lights MOSFET**: 
 - VIN+ (screw) → Battery positive
 - VIN- (screw) → Battery negative
-- OUT+ (screw) → Light positive
-- OUT- (screw) → Light negative
+- OUT+ (screw) → Light positive (or resistor input for parallel LEDs)
+- OUT- (screw) → Light negative (or parallel group ground)
 - GND pad (solder) → ESP32 GND
 - TRIG/PWM pad (solder) → ESP32 GPIO16
 13. **Flood Lights MOSFET**: 
 - VIN+ (screw) → Battery positive
 - VIN- (screw) → Battery negative
-- OUT+ (screw) → Light positive
-- OUT- (screw) → Light negative
+- OUT+ (screw) → Light positive (or resistor input for parallel LEDs)
+- OUT- (screw) → Light negative (or parallel group ground)
 - GND pad (solder) → ESP32 GND
 - TRIG/PWM pad (solder) → ESP32 GPIO17
 

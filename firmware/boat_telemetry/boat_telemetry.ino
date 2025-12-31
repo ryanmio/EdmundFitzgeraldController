@@ -12,11 +12,21 @@
 #define LED_RUNNING_PIN    2   // Built-in LED on most dev boards (keep for testing)
 #define LED_FLOOD_PIN      4   // Legacy external LED pin (optional spare)
 #define RUNNING_OUT_PIN   16   // External Running lights control (MOSFET gate)
-#define FLOOD_OUT_PIN     17   // External Flood lights control (MOSFET gate)
+#define FLOOD_OUT_PIN     17   // External Flood lights control (MOSFET gate) - NOW DRIVES MORSE CODE BUZZER
 #define BATTERY_ADC_PIN   34   // Battery voltage sense (ADC)
 #define WATER_SENSOR_PIN  32   // Water intrusion sensor (digital input with pullup) - GPIO32 has internal pullup, GPIO34/35/36/39 do NOT
 #define THROTTLE_PWM_PIN  18   // RC receiver throttle channel (PWM input)
 #define SERVO_PWM_PIN     19   // RC receiver servo/rudder channel (PWM input)
+
+// ==================== MORSE CODE DEFINITIONS ====================
+#define MORSE_BUZZER_PIN   FLOOD_OUT_PIN  // Use flood output for buzzer
+#define MORSE_PWM_CHANNEL  0               // PWM channel for buzzer tone
+#define MORSE_FREQUENCY    800             // Hz - classic WW2 radio telegraph tone
+#define MORSE_DIT_MS       150             // Dit (dot) length in milliseconds
+#define MORSE_DAH_MS       (MORSE_DIT_MS * 3)    // Dah (dash) = 3x dit
+#define MORSE_SYMBOL_GAP   MORSE_DIT_MS          // Gap between dits/dahs
+#define MORSE_LETTER_GAP   (MORSE_DIT_MS * 3)    // Gap between letters
+#define MORSE_REPEAT_DELAY 2000                  // Pause between SOS repeats
 
 // ==================== GLOBALS ====================
 WebServer server(80);
@@ -143,6 +153,43 @@ void updateWaterSensorDebounce() {
   }
 }
 
+// ==================== MORSE CODE FUNCTIONS ====================
+// Play a dit (short beep)
+void morseDit() {
+  ledcWriteTone(MORSE_PWM_CHANNEL, MORSE_FREQUENCY);
+  delay(MORSE_DIT_MS);
+  ledcWriteTone(MORSE_PWM_CHANNEL, 0); // Silence
+  delay(MORSE_SYMBOL_GAP);
+}
+
+// Play a dah (long beep)
+void morseDah() {
+  ledcWriteTone(MORSE_PWM_CHANNEL, MORSE_FREQUENCY);
+  delay(MORSE_DAH_MS);
+  ledcWriteTone(MORSE_PWM_CHANNEL, 0); // Silence
+  delay(MORSE_SYMBOL_GAP);
+}
+
+// Play complete SOS signal (... --- ...)
+void playMorseCodeSOS() {
+  // S (three dits)
+  morseDit();
+  morseDit();
+  morseDit();
+  delay(MORSE_LETTER_GAP - MORSE_SYMBOL_GAP);
+  
+  // O (three dahs)
+  morseDah();
+  morseDah();
+  morseDah();
+  delay(MORSE_LETTER_GAP - MORSE_SYMBOL_GAP);
+  
+  // S (three dits)
+  morseDit();
+  morseDit();
+  morseDit();
+}
+
 // ==================== CORS HELPER ====================
 void addCORSHeaders() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
@@ -243,9 +290,14 @@ void handleLed() {
   }
   if (modeFlood) {
     ledFloodState = stateOn;
-    // Drive external MOSFET gate; keep legacy GPIO4 as optional spare output
-    digitalWrite(FLOOD_OUT_PIN, ledFloodState ? HIGH : LOW);
+    // Note: FLOOD_OUT_PIN (GPIO17) now controlled by Morse code PWM, not digitalWrite
+    // Only control the legacy onboard LED indicator
     digitalWrite(LED_FLOOD_PIN, ledFloodState ? HIGH : LOW);
+    
+    // If turning off, stop any active Morse tone
+    if (!stateOn) {
+      ledcWriteTone(MORSE_PWM_CHANNEL, 0);
+    }
   }
 
   String json = "{";
@@ -282,11 +334,14 @@ void setup() {
   pinMode(LED_RUNNING_PIN, OUTPUT);
   pinMode(LED_FLOOD_PIN, OUTPUT);
   pinMode(RUNNING_OUT_PIN, OUTPUT);
-  pinMode(FLOOD_OUT_PIN, OUTPUT);
   digitalWrite(LED_RUNNING_PIN, LOW);
   digitalWrite(LED_FLOOD_PIN, LOW);
   digitalWrite(RUNNING_OUT_PIN, LOW);
-  digitalWrite(FLOOD_OUT_PIN, LOW);
+  
+  // Init Morse code buzzer (PWM on GPIO17)
+  ledcSetup(MORSE_PWM_CHANNEL, MORSE_FREQUENCY, 8); // 8-bit resolution
+  ledcAttachPin(MORSE_BUZZER_PIN, MORSE_PWM_CHANNEL);
+  ledcWriteTone(MORSE_PWM_CHANNEL, 0); // Start silent
   
   // Init water sensor pin (digital with internal pullup)
   pinMode(WATER_SENSOR_PIN, INPUT_PULLUP);
@@ -331,6 +386,14 @@ void loop() {
   
   // Update water sensor debouncing
   updateWaterSensorDebounce();
+
+  // Play Morse code SOS when flood mode is active
+  static unsigned long lastMorsePlay = 0;
+  if (ledFloodState && (millis() - lastMorsePlay > MORSE_REPEAT_DELAY)) {
+    lastMorsePlay = millis();
+    playMorseCodeSOS();
+    Serial.println(" [SOS]"); // Visual indicator in serial monitor
+  }
 
   // Retry WiFi every 30 seconds if disconnected
   if (WiFi.status() != WL_CONNECTED && millis() - lastWiFiCheck > 30000) {

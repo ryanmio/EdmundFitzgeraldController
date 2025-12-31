@@ -8,6 +8,7 @@ import {
   checkRFCommunications,
   checkRCLink,
   checkCoreProcessor,
+  checkProcessorTemperature,
   checkLEDControlPath,
 } from '../services/systemsCheckService';
 
@@ -35,7 +36,7 @@ export function useSystemsCheck(
     
     let checksPassed = 0;
     let checksFailed = 0;
-    const totalChecks = 7;
+    const totalChecks = 8;
     
     addLog('═══════════════════════════════════════');
     addLog('EDMUND FITZGERALD SYSTEMS CHECK');
@@ -67,9 +68,13 @@ export function useSystemsCheck(
     await delay(400);
     if (result6.passed) checksPassed++; else checksFailed++;
     
-    const result7 = await checkLEDControlPath(ip, telemetry, addLog);
+    const result7 = await checkProcessorTemperature(telemetry, addLog);
     await delay(400);
     if (result7.passed) checksPassed++; else checksFailed++;
+    
+    const result8 = await checkLEDControlPath(ip, telemetry, addLog);
+    await delay(400);
+    if (result8.passed) checksPassed++; else checksFailed++;
     
     // Final status
     addLog('═══════════════════════════════════════');

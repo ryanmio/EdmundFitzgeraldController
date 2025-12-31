@@ -16,7 +16,7 @@ export async function checkConnectionStability(
   ip: string,
   addLog: (msg: string) => void
 ): Promise<CheckResult> {
-  addLog('[1/7] Testing connection stability...');
+  addLog('[1/8] Testing connection stability...');
   await delay(400);
   
   try {
@@ -50,7 +50,7 @@ export async function checkHullIntegrity(
   telemetry: TelemetryResponse | null,
   addLog: (msg: string) => void
 ): Promise<CheckResult> {
-  addLog('[2/7] Checking hull integrity...');
+  addLog('[2/8] Checking hull integrity...');
   await delay(600);
   
   if (!telemetry) {
@@ -74,7 +74,7 @@ export async function checkPowerSystems(
   telemetry: TelemetryResponse | null,
   addLog: (msg: string) => void
 ): Promise<CheckResult> {
-  addLog('[3/7] Measuring DC bus potential...');
+  addLog('[3/8] Measuring DC bus potential...');
   await delay(600);
   
   if (!telemetry) {
@@ -99,7 +99,7 @@ export async function checkRFCommunications(
   telemetry: TelemetryResponse | null,
   addLog: (msg: string) => void
 ): Promise<CheckResult> {
-  addLog('[4/7] Analyzing signal strength...');
+  addLog('[4/8] Analyzing signal strength...');
   await delay(600);
   
   if (!telemetry) {
@@ -124,7 +124,7 @@ export async function checkRCLink(
   telemetry: TelemetryResponse | null,
   addLog: (msg: string) => void
 ): Promise<CheckResult> {
-  addLog('[5/7] Validating RC receiver...');
+  addLog('[5/8] Validating RC receiver...');
   await delay(700);
   
   if (!telemetry || typeof telemetry.throttle_pwm !== 'number' || typeof telemetry.servo_pwm !== 'number') {
@@ -148,7 +148,7 @@ export async function checkCoreProcessor(
   telemetry: TelemetryResponse | null,
   addLog: (msg: string) => void
 ): Promise<CheckResult> {
-  addLog('[6/7] Checking processor health...');
+  addLog('[6/8] Checking processor health...');
   await delay(600);
   
   if (!telemetry || typeof telemetry.free_heap !== 'number' || isNaN(telemetry.free_heap)) {
@@ -167,14 +167,42 @@ export async function checkCoreProcessor(
 }
 
 /**
- * Check 7: LED Functional Test
+ * Check 7: Processor Temperature
+ */
+export async function checkProcessorTemperature(
+  telemetry: TelemetryResponse | null,
+  addLog: (msg: string) => void
+): Promise<CheckResult> {
+  addLog('[7/8] Scanning thermal sensors...');
+  await delay(600);
+  
+  if (!telemetry || typeof telemetry.internal_temp_c !== 'number' || isNaN(telemetry.internal_temp_c)) {
+    addLog(`  ⚠ Temperature telemetry unavailable`);
+    return { passed: false, message: 'Temperature telemetry unavailable' };
+  }
+  
+  const tempC = telemetry.internal_temp_c;
+  if (tempC > 85) {
+    addLog(`  ✗ CRITICAL: Overheating detected (${tempC.toFixed(1)}°C)`);
+    return { passed: false, message: `CRITICAL: Overheating detected (${tempC.toFixed(1)}°C)` };
+  } else if (tempC > 75) {
+    addLog(`  ⚠ WARNING: High temperature (${tempC.toFixed(1)}°C)`);
+    return { passed: false, message: `WARNING: High temperature (${tempC.toFixed(1)}°C)` };
+  } else {
+    addLog(`  ✓ Thermal nominal (${tempC.toFixed(1)}°C)`);
+    return { passed: true, message: `Thermal nominal (${tempC.toFixed(1)}°C)` };
+  }
+}
+
+/**
+ * Check 8: LED Functional Test
  */
 export async function checkLEDControlPath(
   ip: string,
   telemetry: TelemetryResponse | null,
   addLog: (msg: string) => void
 ): Promise<CheckResult> {
-  addLog('[7/7] Testing LED control path...');
+  addLog('[8/8] Testing LED control path...');
   await delay(500);
   
   try {

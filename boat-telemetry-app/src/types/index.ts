@@ -14,6 +14,7 @@ export interface TelemetryResponse {
   signal_strength: string;
   uptime_seconds: number;
   free_heap: number;
+  internal_temp_c: number;
   running_mode_state: boolean;
   flood_mode_state: boolean;
   water_intrusion: boolean;

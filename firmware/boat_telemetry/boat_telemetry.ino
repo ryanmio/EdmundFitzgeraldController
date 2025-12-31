@@ -247,6 +247,7 @@ void handleTelemetry() {
 
   // ESP32 diagnostics
   uint32_t freeHeap = ESP.getFreeHeap();
+  float internalTemp = temperatureRead();
 
   String json = "{";
   json += "\"timestamp\":\"" + String(millis()) + "\",";
@@ -256,6 +257,7 @@ void handleTelemetry() {
   json += "\"signal_strength\":\"" + String(rssi) + "dBm\",";
   json += "\"uptime_seconds\":" + String(uptimeSec) + ",";
   json += "\"free_heap\":" + String(freeHeap) + ",";
+  json += "\"internal_temp_c\":" + String(internalTemp, 1) + ",";
   json += "\"running_mode_state\":" + String(ledRunningState ? "true" : "false") + ",";
   json += "\"flood_mode_state\":" + String(ledFloodState ? "true" : "false") + ",";
   json += "\"water_intrusion\":" + String(waterDetected ? "true" : "false") + ",";

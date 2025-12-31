@@ -18,7 +18,12 @@
       "bundleIdentifier": "com.ryanmio.edmundfitzgerald",
       "buildNumber": "1",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocalNetworkUsageDescription": "This app connects to on-board ESP32 devices (telemetry and camera) on your local Wi‑Fi network.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true,
+          "NSAllowsArbitraryLoadsInWebContent": true
+        }
       }
     },
     "android": {
@@ -26,6 +31,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "usesCleartextTraffic": true,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.ryanmio.edmundfitzgerald",

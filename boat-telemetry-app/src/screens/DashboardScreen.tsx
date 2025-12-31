@@ -88,6 +88,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
   const cameraIP = rawCameraIP && rawCameraIP.replace(/^https?:\/\//, '').trim();
   const hasCameraIP = cameraIP && cameraIP.length > 0;
   const streamUrl = hasCameraIP ? `http://${cameraIP}/stream` : null;
+  const [cameraLoadError, setCameraLoadError] = useState<string | null>(null);
   
   const [telemetry, setTelemetry] = useState<TelemetryResponse | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
@@ -484,11 +485,32 @@ export default function DashboardScreen({ navigation, route }: Props) {
                     style={styles.cameraStream}
                     scrollEnabled={false}
                     bounces={false}
+                    originWhitelist={['*']}
+                    mixedContentMode="always"
+                    onLoadStart={() => setCameraLoadError(null)}
+                    onError={(e) => {
+                      const desc = e?.nativeEvent?.description || 'Unknown WebView error';
+                      debugLog(`Camera WebView error: ${desc}`);
+                      setCameraLoadError(desc);
+                    }}
+                    onHttpError={(e) => {
+                      const code = e?.nativeEvent?.statusCode;
+                      const url = e?.nativeEvent?.url;
+                      const msg = `HTTP error${code ? ` ${code}` : ''}${url ? ` (${url})` : ''}`;
+                      debugLog(`Camera WebView HTTP error: ${msg}`);
+                      setCameraLoadError(msg);
+                    }}
                   />
                 )}
                 <View style={styles.cameraOverlay}>
                   <Text style={styles.cameraIPText}>SOURCE: {cameraIP}</Text>
                 </View>
+                {!!cameraLoadError && (
+                  <View style={styles.cameraErrorOverlay} pointerEvents="none">
+                    <Text style={styles.cameraErrorText}>CAMERA LOAD ERROR</Text>
+                    <Text style={styles.cameraErrorTextSmall}>{cameraLoadError}</Text>
+                  </View>
+                )}
               </View>
             ) : (
               <View style={styles.cameraPlaceholder}>
@@ -912,6 +934,28 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 6,
     backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  cameraErrorOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    padding: 8,
+    backgroundColor: 'rgba(255,0,0,0.35)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.2)',
+  },
+  cameraErrorText: {
+    fontSize: 10,
+    color: COLORS.text,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  cameraErrorTextSmall: {
+    fontSize: 9,
+    color: COLORS.text,
+    fontFamily: FONTS.monospace,
   },
   cameraIPText: {
     fontSize: 10,

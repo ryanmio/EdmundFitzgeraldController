@@ -156,17 +156,17 @@ void updateWaterSensorDebounce() {
 // ==================== MORSE CODE FUNCTIONS ====================
 // Play a dit (short beep)
 void morseDit() {
-  ledcWriteTone(MORSE_PWM_CHANNEL, MORSE_FREQUENCY);
+  ledcWriteTone(MORSE_BUZZER_PIN, MORSE_FREQUENCY);
   delay(MORSE_DIT_MS);
-  ledcWriteTone(MORSE_PWM_CHANNEL, 0); // Silence
+  ledcWriteTone(MORSE_BUZZER_PIN, 0); // Silence
   delay(MORSE_SYMBOL_GAP);
 }
 
 // Play a dah (long beep)
 void morseDah() {
-  ledcWriteTone(MORSE_PWM_CHANNEL, MORSE_FREQUENCY);
+  ledcWriteTone(MORSE_BUZZER_PIN, MORSE_FREQUENCY);
   delay(MORSE_DAH_MS);
-  ledcWriteTone(MORSE_PWM_CHANNEL, 0); // Silence
+  ledcWriteTone(MORSE_BUZZER_PIN, 0); // Silence
   delay(MORSE_SYMBOL_GAP);
 }
 
@@ -298,7 +298,7 @@ void handleLed() {
     
     // If turning off, stop any active Morse tone
     if (!stateOn) {
-      ledcWriteTone(MORSE_PWM_CHANNEL, 0);
+      ledcWriteTone(MORSE_BUZZER_PIN, 0);
     }
   }
 
@@ -341,9 +341,9 @@ void setup() {
   digitalWrite(RUNNING_OUT_PIN, LOW);
   
   // Init Morse code buzzer (PWM on GPIO17)
-  ledcSetup(MORSE_PWM_CHANNEL, MORSE_FREQUENCY, 8); // 8-bit resolution
-  ledcAttachPin(MORSE_BUZZER_PIN, MORSE_PWM_CHANNEL);
-  ledcWriteTone(MORSE_PWM_CHANNEL, 0); // Start silent
+  pinMode(MORSE_BUZZER_PIN, OUTPUT);
+  ledcAttach(MORSE_BUZZER_PIN, MORSE_FREQUENCY, 8); // 8-bit resolution
+  ledcWriteTone(MORSE_BUZZER_PIN, 0); // Start silent
   
   // Init water sensor pin (digital with internal pullup)
   pinMode(WATER_SENSOR_PIN, INPUT_PULLUP);

@@ -17,24 +17,11 @@ import { WebView } from 'react-native-webview';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Paths, Directory, File } from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
 import { getTelemetry, setLED } from '../services/esp32Service';
 import { TelemetryResponse } from '../types';
 import { COLORS, FONTS } from '../constants/Theme';
 import { SystemsCheckModal } from '../components/SystemsCheckModal';
 import { useSystemsCheck } from '../hooks/useSystemsCheck';
-
-// Conditionally import FFmpeg (only available in dev builds, not Expo Go)
-let FFmpegKit: any = null;
-let FFmpegKitConfig: any = null;
-try {
-  const ffmpeg = require('ffmpeg-kit-react-native');
-  FFmpegKit = ffmpeg.FFmpegKit;
-  FFmpegKitConfig = ffmpeg.FFmpegKitConfig;
-} catch (e) {
-  // FFmpeg not available (running in Expo Go)
-}
 
 interface LogEntry extends TelemetryResponse {
   log_timestamp: string;
@@ -113,13 +100,6 @@ export default function DashboardScreen({ navigation, route }: Props) {
   const [logStartTime, setLogStartTime] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showSystemsCheck, setShowSystemsCheck] = useState(false);
-  
-  // Video recording state
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingFrameCount, setRecordingFrameCount] = useState(0);
-  const [isProcessingVideo, setIsProcessingVideo] = useState(false);
-  const recordingRef = useRef<{ frames: string[]; startTime: number } | null>(null);
-  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -378,187 +358,6 @@ export default function DashboardScreen({ navigation, route }: Props) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Video recording functions
-  const stillUrl = hasCameraIP ? `http://${cameraIP}/still` : null;
-
-  const startRecording = async () => {
-    if (!stillUrl || Platform.OS === 'web') {
-      Alert.alert('Recording Not Available', 'Video recording is only available on mobile devices.');
-      return;
-    }
-
-    // Request media library permission
-    const { status } = await MediaLibrary.requestPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Please grant camera roll access to save recordings.');
-      return;
-    }
-
-    // Create temp directory for frames using new expo-file-system API
-    const framesDirName = `video_frames_${Date.now()}`;
-    const framesDir = new Directory(Paths.cache, framesDirName);
-    await framesDir.create();
-
-    recordingRef.current = { frames: [], startTime: Date.now() };
-    setIsRecording(true);
-    setRecordingFrameCount(0);
-
-    debugLog('Video recording started');
-
-    // Capture frames at ~10fps
-    recordingIntervalRef.current = setInterval(async () => {
-      if (!recordingRef.current || !stillUrl) return;
-
-      try {
-        const frameNum = recordingRef.current.frames.length;
-        const frameFileName = `frame_${String(frameNum).padStart(6, '0')}.jpg`;
-        const frameFile = new File(framesDir, frameFileName);
-        
-        // Fetch the image and save it
-        const response = await fetch(`${stillUrl}?t=${Date.now()}`);
-        if (response.ok) {
-          const blob = await response.blob();
-          const reader = new FileReader();
-          reader.onloadend = async () => {
-            try {
-              const base64data = (reader.result as string).split(',')[1];
-              await frameFile.write(base64data, { encoding: 'base64' });
-              if (recordingRef.current) {
-                recordingRef.current.frames.push(frameFile.uri);
-                setRecordingFrameCount(recordingRef.current.frames.length);
-              }
-            } catch (writeErr) {
-              debugLog(`Frame write error: ${writeErr}`);
-            }
-          };
-          reader.readAsDataURL(blob);
-        }
-      } catch (err) {
-        // Frame capture failed, skip this frame
-        debugLog(`Frame capture error: ${err}`);
-      }
-    }, 100); // ~10fps
-  };
-
-  const stopRecording = async () => {
-    if (recordingIntervalRef.current) {
-      clearInterval(recordingIntervalRef.current);
-      recordingIntervalRef.current = null;
-    }
-
-    setIsRecording(false);
-
-    if (!recordingRef.current || recordingRef.current.frames.length === 0) {
-      Alert.alert('Recording Failed', 'No frames were captured.');
-      recordingRef.current = null;
-      return;
-    }
-
-    const frames = recordingRef.current.frames;
-    const duration = (Date.now() - recordingRef.current.startTime) / 1000;
-    debugLog(`Recording stopped: ${frames.length} frames over ${duration.toFixed(1)}s`);
-
-    setIsProcessingVideo(true);
-
-    try {
-      // Get the frames directory from the first frame path
-      const framesDirUri = frames[0].substring(0, frames[0].lastIndexOf('/'));
-      const framesDir = new Directory(framesDirUri);
-
-      // Check if FFmpeg is available
-      if (!FFmpegKit) {
-        // FFmpeg not available - save frames as album instead
-        debugLog('FFmpeg not available, saving frames as photos');
-        
-        let savedCount = 0;
-        for (const framePath of frames.slice(0, 30)) { // Save first 30 frames max
-          try {
-            await MediaLibrary.saveToLibraryAsync(framePath);
-            savedCount++;
-          } catch (err) {
-            // Skip failed saves
-          }
-        }
-
-        // Clean up temp files
-        try {
-          await framesDir.delete();
-        } catch (e) {
-          debugLog(`Cleanup error: ${e}`);
-        }
-
-        Alert.alert(
-          'Frames Saved',
-          `Saved ${savedCount} frames to camera roll.\n\nNote: Video encoding requires a development build. Use 'eas build' to enable full video recording.`
-        );
-      } else {
-        // Use FFmpeg to encode video
-        const outputFile = new File(Paths.cache, `boat_recording_${Date.now()}.mp4`);
-        const fps = Math.round(frames.length / duration);
-
-        const ffmpegCommand = `-framerate ${fps} -i "${framesDirUri}/frame_%06d.jpg" -c:v mpeg4 -q:v 5 -pix_fmt yuv420p "${outputFile.uri}"`;
-        
-        debugLog(`Running FFmpeg: ${ffmpegCommand}`);
-
-        const session = await FFmpegKit.execute(ffmpegCommand);
-        const returnCode = await session.getReturnCode();
-
-        if (returnCode.isValueSuccess()) {
-          // Save to camera roll
-          await MediaLibrary.saveToLibraryAsync(outputFile.uri);
-          
-          // Clean up temp files
-          try {
-            await framesDir.delete();
-            await outputFile.delete();
-          } catch (e) {
-            debugLog(`Cleanup error: ${e}`);
-          }
-
-          Alert.alert('Recording Saved', `Video saved to camera roll (${frames.length} frames, ${duration.toFixed(1)}s)`);
-          debugLog('Video saved to camera roll');
-        } else {
-          const logs = await session.getAllLogsAsString();
-          debugLog(`FFmpeg failed: ${logs}`);
-          Alert.alert('Encoding Failed', 'Could not encode video. Frames have been discarded.');
-          
-          // Clean up
-          try {
-            await framesDir.delete();
-          } catch (e) {
-            debugLog(`Cleanup error: ${e}`);
-          }
-        }
-      }
-    } catch (err) {
-      debugLog(`Video processing error: ${err}`);
-      Alert.alert('Processing Failed', 'Could not process video recording.');
-      
-      // Clean up temp files
-      if (recordingRef.current && recordingRef.current.frames.length > 0) {
-        try {
-          const framesDirUri = recordingRef.current.frames[0].substring(0, recordingRef.current.frames[0].lastIndexOf('/'));
-          const framesDir = new Directory(framesDirUri);
-          await framesDir.delete();
-        } catch (e) {
-          // Ignore cleanup errors
-        }
-      }
-    } finally {
-      setIsProcessingVideo(false);
-      recordingRef.current = null;
-      setRecordingFrameCount(0);
-    }
-  };
-
-  const getRecordingDuration = () => {
-    if (!recordingRef.current) return '0:00';
-    const seconds = Math.floor((Date.now() - recordingRef.current.startTime) / 1000);
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   return (
     <View style={styles.container}>
       <SystemsCheckModal
@@ -704,37 +503,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
                   />
                 )}
                 <View style={styles.cameraOverlay}>
-                  <View style={styles.cameraOverlayRow}>
-                    <Text style={styles.cameraIPText}>SOURCE: {cameraIP}</Text>
-                    {Platform.OS !== 'web' && (
-                      <View style={styles.recordButtonContainer}>
-                        {isRecording && (
-                          <View style={styles.recordingIndicator}>
-                            <View style={styles.recordingDot} />
-                            <Text style={styles.recordingText}>
-                              {recordingFrameCount}f
-                            </Text>
-                          </View>
-                        )}
-                        {isProcessingVideo ? (
-                          <View style={styles.recordButton}>
-                            <ActivityIndicator size="small" color={COLORS.text} />
-                          </View>
-                        ) : (
-                          <TouchableOpacity
-                            style={[styles.recordButton, isRecording && styles.recordButtonActive]}
-                            onPress={isRecording ? stopRecording : startRecording}
-                          >
-                            {isRecording ? (
-                              <View style={styles.stopIcon} />
-                            ) : (
-                              <View style={styles.recordIcon} />
-                            )}
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    )}
-                  </View>
+                  <Text style={styles.cameraIPText}>SOURCE: {cameraIP}</Text>
                 </View>
                 {!!cameraLoadError && (
                   <View style={styles.cameraErrorOverlay} pointerEvents="none">
@@ -1165,58 +934,6 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 6,
     backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  cameraOverlayRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  recordButtonContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  recordButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  recordButtonActive: {
-    borderColor: COLORS.alert,
-    backgroundColor: 'rgba(255,51,51,0.2)',
-  },
-  recordIcon: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: COLORS.alert,
-  },
-  stopIcon: {
-    width: 12,
-    height: 12,
-    backgroundColor: COLORS.alert,
-    borderRadius: 2,
-  },
-  recordingIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  recordingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.alert,
-  },
-  recordingText: {
-    fontSize: 10,
-    color: COLORS.text,
-    fontFamily: FONTS.monospace,
   },
   cameraErrorOverlay: {
     position: 'absolute',

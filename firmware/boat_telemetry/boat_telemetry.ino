@@ -120,11 +120,30 @@ void connectWiFi() {
     Serial.println("WiFi connected!");
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
+    
+    // WiFi connected visual feedback: two quick flashes = "Ready for app"
+    delay(500);  // Brief pause after connection
+    flashRunningLights(2, 200, 200);
   } else {
     Serial.println();
     Serial.print("WiFi connection failed. Status: ");
     Serial.println(WiFi.status());
     Serial.println("Server will start anyway. Will retry WiFi in loop.");
+  }
+}
+
+// ==================== STARTUP VISUAL FEEDBACK ====================
+// Flash the running lights to provide visual feedback during startup
+void flashRunningLights(int times, int onMs, int offMs) {
+  for (int i = 0; i < times; i++) {
+    digitalWrite(LED_RUNNING_PIN, HIGH);
+    digitalWrite(RUNNING_OUT_PIN, HIGH);
+    delay(onMs);
+    digitalWrite(LED_RUNNING_PIN, LOW);
+    digitalWrite(RUNNING_OUT_PIN, LOW);
+    if (i < times - 1) {  // Don't delay after the last flash
+      delay(offMs);
+    }
   }
 }
 
@@ -360,6 +379,11 @@ void setup() {
   pinMode(SERVO_PWM_PIN, INPUT);
 
   startTime = millis();
+  
+  // Startup visual feedback: single 1-second flash = "Boot successful"
+  Serial.println("Boot complete - flashing running lights");
+  flashRunningLights(1, 1000, 0);
+  delay(500);  // Brief pause before WiFi connection
 
   // Connect WiFi
   connectWiFi();

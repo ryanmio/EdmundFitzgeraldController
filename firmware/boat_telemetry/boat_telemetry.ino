@@ -172,41 +172,56 @@ void updateWaterSensorDebounce() {
   }
 }
 
-// ==================== MORSE CODE FUNCTIONS ====================
-// Play a dit (short beep)
-void morseDit() {
-  ledcWriteTone(MORSE_BUZZER_PIN, MORSE_FREQUENCY);
-  delay(MORSE_DIT_MS);
-  ledcWriteTone(MORSE_BUZZER_PIN, 0); // Silence
-  delay(MORSE_SYMBOL_GAP);
-}
+// ==================== MORSE CODE FUNCTIONS (NON-BLOCKING) ====================
+// SOS pattern: ... --- ... (9 symbols total)
+const int SOS_PATTERN[] = {
+  MORSE_DIT_MS, MORSE_DIT_MS, MORSE_DIT_MS,  // S
+  MORSE_DAH_MS, MORSE_DAH_MS, MORSE_DAH_MS,  // O
+  MORSE_DIT_MS, MORSE_DIT_MS, MORSE_DIT_MS   // S
+};
+const int SOS_GAPS[] = {
+  MORSE_SYMBOL_GAP, MORSE_SYMBOL_GAP, MORSE_LETTER_GAP,  // After S
+  MORSE_SYMBOL_GAP, MORSE_SYMBOL_GAP, MORSE_LETTER_GAP,  // After O
+  MORSE_SYMBOL_GAP, MORSE_SYMBOL_GAP, MORSE_REPEAT_DELAY // After S
+};
 
-// Play a dah (long beep)
-void morseDah() {
-  ledcWriteTone(MORSE_BUZZER_PIN, MORSE_FREQUENCY);
-  delay(MORSE_DAH_MS);
-  ledcWriteTone(MORSE_BUZZER_PIN, 0); // Silence
-  delay(MORSE_SYMBOL_GAP);
-}
+int morseStep = 0;
+bool morseToneOn = false;
+unsigned long morseLastChange = 0;
 
-// Play complete SOS signal (... --- ...)
-void playMorseCodeSOS() {
-  // S (three dits)
-  morseDit();
-  morseDit();
-  morseDit();
-  delay(MORSE_LETTER_GAP - MORSE_SYMBOL_GAP);
+// Non-blocking Morse code state machine - call this repeatedly in loop()
+void updateMorseCode() {
+  if (!ledFloodState) {
+    // Flood mode off - ensure buzzer is silent and reset
+    if (morseStep != 0 || morseToneOn) {
+      ledcWriteTone(MORSE_BUZZER_PIN, 0);
+      morseStep = 0;
+      morseToneOn = false;
+    }
+    return;
+  }
   
-  // O (three dahs)
-  morseDah();
-  morseDah();
-  morseDah();
-  delay(MORSE_LETTER_GAP - MORSE_SYMBOL_GAP);
+  unsigned long currentTime = millis();
   
-  // S (three dits)
-  morseDit();
-  morseDit();
-  morseDit();
+  if (morseToneOn) {
+    // Tone is currently playing - check if it's time to turn it off
+    if (currentTime - morseLastChange >= SOS_PATTERN[morseStep]) {
+      ledcWriteTone(MORSE_BUZZER_PIN, 0); // Turn off tone
+      morseToneOn = false;
+      morseLastChange = currentTime;
+    }
+  } else {
+    // Silence gap - check if it's time to start next tone
+    if (currentTime - morseLastChange >= SOS_GAPS[morseStep]) {
+      morseStep++;
+      if (morseStep >= 9) {
+        morseStep = 0; // Loop back to start of SOS
+      }
+      ledcWriteTone(MORSE_BUZZER_PIN, MORSE_FREQUENCY); // Start next tone
+      morseToneOn = true;
+      morseLastChange = currentTime;
+    }
+  }
 }
 
 // ==================== CORS HELPER ====================
@@ -413,13 +428,8 @@ void loop() {
   // Update water sensor debouncing
   updateWaterSensorDebounce();
 
-  // Play Morse code SOS when flood mode is active
-  static unsigned long lastMorsePlay = 0;
-  if (ledFloodState && (millis() - lastMorsePlay > MORSE_REPEAT_DELAY)) {
-    lastMorsePlay = millis();
-    playMorseCodeSOS();
-    Serial.println(" [SOS]"); // Visual indicator in serial monitor
-  }
+  // Update Morse code SOS (non-blocking)
+  updateMorseCode();
 
   // Retry WiFi every 30 seconds if disconnected
   if (WiFi.status() != WL_CONNECTED && millis() - lastWiFiCheck > 30000) {

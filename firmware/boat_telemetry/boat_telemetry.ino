@@ -120,9 +120,10 @@ void connectWiFi() {
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
     
-    // WiFi connected visual feedback: two quick flashes = "Ready for app"
+    // WiFi connected: visual + audio feedback
     delay(500);  // Brief pause after connection
     flashRunningLights(2, 200, 200);
+    playWiFiConnectedTone();  // dit-dah-dit tone
   } else {
     Serial.println();
     Serial.print("WiFi connection failed. Status: ");
@@ -184,9 +185,59 @@ const int SOS_GAPS[] = {
   MORSE_SYMBOL_GAP, MORSE_SYMBOL_GAP, MORSE_REPEAT_DELAY // After S
 };
 
+// Startup success tone: dit-dit-dit (... - three short beeps)
+const int STARTUP_SUCCESS_PATTERN[] = {
+  MORSE_DIT_MS, MORSE_DIT_MS, MORSE_DIT_MS
+};
+const int STARTUP_SUCCESS_GAPS[] = {
+  MORSE_SYMBOL_GAP, MORSE_SYMBOL_GAP, 500  // Pause at end
+};
+
+// WiFi connected tone: dit-dah-dit (.-. - understood/acknowledged)
+const int WIFI_CONNECTED_PATTERN[] = {
+  MORSE_DIT_MS, MORSE_DAH_MS, MORSE_DIT_MS
+};
+const int WIFI_CONNECTED_GAPS[] = {
+  MORSE_SYMBOL_GAP, MORSE_SYMBOL_GAP, 500  // Pause at end
+};
+
 int morseStep = 0;
 bool morseToneOn = false;
 unsigned long morseLastChange = 0;
+const int* currentPattern = NULL;
+const int* currentGaps = NULL;
+int patternLength = 0;
+bool isStartupTone = false;  // Flag to distinguish startup tones from SOS
+
+// Play startup success tone (blocking - used during setup only)
+void playStartupSuccessTone() {
+  for (int i = 0; i < 3; i++) {
+    ledcWriteTone(MORSE_BUZZER_IO_PIN, MORSE_FREQUENCY);
+    delay(MORSE_DIT_MS);
+    ledcWriteTone(MORSE_BUZZER_IO_PIN, 0);
+    delay(MORSE_SYMBOL_GAP);
+  }
+  ledcWriteTone(MORSE_BUZZER_IO_PIN, 0); // Ensure silent
+}
+
+// Play WiFi connected tone (blocking - used during setup only)
+void playWiFiConnectedTone() {
+  // dit-dah-dit pattern
+  ledcWriteTone(MORSE_BUZZER_IO_PIN, MORSE_FREQUENCY);
+  delay(MORSE_DIT_MS);
+  ledcWriteTone(MORSE_BUZZER_IO_PIN, 0);
+  delay(MORSE_SYMBOL_GAP);
+  
+  ledcWriteTone(MORSE_BUZZER_IO_PIN, MORSE_FREQUENCY);
+  delay(MORSE_DAH_MS);
+  ledcWriteTone(MORSE_BUZZER_IO_PIN, 0);
+  delay(MORSE_SYMBOL_GAP);
+  
+  ledcWriteTone(MORSE_BUZZER_IO_PIN, MORSE_FREQUENCY);
+  delay(MORSE_DIT_MS);
+  ledcWriteTone(MORSE_BUZZER_IO_PIN, 0);
+  delay(500); // Pause at end
+}
 
 // Non-blocking Morse code state machine - call this repeatedly in loop()
 void updateMorseCode() {
@@ -410,9 +461,10 @@ void setup() {
 
   startTime = millis();
   
-  // Startup visual feedback: single 1-second flash = "Boot successful"
-  Serial.println("Boot complete - flashing running lights");
+  // Startup feedback: visual flash + audio tone = "Boot successful"
+  Serial.println("Boot complete - flashing running lights and playing startup tone");
   flashRunningLights(1, 1000, 0);
+  playStartupSuccessTone();  // dit-dit-dit tone
   delay(500);  // Brief pause before WiFi connection
 
   // Connect WiFi

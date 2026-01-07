@@ -19,7 +19,7 @@
 #define SERVO_PWM_PIN     19   // RC receiver servo/rudder channel (PWM input)
 
 // ==================== MORSE CODE DEFINITIONS ====================
-#define MORSE_BUZZER_IO_PIN 25             // Buzzer module I/O (signal) pin (run one extra wire into hull)
+#define MORSE_BUZZER_IO_PIN 22             // Buzzer module I/O (signal) pin (run one extra wire into hull)
 #define MORSE_FREQUENCY    800             // Hz - classic WW2 radio telegraph tone
 #define MORSE_DIT_MS       150             // Dit (dot) length in milliseconds
 #define MORSE_DAH_MS       (MORSE_DIT_MS * 3)    // Dah (dash) = 3x dit

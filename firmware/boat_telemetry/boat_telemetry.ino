@@ -12,15 +12,14 @@
 #define LED_RUNNING_PIN    2   // Built-in LED on most dev boards (keep for testing)
 #define LED_FLOOD_PIN      4   // Legacy external LED pin (optional spare)
 #define RUNNING_OUT_PIN   16   // External Running lights control (MOSFET gate)
-#define FLOOD_OUT_PIN     17   // External Flood lights control (MOSFET gate) - NOW DRIVES MORSE CODE BUZZER
+#define FLOOD_OUT_PIN     17   // External Flood lights control (MOSFET gate) - keeps flood circuit available for LEDs/etc
 #define BATTERY_ADC_PIN   34   // Battery voltage sense (ADC)
 #define WATER_SENSOR_PIN  32   // Water intrusion sensor (digital input with pullup) - GPIO32 has internal pullup, GPIO34/35/36/39 do NOT
 #define THROTTLE_PWM_PIN  18   // RC receiver throttle channel (PWM input)
 #define SERVO_PWM_PIN     19   // RC receiver servo/rudder channel (PWM input)
 
 // ==================== MORSE CODE DEFINITIONS ====================
-#define MORSE_BUZZER_PIN   FLOOD_OUT_PIN  // Use flood output for buzzer
-#define MORSE_PWM_CHANNEL  0               // PWM channel for buzzer tone
+#define MORSE_BUZZER_IO_PIN 25             // Buzzer module I/O (signal) pin (run one extra wire into hull)
 #define MORSE_FREQUENCY    800             // Hz - classic WW2 radio telegraph tone
 #define MORSE_DIT_MS       150             // Dit (dot) length in milliseconds
 #define MORSE_DAH_MS       (MORSE_DIT_MS * 3)    // Dah (dash) = 3x dit
@@ -194,19 +193,24 @@ void updateMorseCode() {
   if (!ledFloodState) {
     // Flood mode off - ensure buzzer is silent and reset
     if (morseStep != 0 || morseToneOn) {
-      ledcWriteTone(MORSE_BUZZER_PIN, 0);
+      ledcWriteTone(MORSE_BUZZER_IO_PIN, 0);
       morseStep = 0;
       morseToneOn = false;
     }
+    // Turn off flood circuit power (MOSFET gate)
+    digitalWrite(FLOOD_OUT_PIN, LOW);
     return;
   }
+
+  // Flood mode on: power the flood circuit (MOSFET gate)
+  digitalWrite(FLOOD_OUT_PIN, HIGH);
   
   unsigned long currentTime = millis();
   
   if (morseToneOn) {
     // Tone is currently playing - check if it's time to turn it off
     if (currentTime - morseLastChange >= SOS_PATTERN[morseStep]) {
-      ledcWriteTone(MORSE_BUZZER_PIN, 0); // Turn off tone
+      ledcWriteTone(MORSE_BUZZER_IO_PIN, 0); // Turn off tone
       morseToneOn = false;
       morseLastChange = currentTime;
     }
@@ -217,7 +221,7 @@ void updateMorseCode() {
       if (morseStep >= 9) {
         morseStep = 0; // Loop back to start of SOS
       }
-      ledcWriteTone(MORSE_BUZZER_PIN, MORSE_FREQUENCY); // Start next tone
+      ledcWriteTone(MORSE_BUZZER_IO_PIN, MORSE_FREQUENCY); // Start next tone
       morseToneOn = true;
       morseLastChange = currentTime;
     }
@@ -326,13 +330,22 @@ void handleLed() {
   }
   if (modeFlood) {
     ledFloodState = stateOn;
-    // Note: FLOOD_OUT_PIN (GPIO17) now controlled by Morse code PWM, not digitalWrite
-    // Only control the legacy onboard LED indicator
+    // Drive flood MOSFET gate for flood circuit power, and drive buzzer tones on MORSE_BUZZER_IO_PIN
+    digitalWrite(FLOOD_OUT_PIN, ledFloodState ? HIGH : LOW);
     digitalWrite(LED_FLOOD_PIN, ledFloodState ? HIGH : LOW);
     
     // If turning off, stop any active Morse tone
     if (!stateOn) {
-      ledcWriteTone(MORSE_BUZZER_PIN, 0);
+      ledcWriteTone(MORSE_BUZZER_IO_PIN, 0);
+      morseStep = 0;
+      morseToneOn = false;
+      morseLastChange = 0;
+    } else {
+      // Start SOS immediately (don't wait for initial gap)
+      morseStep = 0;
+      morseToneOn = true;
+      morseLastChange = millis();
+      ledcWriteTone(MORSE_BUZZER_IO_PIN, MORSE_FREQUENCY);
     }
   }
 
@@ -370,14 +383,16 @@ void setup() {
   pinMode(LED_RUNNING_PIN, OUTPUT);
   pinMode(LED_FLOOD_PIN, OUTPUT);
   pinMode(RUNNING_OUT_PIN, OUTPUT);
+  pinMode(FLOOD_OUT_PIN, OUTPUT);
   digitalWrite(LED_RUNNING_PIN, LOW);
   digitalWrite(LED_FLOOD_PIN, LOW);
   digitalWrite(RUNNING_OUT_PIN, LOW);
+  digitalWrite(FLOOD_OUT_PIN, LOW);
   
-  // Init Morse code buzzer (PWM on GPIO17)
-  pinMode(MORSE_BUZZER_PIN, OUTPUT);
-  ledcAttach(MORSE_BUZZER_PIN, MORSE_FREQUENCY, 8); // 8-bit resolution
-  ledcWriteTone(MORSE_BUZZER_PIN, 0); // Start silent
+  // Init Morse code buzzer (PWM tone on MORSE_BUZZER_IO_PIN)
+  pinMode(MORSE_BUZZER_IO_PIN, OUTPUT);
+  ledcAttach(MORSE_BUZZER_IO_PIN, MORSE_FREQUENCY, 8); // 8-bit resolution
+  ledcWriteTone(MORSE_BUZZER_IO_PIN, 0); // Start silent
   
   // Init water sensor pin (digital with internal pullup)
   pinMode(WATER_SENSOR_PIN, INPUT_PULLUP);

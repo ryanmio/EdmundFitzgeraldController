@@ -35,22 +35,28 @@
 
 ---
 
-## LED LIGHT CONTROL (MOSFET OUTPUTS)
+## RUNNING LIGHTS (MOSFET CONTROLLED)
 
 12. **Running Lights MOSFET**: 
-- VIN+ (screw) → Battery positive
-- VIN- (screw) → Battery negative
+- VIN+ (screw) → BEC 5V (or battery positive for 12V lights)
+- VIN- (screw) → BEC GND (or battery negative)
 - OUT+ (screw) → Light positive (or resistor input for parallel LEDs)
 - OUT- (screw) → Light negative (or parallel group ground)
 - GND pad (solder) → ESP32 GND
 - TRIG/PWM pad (solder) → ESP32 GPIO16
-13. **Flood Lights MOSFET**: 
-- VIN+ (screw) → Battery positive
-- VIN- (screw) → Battery negative
-- OUT+ (screw) → Light positive (or resistor input for parallel LEDs)
-- OUT- (screw) → Light negative (or parallel group ground)
-- GND pad (solder) → ESP32 GND
-- TRIG/PWM pad (solder) → ESP32 GPIO17
+
+---
+
+## MORSE CODE BUZZER (DIRECT GPIO - NO MOSFET)
+
+**⚠️ IMPORTANT: Buzzer gets constant power. GPIO controls tone only.**
+
+13. **Buzzer Power (constant)**:
+- VCC → BEC 5V (always on)
+- GND → BEC GND / ESP32 GND (shared ground)
+
+14. **Buzzer Signal**:
+- I/O → ESP32 GPIO17
 
 ---
 
@@ -62,6 +68,56 @@
 
 ---
 
+## INCREMENTAL TESTING PROCEDURE
+
+**Do not wire everything at once.** Follow this sequence:
+
+### Phase 1: Power Only
+- [ ] Connect only BEC 5V + GND to ESP32
+- [ ] Power on → ESP32 boots, LED blinks, connects to WiFi
+- [ ] If fails: Check BEC output, check polarity
+
+### Phase 2: Add Water Sensor
+- [ ] Power off
+- [ ] Connect water sensor (GPIO32 + GND)
+- [ ] Multimeter test: 5V↔GND still >100Ω?
+- [ ] Power on → Telemetry shows water sensor reading
+- [ ] If fails: Disconnect, check wiring
+
+### Phase 3: Add Battery ADC
+- [ ] Power off
+- [ ] Connect voltage divider (GPIO34)
+- [ ] Multimeter test: 5V↔GND still >100Ω?
+- [ ] Power on → Telemetry shows battery voltage
+- [ ] If fails: Disconnect, check resistor values/wiring
+
+### Phase 4: Add Running Lights MOSFET
+- [ ] Power off
+- [ ] Connect MOSFET (VIN, OUT, GND pad, TRIG to GPIO16)
+- [ ] Multimeter test: 5V↔GND still >100Ω?
+- [ ] Power on → Toggle running lights via app
+- [ ] If fails: Disconnect MOSFET GND first, check wiring
+
+### Phase 5: Add Buzzer
+- [ ] Power off
+- [ ] Connect buzzer (VCC to 5V, GND to GND, I/O to GPIO17)
+- [ ] Multimeter test: 5V↔GND still >100Ω?
+- [ ] Power on → Toggle flood mode, hear SOS tones
+- [ ] If fails: Disconnect buzzer, check module
+
+### Phase 6: Add RC Receiver
+- [ ] Power off
+- [ ] Connect RC receiver (GPIO18, GPIO19, GND)
+- [ ] Multimeter test: 5V↔GND still >100Ω?
+- [ ] Power on → Telemetry shows PWM values
+
+### Phase 7: Add Camera
+- [ ] Power off
+- [ ] Connect ESP32-CAM (5V, GND only - no signal wires)
+- [ ] Power on → Camera stream accessible
+
+---
+
 ## VERIFICATION CHECKLIST
 
 - [ ] Both ESP32 boards power on and connect to WiFi
@@ -70,7 +126,7 @@
 - [ ] Throttle PWM shows 1000-2000µs range when moving RC stick
 - [ ] Servo PWM shows 1000-2000µs range when moving RC stick
 - [ ] Running lights toggle via app LED control
-- [ ] Flood lights toggle via app LED control
+- [ ] Morse code SOS plays when flood mode enabled
 - [ ] Camera stream accessible at `/stream` endpoint
 
 ---
@@ -84,7 +140,9 @@
 | Throttle PWM | GPIO18 | Digital input |
 | Servo PWM | GPIO19 | Digital input |
 | Running Lights | GPIO16 | MOSFET gate output |
-| Flood Lights | GPIO17 | MOSFET gate output |
+| Morse Buzzer | GPIO17 | Direct PWM to buzzer I/O |
+
+---
 
 ---
 

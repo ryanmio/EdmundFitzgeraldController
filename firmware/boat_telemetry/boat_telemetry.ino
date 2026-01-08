@@ -123,7 +123,12 @@ void connectWiFi() {
     // WiFi connected: visual + audio feedback
     delay(500);  // Brief pause after connection
     flashRunningLights(2, 200, 200);
+    
+    // Power buzzer BEFORE playing tone (prevents backfeed)
+    digitalWrite(FLOOD_OUT_PIN, HIGH);
+    delay(50);
     playWiFiConnectedTone();  // dit-dah-dit tone
+    digitalWrite(FLOOD_OUT_PIN, LOW);
   } else {
     Serial.println();
     Serial.print("WiFi connection failed. Status: ");
@@ -464,7 +469,14 @@ void setup() {
   // Startup feedback: visual flash + audio tone = "Boot successful"
   Serial.println("Boot complete - flashing running lights and playing startup tone");
   flashRunningLights(1, 1000, 0);
+  
+  // IMPORTANT: Turn on buzzer power (MOSFET) BEFORE playing tone
+  // This prevents backfeed current through unpowered buzzer module
+  digitalWrite(FLOOD_OUT_PIN, HIGH);  // Power on buzzer
+  delay(50);  // Let power stabilize
   playStartupSuccessTone();  // dit-dit-dit tone
+  digitalWrite(FLOOD_OUT_PIN, LOW);   // Power off buzzer
+  
   delay(500);  // Brief pause before WiFi connection
 
   // Connect WiFi

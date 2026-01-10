@@ -13,6 +13,10 @@
 #define CAMERA_MODEL_AI_THINKER
 #include "camera_pins.h"
 
+// ==================== BUILD IDENTIFICATION ====================
+#define FIRMWARE_VERSION   "1.0.0"
+#define BUILD_ID           "20260109"             // YYYYMMDD format
+
 // ==================== GLOBALS ====================
 httpd_handle_t stream_httpd = NULL;
 httpd_handle_t control_httpd = NULL;
@@ -171,7 +175,9 @@ esp_err_t status_handler(httpd_req_t *req) {
   
   char json[256];
   snprintf(json, sizeof(json),
-    "{\"camera\":\"online\",\"ip\":\"%s\",\"rssi\":%d}",
+    "{\"firmware_version\":\"%s\",\"build_id\":\"%s\",\"camera\":\"online\",\"ip\":\"%s\",\"rssi\":%d}",
+    FIRMWARE_VERSION,
+    BUILD_ID,
     WiFi.localIP().toString().c_str(),
     WiFi.RSSI()
   );

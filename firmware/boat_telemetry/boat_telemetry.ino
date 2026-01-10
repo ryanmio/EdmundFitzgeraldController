@@ -17,6 +17,10 @@
 #define THROTTLE_PWM_PIN  18   // RC receiver throttle channel (PWM input)
 #define SERVO_PWM_PIN     19   // RC receiver servo/rudder channel (PWM input)
 
+// ==================== BUILD IDENTIFICATION ====================
+#define FIRMWARE_VERSION   "1.0.0"
+#define BUILD_ID           "20260109"             // YYYYMMDD format
+
 // ==================== MORSE CODE DEFINITIONS ====================
 // Buzzer gets constant 5V power. GPIO17 drives I/O pin directly for tones.
 #define MORSE_BUZZER_PIN   17              // Buzzer module I/O pin (direct PWM, no MOSFET)
@@ -300,6 +304,8 @@ void handleStatus() {
   addCORSHeaders();
   unsigned long uptimeSec = (millis() - startTime) / 1000;
   String json = "{";
+  json += "\"firmware_version\":\"" + String(FIRMWARE_VERSION) + "\",";
+  json += "\"build_id\":\"" + String(BUILD_ID) + "\",";
   json += "\"connected\":" + String(WiFi.status() == WL_CONNECTED ? "true" : "false") + ",";
   json += "\"ip_address\":\"" + WiFi.localIP().toString() + "\",";
   json += "\"uptime_seconds\":" + String(uptimeSec) + ",";

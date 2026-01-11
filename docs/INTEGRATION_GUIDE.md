@@ -60,28 +60,24 @@
 
 ---
 
-## AUDIO OUTPUT (SPEAKER + AMPLIFIER)
+## AUDIO OUTPUT (DFPLAYER + SPEAKER)
 
-**Provides loud Morse code SOS, boat horn, and radio transmission sound effects**
+**DFPlayer Mini MP3 module with 128MB onboard storage**
 
-14. **PAM8403 Amplifier Power**:
+14. **DFPlayer Wiring**:
 - VCC → BEC 5V
-- GND → BEC GND / ESP32 GND (shared ground)
+- GND → ESP32 GND
+- TX → ESP32 GPIO25
+- RX → ESP32 GPIO26
+- SPK_1 → Speaker positive (red)
+- SPK_2 → Speaker negative (black)
 
-15. **PAM8403 Audio Signal**:
-- INL (left input) → ESP32 GPIO17
-- GND → ESP32 GND (shared ground)
-
-16. **Speaker Connection**:
-- Speaker → PAM8403 L+ and L- terminals (left channel)
-- Recommended: 4Ω or 8Ω, 3W, 40-50mm diameter for good volume
-
-**Audio Volume Levels (Firmware Controlled):**
-- **Horn**: 255/255 (100%) - Loud alarm
-- **SOS**: 200/255 (~78%) - Loud distress signal
-- **Radio**: 120/255 (~47%) - Moderate background transmission
-
-**Note:** Compatible with piezo buzzer modules if PAM8403 not installed. Just connect buzzer I/O to GPIO17.
+**Track Mapping:**
+- 001.mp3 = Radio 1 ("We are holding our own")
+- 002.mp3 = Radio 2 ("Fence rail down, vents lost")
+- 003.mp3 = Radio 3 ("Lost both radars")
+- 004.mp3 = Horn (optional)
+- 005.mp3 = SOS (optional)
 
 ---
 
@@ -131,14 +127,14 @@
 - [ ] Power on → Toggle flood lights via app
 - [ ] If fails: Disconnect MOSFET GND first, check wiring
 
-### Phase 6: Add Audio (Speaker + Amp)
+### Phase 6: Add Audio (DFPlayer + Speaker)
+
+**v2.0 Implementation**: DFPlayer Mini with onboard 128MB storage
 - [ ] Power off
-- [ ] Connect PAM8403 (VCC to 5V, GND to GND, INL to GPIO17)
-- [ ] Connect speaker to PAM8403 L+/L- terminals
-- [ ] Multimeter test: 5V↔GND still >100Ω?
+- [ ] Wire DFPlayer: VCC→5V, GND→GND, TX→GPIO25, RX→GPIO26, SPK_1→Speaker+, SPK_2→Speaker-
+- [ ] Upload MP3s to DFPlayer via USB (001.mp3=radio1, 002.mp3=radio2, 003.mp3=radio3)
+- [ ] Flash updated firmware v2.0.0 to ESP32 (requires `DFRobotDFPlayerMini` library)
 - [ ] Power on → Test horn, SOS, and radio sounds via app
-- [ ] Verify horn is loudest, radio transmissions are quieter
-- [ ] If fails: Disconnect amp, check wiring/speaker polarity
 
 ### Phase 7: Add RC Receiver
 - [ ] Power off
@@ -180,11 +176,14 @@
 | Running Lights | GPIO16 | MOSFET gate output |
 | Flood Lights (indicator) | GPIO4 | Optional indicator LED |
 | Flood Lights | GPIO21 | MOSFET gate output |
-| Audio Output | GPIO17 | PWM to PAM8403 INL (or buzzer I/O) |
+| DFPlayer TX | GPIO25 | Serial to DFPlayer |
+| DFPlayer RX | GPIO26 | Serial from DFPlayer |
 
 ---
 
 ---
 
 **Note**: All components share the same GND reference. Double-check all ground connections are common before powering on.
+
+---
 

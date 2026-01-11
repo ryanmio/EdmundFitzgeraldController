@@ -7,6 +7,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include "secrets.h"
+#include <DFRobotDFPlayerMini.h>  // DFPlayer Mini library
 
 // ==================== PIN DEFINITIONS ====================
 #define LED_RUNNING_PIN    2   // Built-in LED on most dev boards (keep for testing)
@@ -18,9 +19,13 @@
 #define THROTTLE_PWM_PIN  18   // RC receiver throttle channel (PWM input)
 #define SERVO_PWM_PIN     19   // RC receiver servo/rudder channel (PWM input)
 
+// DFPlayer Mini pins (serial communication)
+#define DFPLAYER_RX       25   // ESP32 RX - Connect to DFPlayer TX
+#define DFPLAYER_TX       26   // ESP32 TX - Connect to DFPlayer RX
+
 // ==================== BUILD IDENTIFICATION ====================
-#define FIRMWARE_VERSION   "1.3.0"
-#define BUILD_ID           "20260111"             // YYYYMMDD format
+#define FIRMWARE_VERSION   "2.0.0"
+#define BUILD_ID           "20260111"             // YYYYMMDD format - DFPlayer Mini audio support
 
 // ==================== AUDIO OUTPUT DEFINITIONS ====================
 // Audio through PAM8403 amplifier + speaker (or compatible with piezo buzzer module)
@@ -43,9 +48,12 @@
 
 // ==================== GLOBALS ====================
 WebServer server(80);
+HardwareSerial dfPlayerSerial(1);  // Use UART1
+DFRobotDFPlayerMini dfPlayer;
 unsigned long startTime;
 bool ledRunningState = false;
 bool ledFloodState = false;
+bool dfPlayerAvailable = false;  // Track if DFPlayer is working
 
 // Audio sound effect state (horn and SOS are momentary, not toggle)
 bool hornActive = false;
@@ -272,6 +280,21 @@ void playWiFiConnectedTone() {
   delay(500); // Pause at end
 }
 
+// Play DFPlayer track with specified volume (0-100%)
+void playDFPlayerTrack(int trackNumber, int volumePercent) {
+  if (!dfPlayerAvailable) return;
+  
+  int volume = map(volumePercent, 0, 100, 0, 30);  // DFPlayer volume: 0-30
+  dfPlayer.volume(volume);
+  dfPlayer.play(trackNumber);
+  
+  Serial.print("Playing track ");
+  Serial.print(trackNumber);
+  Serial.print(" at ");
+  Serial.print(volumePercent);
+  Serial.println("%");
+}
+
 // Update horn sound effect (non-blocking, fixed duration)
 void updateHorn() {
   if (!hornActive) return;
@@ -490,19 +513,20 @@ void handleHorn() {
     return;
   }
 
-  // Trigger horn blast (2 seconds) at LOUD volume
-  hornActive = true;
-  hornStartTime = millis();
-  ledcSetup(AUDIO_OUT_PIN, HORN_FREQUENCY, 8);  // Setup PWM channel
-  ledcAttach(AUDIO_OUT_PIN, HORN_FREQUENCY, 8); // Attach to pin
-  ledcWrite(AUDIO_OUT_PIN, HORN_VOLUME);        // Set volume (0-255 duty cycle)
-  Serial.println("Horn blast triggered at max volume");
+  // Track 4: Horn sound (if exists on DFPlayer)
+  if (dfPlayerAvailable) {
+    playDFPlayerTrack(4, 100);  // 100% volume
+  } else {
+    // Fallback to PWM tone (if GPIO17 not used for DFPlayer)
+    hornActive = true;
+    hornStartTime = millis();
+    ledcSetup(AUDIO_OUT_PIN, HORN_FREQUENCY, 8);
+    ledcAttach(AUDIO_OUT_PIN, HORN_FREQUENCY, 8);
+    ledcWrite(AUDIO_OUT_PIN, HORN_VOLUME);
+    Serial.println("Horn (PWM fallback)");
+  }
 
-  String json = "{";
-  json += "\"horn_active\":true,";
-  json += "\"duration_ms\":" + String(HORN_DURATION);
-  json += "}";
-  server.send(200, "application/json", json);
+  server.send(200, "application/json", "{\"horn_active\":true}");
 }
 
 void handleSOS() {
@@ -512,27 +536,24 @@ void handleSOS() {
     return;
   }
 
-  // Trigger SOS sequence (3 rounds) at LOUD volume
-  sosActive = true;
-  sosRoundsRemaining = SOS_ROUNDS_PER_TRIGGER;
-  sosStartTime = millis();
-  morseStep = 0;
-  morseToneOn = true;
-  morseLastChange = millis();
-  ledcSetup(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
-  ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
-  ledcWrite(AUDIO_OUT_PIN, SOS_VOLUME);  // SOS at LOUD volume
-  Serial.print("SOS triggered at volume ");
-  Serial.print(SOS_VOLUME);
-  Serial.print(": ");
-  Serial.print(SOS_ROUNDS_PER_TRIGGER);
-  Serial.println(" rounds");
+  // Track 5: SOS sound (if exists on DFPlayer)
+  if (dfPlayerAvailable) {
+    playDFPlayerTrack(5, 78);  // 78% volume
+  } else {
+    // Fallback to PWM morse code
+    sosActive = true;
+    sosRoundsRemaining = SOS_ROUNDS_PER_TRIGGER;
+    sosStartTime = millis();
+    morseStep = 0;
+    morseToneOn = true;
+    morseLastChange = millis();
+    ledcSetup(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
+    ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
+    ledcWrite(AUDIO_OUT_PIN, SOS_VOLUME);
+    Serial.println("SOS (PWM fallback)");
+  }
 
-  String json = "{";
-  json += "\"sos_active\":true,";
-  json += "\"rounds\":" + String(SOS_ROUNDS_PER_TRIGGER);
-  json += "}";
-  server.send(200, "application/json", json);
+  server.send(200, "application/json", "{\"sos_active\":true}");
 }
 
 void handleRadio() {
@@ -542,16 +563,14 @@ void handleRadio() {
     return;
   }
 
-  // Parse JSON body to get radio_id
   if (!server.hasArg("plain")) {
     server.send(400, "application/json", "{\"error\":\"Missing request body\"}");
     return;
   }
 
   String body = server.arg("plain");
-  int radioId = 1; // Default to radio 1
+  int radioId = 1;
   
-  // Simple JSON parsing for radio_id
   int idIndex = body.indexOf("\"radio_id\"");
   if (idIndex >= 0) {
     int colonIndex = body.indexOf(":", idIndex);
@@ -562,39 +581,30 @@ void handleRadio() {
     }
   }
 
-  // Validate radio_id
   if (radioId < 1 || radioId > 3) {
     server.send(400, "application/json", "{\"error\":\"Invalid radio_id (must be 1-3)\"}");
     return;
   }
 
-  // Trigger radio sound effect (placeholder tone at MODERATE volume)
-  radioActive = true;
-  currentRadioId = radioId;
-  radioStartTime = millis();
-  
-  // Different frequencies for each radio to distinguish them
-  int frequency = 0;
-  switch(radioId) {
-    case 1: frequency = 440; break; // A4
-    case 2: frequency = 523; break; // C5
-    case 3: frequency = 659; break; // E5
-    default: frequency = 440;
+  // DFPlayer tracks: 1=radio1, 2=radio2, 3=radio3
+  if (dfPlayerAvailable) {
+    playDFPlayerTrack(radioId, 47);  // 47% volume
+  } else {
+    // Fallback to PWM tones
+    radioActive = true;
+    currentRadioId = radioId;
+    radioStartTime = millis();
+    
+    int frequency = (radioId == 1) ? 440 : (radioId == 2) ? 523 : 659;
+    ledcSetup(AUDIO_OUT_PIN, frequency, 8);
+    ledcAttach(AUDIO_OUT_PIN, frequency, 8);
+    ledcWrite(AUDIO_OUT_PIN, RADIO_VOLUME);
+    Serial.print("Radio ");
+    Serial.print(radioId);
+    Serial.println(" (PWM fallback)");
   }
-  
-  ledcSetup(AUDIO_OUT_PIN, frequency, 8);
-  ledcAttach(AUDIO_OUT_PIN, frequency, 8);
-  ledcWrite(AUDIO_OUT_PIN, RADIO_VOLUME);  // Radio at MODERATE volume
-  Serial.print("Radio ");
-  Serial.print(radioId);
-  Serial.print(" triggered at volume ");
-  Serial.println(RADIO_VOLUME);
 
-  String json = "{";
-  json += "\"radio_active\":true,";
-  json += "\"radio_id\":" + String(radioId) + ",";
-  json += "\"duration_ms\":" + String(RADIO_DURATION);
-  json += "}";
+  String json = "{\"radio_active\":true,\"radio_id\":" + String(radioId) + "}";
   server.send(200, "application/json", json);
 }
 
@@ -635,6 +645,19 @@ void setup() {
   pinMode(AUDIO_OUT_PIN, OUTPUT);
   ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8); // 8-bit resolution PWM
   ledcWriteTone(AUDIO_OUT_PIN, 0); // Start silent
+  
+  // Init DFPlayer Mini (onboard 128MB storage audio player)
+  dfPlayerSerial.begin(9600, SERIAL_8N1, DFPLAYER_RX, DFPLAYER_TX);
+  delay(500);
+  Serial.println("Initializing DFPlayer...");
+  if (dfPlayer.begin(dfPlayerSerial)) {
+    dfPlayerAvailable = true;
+    dfPlayer.volume(15);  // Default volume (0-30)
+    Serial.println("DFPlayer initialized successfully");
+  } else {
+    dfPlayerAvailable = false;
+    Serial.println("DFPlayer initialization failed - using PWM fallback");
+  }
   
   // Init water sensor pin (digital with internal pullup)
   pinMode(WATER_SENSOR_PIN, INPUT_PULLUP);

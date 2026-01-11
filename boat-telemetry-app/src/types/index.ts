@@ -41,6 +41,12 @@ export interface SOSResponse {
   rounds: number;
 }
 
+export interface RadioResponse {
+  radio_active: boolean;
+  radio_id: number;
+  duration_ms: number;
+}
+
 export type LEDMode = 'running';
 export type LEDState = 'on' | 'off';
 

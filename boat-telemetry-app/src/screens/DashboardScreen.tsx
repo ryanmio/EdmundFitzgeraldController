@@ -18,7 +18,7 @@ import { WebView } from 'react-native-webview';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getTelemetry, setLED, triggerHorn, triggerSOS } from '../services/esp32Service';
+import { getTelemetry, setLED, triggerHorn, triggerSOS, triggerRadio } from '../services/esp32Service';
 import { TelemetryResponse } from '../types';
 import { COLORS, FONTS } from '../constants/Theme';
 import { SystemsCheckModal } from '../components/SystemsCheckModal';
@@ -97,6 +97,9 @@ export default function DashboardScreen({ navigation, route }: Props) {
   const [togglingRunning, setTogglingRunning] = useState(false);
   const [triggeringHorn, setTriggeringHorn] = useState(false);
   const [triggeringSOS, setTriggeringSOS] = useState(false);
+  const [triggeringRadio1, setTriggeringRadio1] = useState(false);
+  const [triggeringRadio2, setTriggeringRadio2] = useState(false);
+  const [triggeringRadio3, setTriggeringRadio3] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
   const [logData, setLogData] = useState<LogEntry[]>([]);
   const [logStartTime, setLogStartTime] = useState<Date | null>(null);
@@ -104,6 +107,9 @@ export default function DashboardScreen({ navigation, route }: Props) {
   // Refs for long-press interval tracking
   const hornIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const sosIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const radio1IntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const radio2IntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const radio3IntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showSystemsCheck, setShowSystemsCheck] = useState(false);
   
@@ -319,11 +325,77 @@ export default function DashboardScreen({ navigation, route }: Props) {
     }
   };
 
+  // Radio button handlers
+  const handleRadioPress = async (radioId: number, setTriggering: (val: boolean) => void) => {
+    if (triggeringRadio1 || triggeringRadio2 || triggeringRadio3) return;
+    setTriggering(true);
+    try {
+      await triggerRadio(ip, radioId);
+      debugLog(`Radio ${radioId} triggered`);
+    } catch (err) {
+      debugLog(`Radio ${radioId} trigger failed: ${err}`);
+    } finally {
+      setTriggering(false);
+    }
+  };
+
+  const handleRadio1PressIn = () => {
+    animateButton(radio1Scale, 0.97);
+    handleRadioPress(1, setTriggeringRadio1);
+    // Repeat every 3s if held (assuming ~2.5s radio clip)
+    radio1IntervalRef.current = setInterval(() => {
+      handleRadioPress(1, setTriggeringRadio1);
+    }, 3000);
+  };
+
+  const handleRadio1PressOut = () => {
+    animateButton(radio1Scale, 1);
+    if (radio1IntervalRef.current) {
+      clearInterval(radio1IntervalRef.current);
+      radio1IntervalRef.current = null;
+    }
+  };
+
+  const handleRadio2PressIn = () => {
+    animateButton(radio2Scale, 0.97);
+    handleRadioPress(2, setTriggeringRadio2);
+    radio2IntervalRef.current = setInterval(() => {
+      handleRadioPress(2, setTriggeringRadio2);
+    }, 3000);
+  };
+
+  const handleRadio2PressOut = () => {
+    animateButton(radio2Scale, 1);
+    if (radio2IntervalRef.current) {
+      clearInterval(radio2IntervalRef.current);
+      radio2IntervalRef.current = null;
+    }
+  };
+
+  const handleRadio3PressIn = () => {
+    animateButton(radio3Scale, 0.97);
+    handleRadioPress(3, setTriggeringRadio3);
+    radio3IntervalRef.current = setInterval(() => {
+      handleRadioPress(3, setTriggeringRadio3);
+    }, 3000);
+  };
+
+  const handleRadio3PressOut = () => {
+    animateButton(radio3Scale, 1);
+    if (radio3IntervalRef.current) {
+      clearInterval(radio3IntervalRef.current);
+      radio3IntervalRef.current = null;
+    }
+  };
+
   // Cleanup intervals on unmount
   useEffect(() => {
     return () => {
       if (hornIntervalRef.current) clearInterval(hornIntervalRef.current);
       if (sosIntervalRef.current) clearInterval(sosIntervalRef.current);
+      if (radio1IntervalRef.current) clearInterval(radio1IntervalRef.current);
+      if (radio2IntervalRef.current) clearInterval(radio2IntervalRef.current);
+      if (radio3IntervalRef.current) clearInterval(radio3IntervalRef.current);
     };
   }, []);
 
@@ -709,11 +781,8 @@ export default function DashboardScreen({ navigation, route }: Props) {
             <Animated.View style={{ width: '48%', transform: [{ scale: radio1Scale }] }}>
               <TouchableOpacity
                 style={styles.radioButton}
-                onPressIn={() => animateButton(radio1Scale, 0.97)}
-                onPressOut={() => {
-                  animateButton(radio1Scale, 1);
-                  Alert.alert('Radio 1', 'Sound effect coming soon');
-                }}
+                onPressIn={handleRadio1PressIn}
+                onPressOut={handleRadio1PressOut}
                 activeOpacity={1}
               >
                 <Text style={styles.radioButtonLabel}>RADIO 1</Text>
@@ -724,11 +793,8 @@ export default function DashboardScreen({ navigation, route }: Props) {
             <Animated.View style={{ width: '48%', transform: [{ scale: radio2Scale }] }}>
               <TouchableOpacity
                 style={styles.radioButton}
-                onPressIn={() => animateButton(radio2Scale, 0.97)}
-                onPressOut={() => {
-                  animateButton(radio2Scale, 1);
-                  Alert.alert('Radio 2', 'Sound effect coming soon');
-                }}
+                onPressIn={handleRadio2PressIn}
+                onPressOut={handleRadio2PressOut}
                 activeOpacity={1}
               >
                 <Text style={styles.radioButtonLabel}>RADIO 2</Text>
@@ -739,11 +805,8 @@ export default function DashboardScreen({ navigation, route }: Props) {
             <Animated.View style={{ width: '48%', transform: [{ scale: radio3Scale }] }}>
               <TouchableOpacity
                 style={styles.radioButton}
-                onPressIn={() => animateButton(radio3Scale, 0.97)}
-                onPressOut={() => {
-                  animateButton(radio3Scale, 1);
-                  Alert.alert('Radio 3', 'Sound effect coming soon');
-                }}
+                onPressIn={handleRadio3PressIn}
+                onPressOut={handleRadio3PressOut}
                 activeOpacity={1}
               >
                 <Text style={styles.radioButtonLabel}>RADIO 3</Text>

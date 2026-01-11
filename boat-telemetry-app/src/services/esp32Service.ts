@@ -1,5 +1,5 @@
 // ESP32 HTTP service with timeout support
-import { StatusResponse, TelemetryResponse, LEDResponse, LEDMode, LEDState, HornResponse, SOSResponse } from '../types';
+import { StatusResponse, TelemetryResponse, LEDResponse, LEDMode, LEDState, HornResponse, SOSResponse, RadioResponse } from '../types';
 
 const TIMEOUT_MS = 5000;
 
@@ -113,6 +113,26 @@ export async function triggerSOS(ip: string): Promise<SOSResponse> {
   
   if (!response.ok) {
     throw new Error(`SOS trigger failed: ${response.status}`);
+  }
+  
+  return response.json();
+}
+
+/**
+ * Trigger radio sound effect (1, 2, or 3)
+ */
+export async function triggerRadio(ip: string, radioId: number): Promise<RadioResponse> {
+  const url = buildUrl(ip, '/radio');
+  const response = await fetchWithTimeout(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ radio_id: radioId }),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Radio trigger failed: ${response.status}`);
   }
   
   return response.json();

@@ -18,8 +18,8 @@
 #define SERVO_PWM_PIN     19   // RC receiver servo/rudder channel (PWM input)
 
 // ==================== BUILD IDENTIFICATION ====================
-#define FIRMWARE_VERSION   "1.2.0"
-#define BUILD_ID           "20260110"             // YYYYMMDD format
+#define FIRMWARE_VERSION   "1.3.0"
+#define BUILD_ID           "20260111"             // YYYYMMDD format
 
 // ==================== AUDIO OUTPUT DEFINITIONS ====================
 // Audio through PAM8403 amplifier + speaker (or compatible with piezo buzzer module)
@@ -48,6 +48,12 @@ unsigned long sosStartTime = 0;
 int sosRoundsRemaining = 0;
 const int SOS_ROUNDS_PER_TRIGGER = 3;  // Play 3 full SOS sequences per button press
 const unsigned long SOS_ROUND_DURATION = 6000;  // ~6 seconds per SOS round (... --- ... + gaps)
+
+// Radio sound effect state (momentary, for future audio file playback)
+bool radioActive = false;
+unsigned long radioStartTime = 0;
+int currentRadioId = 0;  // Which radio sound is playing (1, 2, or 3)
+const unsigned long RADIO_DURATION = 2500;  // 2.5 seconds per radio clip (placeholder)
 
 // Water sensor debouncing variables
 bool waterDebouncedState = false;  // Current debounced state (false = secure, true = breached)
@@ -272,6 +278,24 @@ void updateHorn() {
   // Horn tone stays on for full duration (already started by trigger)
 }
 
+// Update radio sound effect (non-blocking, placeholder tones)
+void updateRadio() {
+  if (!radioActive) return;
+  
+  unsigned long elapsed = millis() - radioStartTime;
+  
+  if (elapsed >= RADIO_DURATION) {
+    // Radio clip complete
+    ledcWriteTone(AUDIO_OUT_PIN, 0);
+    radioActive = false;
+    Serial.print("Radio ");
+    Serial.print(currentRadioId);
+    Serial.println(" complete");
+  }
+  // For now, play a simple tone pattern as placeholder
+  // In future: play actual audio files via I2S or SD card
+}
+
 // Update SOS sound effect (non-blocking, plays fixed number of rounds)
 void updateSOS() {
   if (!sosActive) return;
@@ -481,6 +505,66 @@ void handleSOS() {
   server.send(200, "application/json", json);
 }
 
+void handleRadio() {
+  addCORSHeaders();
+  if (server.method() != HTTP_POST) {
+    server.send(405, "application/json", "{\"error\":\"POST required\"}");
+    return;
+  }
+
+  // Parse JSON body to get radio_id
+  if (!server.hasArg("plain")) {
+    server.send(400, "application/json", "{\"error\":\"Missing request body\"}");
+    return;
+  }
+
+  String body = server.arg("plain");
+  int radioId = 1; // Default to radio 1
+  
+  // Simple JSON parsing for radio_id
+  int idIndex = body.indexOf("\"radio_id\"");
+  if (idIndex >= 0) {
+    int colonIndex = body.indexOf(":", idIndex);
+    if (colonIndex >= 0) {
+      String idStr = body.substring(colonIndex + 1);
+      idStr.trim();
+      radioId = idStr.toInt();
+    }
+  }
+
+  // Validate radio_id
+  if (radioId < 1 || radioId > 3) {
+    server.send(400, "application/json", "{\"error\":\"Invalid radio_id (must be 1-3)\"}");
+    return;
+  }
+
+  // Trigger radio sound effect (placeholder tone for now)
+  radioActive = true;
+  currentRadioId = radioId;
+  radioStartTime = millis();
+  
+  // Different frequencies for each radio to distinguish them
+  int frequency = 0;
+  switch(radioId) {
+    case 1: frequency = 440; break; // A4
+    case 2: frequency = 523; break; // C5
+    case 3: frequency = 659; break; // E5
+    default: frequency = 440;
+  }
+  
+  ledcWriteTone(AUDIO_OUT_PIN, frequency);
+  Serial.print("Radio ");
+  Serial.print(radioId);
+  Serial.println(" triggered");
+
+  String json = "{";
+  json += "\"radio_active\":true,";
+  json += "\"radio_id\":" + String(radioId) + ",";
+  json += "\"duration_ms\":" + String(RADIO_DURATION);
+  json += "}";
+  server.send(200, "application/json", json);
+}
+
 void handleStream() {
   addCORSHeaders();
   // Placeholder until camera hardware arrives
@@ -548,12 +632,14 @@ void setup() {
   server.on("/led", HTTP_POST, handleLed);
   server.on("/horn", HTTP_POST, handleHorn);
   server.on("/sos", HTTP_POST, handleSOS);
+  server.on("/radio", HTTP_POST, handleRadio);
   server.on("/stream", HTTP_GET, handleStream);
   server.on("/status", HTTP_OPTIONS, handleOptions);
   server.on("/telemetry", HTTP_OPTIONS, handleOptions);
   server.on("/led", HTTP_OPTIONS, handleOptions);
   server.on("/horn", HTTP_OPTIONS, handleOptions);
   server.on("/sos", HTTP_OPTIONS, handleOptions);
+  server.on("/radio", HTTP_OPTIONS, handleOptions);
   server.on("/stream", HTTP_OPTIONS, handleOptions);
   server.onNotFound(handleNotFound);
 
@@ -574,6 +660,7 @@ void loop() {
   // Update sound effects (non-blocking, momentary triggers)
   updateHorn();
   updateSOS();
+  updateRadio();
 
   // Retry WiFi every 30 seconds if disconnected
   if (WiFi.status() != WL_CONNECTED && millis() - lastWiFiCheck > 30000) {

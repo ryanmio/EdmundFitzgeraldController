@@ -801,7 +801,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
                 activeOpacity={1}
               >
                 <Text style={styles.radioButtonLabel}>RADIO 1</Text>
-                <Text style={styles.radioButtonSubtext}>PLACEHOLDER</Text>
+                <Text style={styles.radioButtonSubtext}>FENCE RAIL DOWN</Text>
               </TouchableOpacity>
             </Animated.View>
 
@@ -813,7 +813,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
                 activeOpacity={1}
               >
                 <Text style={styles.radioButtonLabel}>RADIO 2</Text>
-                <Text style={styles.radioButtonSubtext}>PLACEHOLDER</Text>
+                <Text style={styles.radioButtonSubtext}>LOST BOTH RADARS</Text>
               </TouchableOpacity>
             </Animated.View>
 
@@ -825,7 +825,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
                 activeOpacity={1}
               >
                 <Text style={styles.radioButtonLabel}>RADIO 3</Text>
-                <Text style={styles.radioButtonSubtext}>PLACEHOLDER</Text>
+                <Text style={styles.radioButtonSubtext}>HOLDING OUR OWN</Text>
               </TouchableOpacity>
             </Animated.View>
           </View>

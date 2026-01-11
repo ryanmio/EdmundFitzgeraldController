@@ -12,6 +12,7 @@ import {
   Platform,
   Share,
   SafeAreaView,
+  Animated,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -105,6 +106,22 @@ export default function DashboardScreen({ navigation, route }: Props) {
   const sosIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showSystemsCheck, setShowSystemsCheck] = useState(false);
+  
+  // Animated values for smooth button transitions
+  const hornScale = useRef(new Animated.Value(1)).current;
+  const sosScale = useRef(new Animated.Value(1)).current;
+  const radio1Scale = useRef(new Animated.Value(1)).current;
+  const radio2Scale = useRef(new Animated.Value(1)).current;
+  const radio3Scale = useRef(new Animated.Value(1)).current;
+
+  const animateButton = (value: Animated.Value, toValue: number) => {
+    Animated.spring(value, {
+      toValue,
+      useNativeDriver: true,
+      friction: 10,
+      tension: 100,
+    }).start();
+  };
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -252,6 +269,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
   };
 
   const handleHornPressIn = () => {
+    animateButton(hornScale, 0.95);
     // Start immediate trigger
     handleHornPress();
     // Set up repeated triggers while holding
@@ -261,6 +279,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
   };
 
   const handleHornPressOut = () => {
+    animateButton(hornScale, 1);
     // Stop repeated triggers
     if (hornIntervalRef.current) {
       clearInterval(hornIntervalRef.current);
@@ -282,6 +301,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
   };
 
   const handleSOSPressIn = () => {
+    animateButton(sosScale, 0.97);
     // Start immediate trigger
     handleSOSPress();
     // Set up repeated triggers while holding
@@ -291,6 +311,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
   };
 
   const handleSOSPressOut = () => {
+    animateButton(sosScale, 1);
     // Stop repeated triggers
     if (sosIntervalRef.current) {
       clearInterval(sosIntervalRef.current);
@@ -656,17 +677,16 @@ export default function DashboardScreen({ navigation, route }: Props) {
 
             {/* Horn Button */}
             <View style={styles.hornButtonContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.hornButtonLarge,
-                  triggeringHorn && styles.hornButtonPressed
-                ]}
-                onPressIn={handleHornPressIn}
-                onPressOut={handleHornPressOut}
-                disabled={triggeringHorn}
-              >
-                <Text style={styles.hornButtonText}>HORN</Text>
-              </TouchableOpacity>
+              <Animated.View style={{ width: '60%', transform: [{ scale: hornScale }] }}>
+                <TouchableOpacity
+                  style={styles.hornButtonLarge}
+                  onPressIn={handleHornPressIn}
+                  onPressOut={handleHornPressOut}
+                  activeOpacity={1}
+                >
+                  <Text style={styles.hornButtonText}>HORN</Text>
+                </TouchableOpacity>
+              </Animated.View>
             </View>
           </View>
         </ConsolePanel>
@@ -674,42 +694,62 @@ export default function DashboardScreen({ navigation, route }: Props) {
         {/* Row 4: Radio Transmissions */}
         <ConsolePanel title="Radio Transmissions">
           <View style={styles.radioButtonsGrid}>
-            <TouchableOpacity
-              style={[
-                styles.radioButton,
-                triggeringSOS && styles.radioButtonActive
-              ]}
-              onPressIn={handleSOSPressIn}
-              onPressOut={handleSOSPressOut}
-              disabled={triggeringSOS}
-            >
-              <Text style={styles.radioButtonLabel}>SOS</Text>
-              <Text style={styles.radioButtonSubtext}>DISTRESS</Text>
-            </TouchableOpacity>
+            <Animated.View style={{ width: '48%', transform: [{ scale: sosScale }] }}>
+              <TouchableOpacity
+                style={styles.radioButton}
+                onPressIn={handleSOSPressIn}
+                onPressOut={handleSOSPressOut}
+                activeOpacity={1}
+              >
+                <Text style={styles.radioButtonLabel}>SOS</Text>
+                <Text style={styles.radioButtonSubtext}>DISTRESS</Text>
+              </TouchableOpacity>
+            </Animated.View>
 
-            <TouchableOpacity
-              style={styles.radioButton}
-              onPress={() => Alert.alert('Radio 1', 'Sound effect coming soon')}
-            >
-              <Text style={styles.radioButtonLabel}>RADIO 1</Text>
-              <Text style={styles.radioButtonSubtext}>PLACEHOLDER</Text>
-            </TouchableOpacity>
+            <Animated.View style={{ width: '48%', transform: [{ scale: radio1Scale }] }}>
+              <TouchableOpacity
+                style={styles.radioButton}
+                onPressIn={() => animateButton(radio1Scale, 0.97)}
+                onPressOut={() => {
+                  animateButton(radio1Scale, 1);
+                  Alert.alert('Radio 1', 'Sound effect coming soon');
+                }}
+                activeOpacity={1}
+              >
+                <Text style={styles.radioButtonLabel}>RADIO 1</Text>
+                <Text style={styles.radioButtonSubtext}>PLACEHOLDER</Text>
+              </TouchableOpacity>
+            </Animated.View>
 
-            <TouchableOpacity
-              style={styles.radioButton}
-              onPress={() => Alert.alert('Radio 2', 'Sound effect coming soon')}
-            >
-              <Text style={styles.radioButtonLabel}>RADIO 2</Text>
-              <Text style={styles.radioButtonSubtext}>PLACEHOLDER</Text>
-            </TouchableOpacity>
+            <Animated.View style={{ width: '48%', transform: [{ scale: radio2Scale }] }}>
+              <TouchableOpacity
+                style={styles.radioButton}
+                onPressIn={() => animateButton(radio2Scale, 0.97)}
+                onPressOut={() => {
+                  animateButton(radio2Scale, 1);
+                  Alert.alert('Radio 2', 'Sound effect coming soon');
+                }}
+                activeOpacity={1}
+              >
+                <Text style={styles.radioButtonLabel}>RADIO 2</Text>
+                <Text style={styles.radioButtonSubtext}>PLACEHOLDER</Text>
+              </TouchableOpacity>
+            </Animated.View>
 
-            <TouchableOpacity
-              style={styles.radioButton}
-              onPress={() => Alert.alert('Radio 3', 'Sound effect coming soon')}
-            >
-              <Text style={styles.radioButtonLabel}>RADIO 3</Text>
-              <Text style={styles.radioButtonSubtext}>PLACEHOLDER</Text>
-            </TouchableOpacity>
+            <Animated.View style={{ width: '48%', transform: [{ scale: radio3Scale }] }}>
+              <TouchableOpacity
+                style={styles.radioButton}
+                onPressIn={() => animateButton(radio3Scale, 0.97)}
+                onPressOut={() => {
+                  animateButton(radio3Scale, 1);
+                  Alert.alert('Radio 3', 'Sound effect coming soon');
+                }}
+                activeOpacity={1}
+              >
+                <Text style={styles.radioButtonLabel}>RADIO 3</Text>
+                <Text style={styles.radioButtonSubtext}>PLACEHOLDER</Text>
+              </TouchableOpacity>
+            </Animated.View>
           </View>
         </ConsolePanel>
 
@@ -1197,7 +1237,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   hornButtonLarge: {
-    width: '60%',
+    width: '100%',
     paddingVertical: 18,
     backgroundColor: '#3a4555',
     borderRadius: 50,
@@ -1205,14 +1245,6 @@ const styles = StyleSheet.create({
     borderColor: '#ffa500',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#ffa500',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  hornButtonPressed: {
-    transform: [{ scale: 0.93 }],
   },
   hornButtonText: {
     fontSize: 18,
@@ -1229,7 +1261,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   radioButton: {
-    width: '48%',
+    width: '100%',
     paddingVertical: 18,
     paddingHorizontal: 12,
     backgroundColor: '#2a3547',
@@ -1239,9 +1271,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-  },
-  radioButtonActive: {
-    transform: [{ scale: 0.92 }],
   },
   radioButtonLabel: {
     fontSize: 12,

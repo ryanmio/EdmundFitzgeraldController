@@ -800,8 +800,8 @@ export default function DashboardScreen({ navigation, route }: Props) {
                 onPressOut={handleRadio1PressOut}
                 activeOpacity={1}
               >
-                <Text style={styles.radioButtonLabel}>RADIO 1</Text>
-                <Text style={styles.radioButtonSubtext}>FENCE RAIL DOWN</Text>
+                <Text style={styles.radioButtonLabel}>FENCE RAIL DOWN</Text>
+                <Text style={styles.radioButtonSubtext}>3:30 PM</Text>
               </TouchableOpacity>
             </Animated.View>
 
@@ -812,8 +812,8 @@ export default function DashboardScreen({ navigation, route }: Props) {
                 onPressOut={handleRadio2PressOut}
                 activeOpacity={1}
               >
-                <Text style={styles.radioButtonLabel}>RADIO 2</Text>
-                <Text style={styles.radioButtonSubtext}>LOST BOTH RADARS</Text>
+                <Text style={styles.radioButtonLabel}>LOST BOTH RADARS</Text>
+                <Text style={styles.radioButtonSubtext}>5:20 PM</Text>
               </TouchableOpacity>
             </Animated.View>
 
@@ -824,8 +824,8 @@ export default function DashboardScreen({ navigation, route }: Props) {
                 onPressOut={handleRadio3PressOut}
                 activeOpacity={1}
               >
-                <Text style={styles.radioButtonLabel}>RADIO 3</Text>
-                <Text style={styles.radioButtonSubtext}>HOLDING OUR OWN</Text>
+                <Text style={styles.radioButtonLabel}>HOLDING OUR OWN</Text>
+                <Text style={styles.radioButtonSubtext}>7:10 PM • FINAL</Text>
               </TouchableOpacity>
             </Animated.View>
           </View>

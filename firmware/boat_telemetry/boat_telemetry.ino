@@ -18,7 +18,7 @@
 #define SERVO_PWM_PIN     19   // RC receiver servo/rudder channel (PWM input)
 
 // ==================== BUILD IDENTIFICATION ====================
-#define FIRMWARE_VERSION   "1.1.0"
+#define FIRMWARE_VERSION   "1.2.0"
 #define BUILD_ID           "20260110"             // YYYYMMDD format
 
 // ==================== AUDIO OUTPUT DEFINITIONS ====================
@@ -37,7 +37,17 @@
 WebServer server(80);
 unsigned long startTime;
 bool ledRunningState = false;
-bool ledFloodState = false;
+
+// Audio sound effect state (horn and SOS are momentary, not toggle)
+bool hornActive = false;
+unsigned long hornStartTime = 0;
+const unsigned long HORN_DURATION = 2000;  // 2 seconds per blast
+
+bool sosActive = false;
+unsigned long sosStartTime = 0;
+int sosRoundsRemaining = 0;
+const int SOS_ROUNDS_PER_TRIGGER = 3;  // Play 3 full SOS sequences per button press
+const unsigned long SOS_ROUND_DURATION = 6000;  // ~6 seconds per SOS round (... --- ... + gaps)
 
 // Water sensor debouncing variables
 bool waterDebouncedState = false;  // Current debounced state (false = secure, true = breached)
@@ -247,31 +257,53 @@ void playWiFiConnectedTone() {
   delay(500); // Pause at end
 }
 
-// Play boat horn sound (blocking - future feature)
-void playBoatHorn() {
-  // Single long blast (1 second)
-  ledcWriteTone(AUDIO_OUT_PIN, HORN_FREQUENCY);
-  delay(1000);
-  ledcWriteTone(AUDIO_OUT_PIN, 0);
-  delay(500);
+// Update horn sound effect (non-blocking, fixed duration)
+void updateHorn() {
+  if (!hornActive) return;
+  
+  unsigned long elapsed = millis() - hornStartTime;
+  
+  if (elapsed >= HORN_DURATION) {
+    // Horn blast complete
+    ledcWriteTone(AUDIO_OUT_PIN, 0);
+    hornActive = false;
+    Serial.println("Horn blast complete");
+  }
+  // Horn tone stays on for full duration (already started by trigger)
 }
 
-// Non-blocking Morse code state machine - call this repeatedly in loop()
-void updateMorseCode() {
-  if (!ledFloodState) {
-    // Flood mode off - ensure audio is silent and reset
-    if (morseStep != 0 || morseToneOn) {
-      ledcWriteTone(AUDIO_OUT_PIN, 0);
-      morseStep = 0;
-      morseToneOn = false;
-    }
-    return;
-  }
-
-  // Flood mode on: play SOS tones
+// Update SOS sound effect (non-blocking, plays fixed number of rounds)
+void updateSOS() {
+  if (!sosActive) return;
   
   unsigned long currentTime = millis();
   
+  // Check if we've completed all rounds
+  if (sosRoundsRemaining <= 0) {
+    ledcWriteTone(AUDIO_OUT_PIN, 0);
+    sosActive = false;
+    morseStep = 0;
+    morseToneOn = false;
+    Serial.println("SOS sequence complete");
+    return;
+  }
+  
+  // Check if current round is complete
+  unsigned long roundElapsed = currentTime - sosStartTime;
+  if (roundElapsed >= SOS_ROUND_DURATION) {
+    sosRoundsRemaining--;
+    sosStartTime = currentTime;
+    morseStep = 0;
+    morseToneOn = true;
+    morseLastChange = currentTime;
+    ledcWriteTone(AUDIO_OUT_PIN, MORSE_FREQUENCY);
+    Serial.print("SOS round, ");
+    Serial.print(sosRoundsRemaining);
+    Serial.println(" remaining");
+    return;
+  }
+  
+  // Play SOS pattern
   if (morseToneOn) {
     // Tone is currently playing - check if it's time to turn it off
     if (currentTime - morseLastChange >= SOS_PATTERN[morseStep]) {
@@ -284,7 +316,7 @@ void updateMorseCode() {
     if (currentTime - morseLastChange >= SOS_GAPS[morseStep]) {
       morseStep++;
       if (morseStep >= 9) {
-        morseStep = 0; // Loop back to start of SOS
+        morseStep = 0; // Loop back to start of SOS within this round
       }
       ledcWriteTone(AUDIO_OUT_PIN, MORSE_FREQUENCY); // Start next tone
       morseToneOn = true;
@@ -321,7 +353,8 @@ void handleStatus() {
   json += "\"ip_address\":\"" + WiFi.localIP().toString() + "\",";
   json += "\"uptime_seconds\":" + String(uptimeSec) + ",";
   json += "\"running_led\":" + String(ledRunningState ? "true" : "false") + ",";
-  json += "\"flood_led\":" + String(ledFloodState ? "true" : "false");
+  json += "\"horn_active\":" + String(hornActive ? "true" : "false") + ",";
+  json += "\"sos_active\":" + String(sosActive ? "true" : "false");
   json += "}";
   server.send(200, "application/json", json);
 }
@@ -364,7 +397,8 @@ void handleTelemetry() {
   json += "\"free_heap\":" + String(freeHeap) + ",";
   json += "\"internal_temp_c\":" + String(internalTemp, 1) + ",";
   json += "\"running_mode_state\":" + String(ledRunningState ? "true" : "false") + ",";
-  json += "\"flood_mode_state\":" + String(ledFloodState ? "true" : "false") + ",";
+  json += "\"horn_active\":" + String(hornActive ? "true" : "false") + ",";
+  json += "\"sos_active\":" + String(sosActive ? "true" : "false") + ",";
   json += "\"water_intrusion\":" + String(waterDetected ? "true" : "false") + ",";
   json += "\"water_sensor_raw\":" + String(waterRaw) + ",";
   json += "\"throttle_pwm\":" + String(throttlePWM) + ",";
@@ -386,7 +420,6 @@ void handleLed() {
   
   // Simple parsing (avoid external JSON library for now)
   bool modeRunning = body.indexOf("\"running\"") >= 0;
-  bool modeFlood = body.indexOf("\"flood\"") >= 0;
   bool stateOn = body.indexOf("\"on\"") >= 0;
 
   if (modeRunning) {
@@ -395,29 +428,55 @@ void handleLed() {
     digitalWrite(LED_RUNNING_PIN, ledRunningState ? HIGH : LOW);
     digitalWrite(RUNNING_OUT_PIN, ledRunningState ? HIGH : LOW);
   }
-  if (modeFlood) {
-    ledFloodState = stateOn;
-    // Audio output (speaker/buzzer) controlled via GPIO17 PWM tones
-    digitalWrite(LED_FLOOD_PIN, ledFloodState ? HIGH : LOW);
-    
-    // If turning off, stop any active Morse tone
-    if (!stateOn) {
-      ledcWriteTone(AUDIO_OUT_PIN, 0);
-      morseStep = 0;
-      morseToneOn = false;
-      morseLastChange = 0;
-    } else {
-      // Start SOS immediately (don't wait for initial gap)
-      morseStep = 0;
-      morseToneOn = true;
-      morseLastChange = millis();
-      ledcWriteTone(AUDIO_OUT_PIN, MORSE_FREQUENCY);
-    }
-  }
 
   String json = "{";
-  json += "\"running_led\":" + String(ledRunningState ? "true" : "false") + ",";
-  json += "\"flood_led\":" + String(ledFloodState ? "true" : "false");
+  json += "\"running_led\":" + String(ledRunningState ? "true" : "false");
+  json += "}";
+  server.send(200, "application/json", json);
+}
+
+void handleHorn() {
+  addCORSHeaders();
+  if (server.method() != HTTP_POST) {
+    server.send(405, "application/json", "{\"error\":\"POST required\"}");
+    return;
+  }
+
+  // Trigger horn blast (2 seconds)
+  hornActive = true;
+  hornStartTime = millis();
+  ledcWriteTone(AUDIO_OUT_PIN, HORN_FREQUENCY);
+  Serial.println("Horn blast triggered");
+
+  String json = "{";
+  json += "\"horn_active\":true,";
+  json += "\"duration_ms\":" + String(HORN_DURATION);
+  json += "}";
+  server.send(200, "application/json", json);
+}
+
+void handleSOS() {
+  addCORSHeaders();
+  if (server.method() != HTTP_POST) {
+    server.send(405, "application/json", "{\"error\":\"POST required\"}");
+    return;
+  }
+
+  // Trigger SOS sequence (3 rounds)
+  sosActive = true;
+  sosRoundsRemaining = SOS_ROUNDS_PER_TRIGGER;
+  sosStartTime = millis();
+  morseStep = 0;
+  morseToneOn = true;
+  morseLastChange = millis();
+  ledcWriteTone(AUDIO_OUT_PIN, MORSE_FREQUENCY);
+  Serial.print("SOS triggered: ");
+  Serial.print(SOS_ROUNDS_PER_TRIGGER);
+  Serial.println(" rounds");
+
+  String json = "{";
+  json += "\"sos_active\":true,";
+  json += "\"rounds\":" + String(SOS_ROUNDS_PER_TRIGGER);
   json += "}";
   server.send(200, "application/json", json);
 }
@@ -487,10 +546,14 @@ void setup() {
   server.on("/status", HTTP_GET, handleStatus);
   server.on("/telemetry", HTTP_GET, handleTelemetry);
   server.on("/led", HTTP_POST, handleLed);
+  server.on("/horn", HTTP_POST, handleHorn);
+  server.on("/sos", HTTP_POST, handleSOS);
   server.on("/stream", HTTP_GET, handleStream);
   server.on("/status", HTTP_OPTIONS, handleOptions);
   server.on("/telemetry", HTTP_OPTIONS, handleOptions);
   server.on("/led", HTTP_OPTIONS, handleOptions);
+  server.on("/horn", HTTP_OPTIONS, handleOptions);
+  server.on("/sos", HTTP_OPTIONS, handleOptions);
   server.on("/stream", HTTP_OPTIONS, handleOptions);
   server.onNotFound(handleNotFound);
 
@@ -508,8 +571,9 @@ void loop() {
   // Update water sensor debouncing
   updateWaterSensorDebounce();
 
-  // Update Morse code SOS (non-blocking)
-  updateMorseCode();
+  // Update sound effects (non-blocking, momentary triggers)
+  updateHorn();
+  updateSOS();
 
   // Retry WiFi every 30 seconds if disconnected
   if (WiFi.status() != WL_CONNECTED && millis() - lastWiFiCheck > 30000) {

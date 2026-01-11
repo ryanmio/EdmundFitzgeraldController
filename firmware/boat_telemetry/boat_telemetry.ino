@@ -10,8 +10,9 @@
 
 // ==================== PIN DEFINITIONS ====================
 #define LED_RUNNING_PIN    2   // Built-in LED on most dev boards (keep for testing)
-#define LED_FLOOD_PIN      4   // Legacy external LED pin (optional spare)
+#define LED_FLOOD_PIN      4   // Flood mode indicator LED (optional)
 #define RUNNING_OUT_PIN   16   // External Running lights control (MOSFET gate)
+#define FLOOD_OUT_PIN     21   // External Flood lights control (MOSFET gate)
 #define BATTERY_ADC_PIN   34   // Battery voltage sense (ADC)
 #define WATER_SENSOR_PIN  32   // Water intrusion sensor (digital input with pullup) - GPIO32 has internal pullup, GPIO34/35/36/39 do NOT
 #define THROTTLE_PWM_PIN  18   // RC receiver throttle channel (PWM input)
@@ -37,6 +38,7 @@
 WebServer server(80);
 unsigned long startTime;
 bool ledRunningState = false;
+bool ledFloodState = false;
 
 // Audio sound effect state (horn and SOS are momentary, not toggle)
 bool hornActive = false;
@@ -377,6 +379,7 @@ void handleStatus() {
   json += "\"ip_address\":\"" + WiFi.localIP().toString() + "\",";
   json += "\"uptime_seconds\":" + String(uptimeSec) + ",";
   json += "\"running_led\":" + String(ledRunningState ? "true" : "false") + ",";
+  json += "\"flood_led\":" + String(ledFloodState ? "true" : "false") + ",";
   json += "\"horn_active\":" + String(hornActive ? "true" : "false") + ",";
   json += "\"sos_active\":" + String(sosActive ? "true" : "false");
   json += "}";
@@ -421,6 +424,7 @@ void handleTelemetry() {
   json += "\"free_heap\":" + String(freeHeap) + ",";
   json += "\"internal_temp_c\":" + String(internalTemp, 1) + ",";
   json += "\"running_mode_state\":" + String(ledRunningState ? "true" : "false") + ",";
+  json += "\"flood_mode_state\":" + String(ledFloodState ? "true" : "false") + ",";
   json += "\"horn_active\":" + String(hornActive ? "true" : "false") + ",";
   json += "\"sos_active\":" + String(sosActive ? "true" : "false") + ",";
   json += "\"water_intrusion\":" + String(waterDetected ? "true" : "false") + ",";
@@ -444,6 +448,7 @@ void handleLed() {
   
   // Simple parsing (avoid external JSON library for now)
   bool modeRunning = body.indexOf("\"running\"") >= 0;
+  bool modeFlood = body.indexOf("\"flood\"") >= 0;
   bool stateOn = body.indexOf("\"on\"") >= 0;
 
   if (modeRunning) {
@@ -452,9 +457,17 @@ void handleLed() {
     digitalWrite(LED_RUNNING_PIN, ledRunningState ? HIGH : LOW);
     digitalWrite(RUNNING_OUT_PIN, ledRunningState ? HIGH : LOW);
   }
+  
+  if (modeFlood) {
+    ledFloodState = stateOn;
+    // Drive indicator LED and flood MOSFET gate for flood circuit power
+    digitalWrite(LED_FLOOD_PIN, ledFloodState ? HIGH : LOW);
+    digitalWrite(FLOOD_OUT_PIN, ledFloodState ? HIGH : LOW);
+  }
 
   String json = "{";
-  json += "\"running_led\":" + String(ledRunningState ? "true" : "false");
+  json += "\"running_led\":" + String(ledRunningState ? "true" : "false") + ",";
+  json += "\"flood_led\":" + String(ledFloodState ? "true" : "false");
   json += "}";
   server.send(200, "application/json", json);
 }
@@ -592,9 +605,11 @@ void setup() {
   pinMode(LED_RUNNING_PIN, OUTPUT);
   pinMode(LED_FLOOD_PIN, OUTPUT);
   pinMode(RUNNING_OUT_PIN, OUTPUT);
+  pinMode(FLOOD_OUT_PIN, OUTPUT);
   digitalWrite(LED_RUNNING_PIN, LOW);
   digitalWrite(LED_FLOOD_PIN, LOW);
   digitalWrite(RUNNING_OUT_PIN, LOW);
+  digitalWrite(FLOOD_OUT_PIN, LOW);
   
   // Init audio output (GPIO17 → PAM8403 amp or piezo buzzer module)
   pinMode(AUDIO_OUT_PIN, OUTPUT);

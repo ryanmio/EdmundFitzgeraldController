@@ -95,6 +95,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
   const [lastError, setLastError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [togglingRunning, setTogglingRunning] = useState(false);
+  const [togglingFlood, setTogglingFlood] = useState(false);
   const [triggeringHorn, setTriggeringHorn] = useState(false);
   const [triggeringSOS, setTriggeringSOS] = useState(false);
   const [triggeringRadio1, setTriggeringRadio1] = useState(false);
@@ -258,6 +259,20 @@ export default function DashboardScreen({ navigation, route }: Props) {
       Alert.alert('Error', 'Failed to toggle running light');
     } finally {
       setTogglingRunning(false);
+    }
+  };
+
+  const toggleFloodLED = async () => {
+    if (!telemetry || togglingFlood) return;
+    setTogglingFlood(true);
+    try {
+      const newState = !telemetry.flood_mode_state;
+      await setLED(ip, 'flood', newState ? 'on' : 'off');
+      setTelemetry({ ...telemetry, flood_mode_state: newState });
+    } catch (err) {
+      Alert.alert('Error', 'Failed to toggle flood light');
+    } finally {
+      setTogglingFlood(false);
     }
   };
 
@@ -733,16 +748,16 @@ export default function DashboardScreen({ navigation, route }: Props) {
                 <TouchableOpacity
                   style={[
                     styles.industrialSwitch,
-                    false ? styles.switchOn : styles.switchOff,
+                    telemetry?.flood_mode_state ? styles.switchOn : styles.switchOff,
                   ]}
-                  onPress={() => Alert.alert('Info', 'Flood control coming soon')}
-                  disabled={false}
+                  onPress={toggleFloodLED}
+                  disabled={togglingFlood}
                 >
                   <View style={styles.switchHandle} />
                 </TouchableOpacity>
                 <View style={[
                   styles.ledIndicatorSmall,
-                  { backgroundColor: COLORS.ledOff }
+                  { backgroundColor: telemetry?.flood_mode_state ? COLORS.accent : COLORS.ledOff }
                 ]} />
               </View>
             </View>

@@ -5,6 +5,7 @@ export interface StatusResponse {
   ip_address: string;
   uptime_seconds: number;
   running_led: boolean;
+  flood_led: boolean;
   horn_active: boolean;
   sos_active: boolean;
 }
@@ -17,6 +18,7 @@ export interface TelemetryResponse {
   free_heap: number;
   internal_temp_c: number;
   running_mode_state: boolean;
+  flood_mode_state: boolean;
   horn_active: boolean;
   sos_active: boolean;
   water_intrusion: boolean;
@@ -29,6 +31,7 @@ export interface TelemetryResponse {
 
 export interface LEDResponse {
   running_led: boolean;
+  flood_led: boolean;
 }
 
 export interface HornResponse {
@@ -47,7 +50,7 @@ export interface RadioResponse {
   duration_ms: number;
 }
 
-export type LEDMode = 'running';
+export type LEDMode = 'running' | 'flood';
 export type LEDState = 'on' | 'off';
 
 export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'failed';

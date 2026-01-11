@@ -47,21 +47,39 @@
 
 ---
 
+## FLOOD LIGHTS (MOSFET CONTROLLED)
+
+13. **Flood Lights MOSFET**: 
+- VIN+ (screw) → BEC 5V (or battery positive for 12V lights)
+- VIN- (screw) → BEC GND (or battery negative)
+- OUT+ (screw) → Flood light positive (high-power LED array or floodlight)
+- OUT- (screw) → Flood light negative (or array ground)
+- GND pad (solder) → ESP32 GND
+- TRIG/PWM pad (solder) → ESP32 GPIO21
+- **Indicator LED** (optional): Small LED + 470Ω resistor between GPIO4 and GND for visual feedback
+
+---
+
 ## AUDIO OUTPUT (SPEAKER + AMPLIFIER)
 
-**Provides loud Morse code SOS and boat horn sound effects**
+**Provides loud Morse code SOS, boat horn, and radio transmission sound effects**
 
-13. **PAM8403 Amplifier Power**:
+14. **PAM8403 Amplifier Power**:
 - VCC → BEC 5V
 - GND → BEC GND / ESP32 GND (shared ground)
 
-14. **PAM8403 Audio Signal**:
+15. **PAM8403 Audio Signal**:
 - INL (left input) → ESP32 GPIO17
 - GND → ESP32 GND (shared ground)
 
-15. **Speaker Connection**:
+16. **Speaker Connection**:
 - Speaker → PAM8403 L+ and L- terminals (left channel)
 - Recommended: 4Ω or 8Ω, 3W, 40-50mm diameter for good volume
+
+**Audio Volume Levels (Firmware Controlled):**
+- **Horn**: 255/255 (100%) - Loud alarm
+- **SOS**: 200/255 (~78%) - Loud distress signal
+- **Radio**: 120/255 (~47%) - Moderate background transmission
 
 **Note:** Compatible with piezo buzzer modules if PAM8403 not installed. Just connect buzzer I/O to GPIO17.
 
@@ -69,9 +87,9 @@
 
 ## ESP32-CAM SETUP
 
-15. **Camera Power**: ESP32-CAM powered separately from same BEC 5V (see step 1) - no direct connections to telemetry board.
-16. **Camera Ground**: ESP32-CAM GND connected to shared ground (see step 2).
-17. **Camera Communication**: No wires needed - camera communicates with telemetry board and app via WiFi only.
+17. **Camera Power**: ESP32-CAM powered separately from same BEC 5V (see step 1) - no direct connections to telemetry board.
+18. **Camera Ground**: ESP32-CAM GND connected to shared ground (see step 2).
+19. **Camera Communication**: No wires needed - camera communicates with telemetry board and app via WiFi only.
 
 ---
 
@@ -105,21 +123,30 @@
 - [ ] Power on → Toggle running lights via app
 - [ ] If fails: Disconnect MOSFET GND first, check wiring
 
-### Phase 5: Add Audio (Speaker + Amp)
+### Phase 5: Add Flood Lights MOSFET
+- [ ] Power off
+- [ ] Connect MOSFET (VIN, OUT, GND pad, TRIG to GPIO21)
+- [ ] (Optional) Connect indicator LED to GPIO4
+- [ ] Multimeter test: 5V↔GND still >100Ω?
+- [ ] Power on → Toggle flood lights via app
+- [ ] If fails: Disconnect MOSFET GND first, check wiring
+
+### Phase 6: Add Audio (Speaker + Amp)
 - [ ] Power off
 - [ ] Connect PAM8403 (VCC to 5V, GND to GND, INL to GPIO17)
 - [ ] Connect speaker to PAM8403 L+/L- terminals
 - [ ] Multimeter test: 5V↔GND still >100Ω?
-- [ ] Power on → Toggle flood mode, hear loud SOS tones
+- [ ] Power on → Test horn, SOS, and radio sounds via app
+- [ ] Verify horn is loudest, radio transmissions are quieter
 - [ ] If fails: Disconnect amp, check wiring/speaker polarity
 
-### Phase 6: Add RC Receiver
+### Phase 7: Add RC Receiver
 - [ ] Power off
 - [ ] Connect RC receiver (GPIO18, GPIO19, GND)
 - [ ] Multimeter test: 5V↔GND still >100Ω?
 - [ ] Power on → Telemetry shows PWM values
 
-### Phase 7: Add Camera
+### Phase 8: Add Camera
 - [ ] Power off
 - [ ] Connect ESP32-CAM (5V, GND only - no signal wires)
 - [ ] Power on → Camera stream accessible
@@ -134,7 +161,10 @@
 - [ ] Throttle PWM shows 1000-2000µs range when moving RC stick
 - [ ] Servo PWM shows 1000-2000µs range when moving RC stick
 - [ ] Running lights toggle via app LED control
-- [ ] Morse code SOS plays when flood mode enabled
+- [ ] Flood lights toggle via app LED control
+- [ ] Horn sound plays when button pressed (LOUD)
+- [ ] SOS sound plays when button held (LOUD morse code)
+- [ ] Radio 1/2/3 sounds play when buttons pressed (quieter background tones)
 - [ ] Camera stream accessible at `/stream` endpoint
 
 ---
@@ -148,6 +178,8 @@
 | Throttle PWM | GPIO18 | Digital input |
 | Servo PWM | GPIO19 | Digital input |
 | Running Lights | GPIO16 | MOSFET gate output |
+| Flood Lights (indicator) | GPIO4 | Optional indicator LED |
+| Flood Lights | GPIO21 | MOSFET gate output |
 | Audio Output | GPIO17 | PWM to PAM8403 INL (or buzzer I/O) |
 
 ---

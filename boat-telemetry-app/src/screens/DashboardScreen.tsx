@@ -677,7 +677,6 @@ export default function DashboardScreen({ navigation, route }: Props) {
             <TouchableOpacity
               style={[
                 styles.radioButton,
-                styles.sosRadioButton,
                 triggeringSOS && styles.radioButtonActive
               ]}
               onPressIn={handleSOSPressIn}
@@ -1213,9 +1212,10 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   hornButtonPressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.95 }],
+    transform: [{ scale: 0.93 }],
+    backgroundColor: '#2a3342',
     shadowOpacity: 0.6,
+    borderColor: '#ff8800',
   },
   hornButtonText: {
     fontSize: 18,
@@ -1243,12 +1243,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
   },
-  sosRadioButton: {
-    borderColor: '#ff6b6b',
-    backgroundColor: '#3a2d2d',
-  },
   radioButtonActive: {
-    opacity: 0.6,
+    transform: [{ scale: 0.92 }],
+    backgroundColor: '#1a2332',
     borderColor: COLORS.accent,
   },
   radioButtonLabel: {

@@ -72,10 +72,10 @@
 - SPK_1 → Speaker positive (red)
 - SPK_2 → Speaker negative (black)
 
-**Track Mapping:**
-- 001.mp3 = Radio 1 ("We are holding our own")
-- 002.mp3 = Radio 2 ("Fence rail down, vents lost")
-- 003.mp3 = Radio 3 ("Lost both radars")
+**Track Mapping (Chronological):**
+- 001.mp3 = Radio 1 ("Fence rail down, vents lost") - 3:30 PM
+- 002.mp3 = Radio 2 ("Lost both radars") - 5:20 PM  
+- 003.mp3 = Radio 3 ("We are holding our own") - 7:10 PM final
 - 004.mp3 = Horn (optional)
 - 005.mp3 = SOS (optional)
 

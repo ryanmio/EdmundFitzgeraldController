@@ -47,16 +47,23 @@
 
 ---
 
-## MORSE CODE BUZZER (DIRECT GPIO - NO MOSFET)
+## AUDIO OUTPUT (SPEAKER + AMPLIFIER)
 
-**⚠️ IMPORTANT: Buzzer gets constant power. GPIO controls tone only.**
+**Provides loud Morse code SOS and boat horn sound effects**
 
-13. **Buzzer Power (constant)**:
-- VCC → BEC 5V (always on)
+13. **PAM8403 Amplifier Power**:
+- VCC → BEC 5V
 - GND → BEC GND / ESP32 GND (shared ground)
 
-14. **Buzzer Signal**:
-- I/O → ESP32 GPIO17
+14. **PAM8403 Audio Signal**:
+- INL (left input) → ESP32 GPIO17
+- GND → ESP32 GND (shared ground)
+
+15. **Speaker Connection**:
+- Speaker → PAM8403 L+ and L- terminals (left channel)
+- Recommended: 4Ω or 8Ω, 3W, 40-50mm diameter for good volume
+
+**Note:** Compatible with piezo buzzer modules if PAM8403 not installed. Just connect buzzer I/O to GPIO17.
 
 ---
 
@@ -98,12 +105,13 @@
 - [ ] Power on → Toggle running lights via app
 - [ ] If fails: Disconnect MOSFET GND first, check wiring
 
-### Phase 5: Add Buzzer
+### Phase 5: Add Audio (Speaker + Amp)
 - [ ] Power off
-- [ ] Connect buzzer (VCC to 5V, GND to GND, I/O to GPIO17)
+- [ ] Connect PAM8403 (VCC to 5V, GND to GND, INL to GPIO17)
+- [ ] Connect speaker to PAM8403 L+/L- terminals
 - [ ] Multimeter test: 5V↔GND still >100Ω?
-- [ ] Power on → Toggle flood mode, hear SOS tones
-- [ ] If fails: Disconnect buzzer, check module
+- [ ] Power on → Toggle flood mode, hear loud SOS tones
+- [ ] If fails: Disconnect amp, check wiring/speaker polarity
 
 ### Phase 6: Add RC Receiver
 - [ ] Power off
@@ -140,7 +148,7 @@
 | Throttle PWM | GPIO18 | Digital input |
 | Servo PWM | GPIO19 | Digital input |
 | Running Lights | GPIO16 | MOSFET gate output |
-| Morse Buzzer | GPIO17 | Direct PWM to buzzer I/O |
+| Audio Output | GPIO17 | PWM to PAM8403 INL (or buzzer I/O) |
 
 ---
 

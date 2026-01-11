@@ -612,65 +612,115 @@ export default function DashboardScreen({ navigation, route }: Props) {
           </ConsolePanel>
         </View>
 
-        {/* Row 3: Controls - Lights and Sound Effects */}
-        <ConsolePanel title="External Lighting Control">
-          <View style={styles.switchRow}>
-            <View style={styles.switchContainer}>
-              <Text style={styles.switchLabel}>RUNNING LIGHTS</Text>
+        {/* Row 3: Controls */}
+        <ConsolePanel title="Controls">
+          <View style={styles.controlsContainer}>
+            {/* Toggles Section */}
+            <View style={styles.switchRow}>
+              <View style={styles.switchContainer}>
+                <Text style={styles.switchLabel}>RUNNING LIGHTS</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.industrialSwitch,
+                    telemetry?.running_mode_state ? styles.switchOn : styles.switchOff,
+                  ]}
+                  onPress={toggleRunningLED}
+                  disabled={togglingRunning}
+                >
+                  <View style={styles.switchHandle} />
+                </TouchableOpacity>
+                <View style={[
+                  styles.ledIndicatorSmall,
+                  { backgroundColor: telemetry?.running_mode_state ? COLORS.accent : COLORS.ledOff }
+                ]} />
+              </View>
+
+              <View style={styles.switchContainer}>
+                <Text style={styles.switchLabel}>FLOOD</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.industrialSwitch,
+                    false ? styles.switchOn : styles.switchOff,
+                  ]}
+                  onPress={() => Alert.alert('Info', 'Flood control coming soon')}
+                  disabled={false}
+                >
+                  <View style={styles.switchHandle} />
+                </TouchableOpacity>
+                <View style={[
+                  styles.ledIndicatorSmall,
+                  { backgroundColor: COLORS.ledOff }
+                ]} />
+              </View>
+            </View>
+
+            {/* Horn Button */}
+            <View style={styles.hornButtonContainer}>
               <TouchableOpacity
                 style={[
-                  styles.industrialSwitch,
-                  telemetry?.running_mode_state ? styles.switchOn : styles.switchOff,
+                  styles.hornButtonLarge,
+                  triggeringHorn && styles.hornButtonPressed
                 ]}
-                onPress={toggleRunningLED}
-                disabled={togglingRunning}
+                onPressIn={handleHornPressIn}
+                onPressOut={handleHornPressOut}
+                disabled={triggeringHorn}
               >
-                <View style={styles.switchHandle} />
+                <Text style={styles.hornButtonText}>HORN</Text>
+                <View style={[
+                  styles.hornIndicator,
+                  { backgroundColor: telemetry?.horn_active ? COLORS.accent : COLORS.ledOff }
+                ]} />
               </TouchableOpacity>
-              <View style={[
-                styles.ledIndicatorSmall,
-                { backgroundColor: telemetry?.running_mode_state ? COLORS.accent : COLORS.ledOff }
-              ]} />
             </View>
           </View>
         </ConsolePanel>
 
-        <ConsolePanel title="Audio System (Hold for Repeat)">
-          <View style={styles.audioButtonRow}>
+        {/* Row 4: Radio Transmissions */}
+        <ConsolePanel title="Radio Transmissions">
+          <View style={styles.radioButtonsGrid}>
             <TouchableOpacity
               style={[
-                styles.audioButton,
-                styles.hornButton,
-                triggeringHorn && styles.audioButtonActive
-              ]}
-              onPressIn={handleHornPressIn}
-              onPressOut={handleHornPressOut}
-              disabled={triggeringHorn}
-            >
-              <Text style={styles.audioButtonLabel}>HORN</Text>
-              <Text style={styles.audioButtonSubtext}>2 SEC BLAST</Text>
-              <View style={[
-                styles.audioIndicator,
-                { backgroundColor: telemetry?.horn_active ? COLORS.accent : COLORS.ledOff }
-              ]} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.audioButton,
-                styles.sosButton,
-                triggeringSOS && styles.audioButtonActive
+                styles.radioButton,
+                styles.sosRadioButton,
+                triggeringSOS && styles.radioButtonActive
               ]}
               onPressIn={handleSOSPressIn}
               onPressOut={handleSOSPressOut}
               disabled={triggeringSOS}
             >
-              <Text style={styles.audioButtonLabel}>SOS</Text>
-              <Text style={styles.audioButtonSubtext}>3 ROUNDS</Text>
+              <Text style={styles.radioButtonLabel}>SOS</Text>
+              <Text style={styles.radioButtonSubtext}>DISTRESS</Text>
               <View style={[
-                styles.audioIndicator,
+                styles.radioIndicator,
                 { backgroundColor: telemetry?.sos_active ? COLORS.accent : COLORS.ledOff }
               ]} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.radioButton}
+              onPress={() => Alert.alert('Radio 1', 'Sound effect coming soon')}
+            >
+              <Text style={styles.radioButtonLabel}>RADIO 1</Text>
+              <Text style={styles.radioButtonSubtext}>PLACEHOLDER</Text>
+              <View style={[styles.radioIndicator, { backgroundColor: COLORS.ledOff }]} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.radioButton}
+              onPress={() => Alert.alert('Radio 2', 'Sound effect coming soon')}
+            >
+              <Text style={styles.radioButtonLabel}>RADIO 2</Text>
+              <Text style={styles.radioButtonSubtext}>PLACEHOLDER</Text>
+              <View style={[styles.radioIndicator, { backgroundColor: COLORS.ledOff }]} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.radioButton}
+              onPress={() => Alert.alert('Radio 3', 'Sound effect coming soon')}
+            >
+              <Text style={styles.radioButtonLabel}>RADIO 3</Text>
+              <Text style={styles.radioButtonSubtext}>PLACEHOLDER</Text>
+              <View style={[styles.radioIndicator, { backgroundColor: COLORS.ledOff }]} />
             </TouchableOpacity>
           </View>
         </ConsolePanel>
@@ -1149,16 +1199,61 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
-  audioButtonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 10,
+  controlsContainer: {
+    width: '100%',
     gap: 16,
   },
-  audioButton: {
-    flex: 1,
-    paddingVertical: 20,
-    paddingHorizontal: 16,
+  hornButtonContainer: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  hornButtonLarge: {
+    width: '80%',
+    paddingVertical: 24,
+    backgroundColor: '#3a4555',
+    borderRadius: 50,
+    borderWidth: 4,
+    borderColor: '#ffa500',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#ffa500',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  hornButtonPressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.95 }],
+    shadowOpacity: 0.6,
+  },
+  hornButtonText: {
+    fontSize: 20,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    letterSpacing: 3,
+  },
+  hornIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    marginTop: 8,
+  },
+  radioButtonsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 10,
+  },
+  radioButton: {
+    width: '48%',
+    paddingVertical: 18,
+    paddingHorizontal: 12,
     backgroundColor: '#2a3547',
     borderRadius: 8,
     borderWidth: 2,
@@ -1167,32 +1262,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
   },
-  hornButton: {
-    borderColor: '#4a8cff',
-  },
-  sosButton: {
+  sosRadioButton: {
     borderColor: '#ff6b6b',
+    backgroundColor: '#3a2d2d',
   },
-  audioButtonActive: {
+  radioButtonActive: {
     opacity: 0.6,
     borderColor: COLORS.accent,
   },
-  audioButtonLabel: {
-    fontSize: 14,
+  radioButtonLabel: {
+    fontSize: 12,
     fontFamily: FONTS.monospace,
     fontWeight: 'bold',
     color: COLORS.text,
-    letterSpacing: 1,
+    letterSpacing: 1.5,
   },
-  audioButtonSubtext: {
+  radioButtonSubtext: {
     fontSize: 8,
     fontFamily: FONTS.monospace,
     color: COLORS.secondary,
   },
-  audioIndicator: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  radioIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
     marginTop: 4,

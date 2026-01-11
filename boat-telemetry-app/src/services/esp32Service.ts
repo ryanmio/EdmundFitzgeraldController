@@ -1,5 +1,5 @@
 // ESP32 HTTP service with timeout support
-import { StatusResponse, TelemetryResponse, LEDResponse, LEDMode, LEDState } from '../types';
+import { StatusResponse, TelemetryResponse, LEDResponse, LEDMode, LEDState, HornResponse, SOSResponse } from '../types';
 
 const TIMEOUT_MS = 5000;
 
@@ -73,6 +73,46 @@ export async function setLED(ip: string, mode: LEDMode, state: LEDState): Promis
   
   if (!response.ok) {
     throw new Error(`LED control failed: ${response.status}`);
+  }
+  
+  return response.json();
+}
+
+/**
+ * Trigger boat horn sound effect (2 second blast)
+ */
+export async function triggerHorn(ip: string): Promise<HornResponse> {
+  const url = buildUrl(ip, '/horn');
+  const response = await fetchWithTimeout(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({}),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Horn trigger failed: ${response.status}`);
+  }
+  
+  return response.json();
+}
+
+/**
+ * Trigger SOS distress signal (3 rounds of Morse code)
+ */
+export async function triggerSOS(ip: string): Promise<SOSResponse> {
+  const url = buildUrl(ip, '/sos');
+  const response = await fetchWithTimeout(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({}),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`SOS trigger failed: ${response.status}`);
   }
   
   return response.json();

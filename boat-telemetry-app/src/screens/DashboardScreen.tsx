@@ -17,7 +17,7 @@ import { WebView } from 'react-native-webview';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getTelemetry, setLED } from '../services/esp32Service';
+import { getTelemetry, setLED, triggerHorn, triggerSOS } from '../services/esp32Service';
 import { TelemetryResponse } from '../types';
 import { COLORS, FONTS } from '../constants/Theme';
 import { SystemsCheckModal } from '../components/SystemsCheckModal';
@@ -94,10 +94,15 @@ export default function DashboardScreen({ navigation, route }: Props) {
   const [lastError, setLastError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [togglingRunning, setTogglingRunning] = useState(false);
-  const [togglingFlood, setTogglingFlood] = useState(false);
+  const [triggeringHorn, setTriggeringHorn] = useState(false);
+  const [triggeringSOS, setTriggeringSOS] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
   const [logData, setLogData] = useState<LogEntry[]>([]);
   const [logStartTime, setLogStartTime] = useState<Date | null>(null);
+  
+  // Refs for long-press interval tracking
+  const hornIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const sosIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showSystemsCheck, setShowSystemsCheck] = useState(false);
   
@@ -233,19 +238,73 @@ export default function DashboardScreen({ navigation, route }: Props) {
     }
   };
 
-  const toggleFloodLED = async () => {
-    if (!telemetry || togglingFlood) return;
-    setTogglingFlood(true);
+  const handleHornPress = async () => {
+    if (triggeringHorn) return;
+    setTriggeringHorn(true);
     try {
-      const newState = !telemetry.flood_mode_state;
-      await setLED(ip, 'flood', newState ? 'on' : 'off');
-      setTelemetry({ ...telemetry, flood_mode_state: newState });
+      await triggerHorn(ip);
+      debugLog('Horn triggered');
     } catch (err) {
-      Alert.alert('Error', 'Failed to toggle flood light');
+      debugLog(`Horn trigger failed: ${err}`);
     } finally {
-      setTogglingFlood(false);
+      setTriggeringHorn(false);
     }
   };
+
+  const handleHornPressIn = () => {
+    // Start immediate trigger
+    handleHornPress();
+    // Set up repeated triggers while holding
+    hornIntervalRef.current = setInterval(() => {
+      handleHornPress();
+    }, 2500); // Repeat every 2.5s (slightly longer than horn duration)
+  };
+
+  const handleHornPressOut = () => {
+    // Stop repeated triggers
+    if (hornIntervalRef.current) {
+      clearInterval(hornIntervalRef.current);
+      hornIntervalRef.current = null;
+    }
+  };
+
+  const handleSOSPress = async () => {
+    if (triggeringSOS) return;
+    setTriggeringSOS(true);
+    try {
+      await triggerSOS(ip);
+      debugLog('SOS triggered');
+    } catch (err) {
+      debugLog(`SOS trigger failed: ${err}`);
+    } finally {
+      setTriggeringSOS(false);
+    }
+  };
+
+  const handleSOSPressIn = () => {
+    // Start immediate trigger
+    handleSOSPress();
+    // Set up repeated triggers while holding
+    sosIntervalRef.current = setInterval(() => {
+      handleSOSPress();
+    }, 19000); // Repeat every 19s (slightly longer than SOS duration)
+  };
+
+  const handleSOSPressOut = () => {
+    // Stop repeated triggers
+    if (sosIntervalRef.current) {
+      clearInterval(sosIntervalRef.current);
+      sosIntervalRef.current = null;
+    }
+  };
+
+  // Cleanup intervals on unmount
+  useEffect(() => {
+    return () => {
+      if (hornIntervalRef.current) clearInterval(hornIntervalRef.current);
+      if (sosIntervalRef.current) clearInterval(sosIntervalRef.current);
+    };
+  }, []);
 
   const signalBars = telemetry ? getSignalBars(telemetry.signal_strength) : 0;
 
@@ -304,7 +363,8 @@ export default function DashboardScreen({ navigation, route }: Props) {
       'signal_strength',
       'uptime_seconds',
       'running_led',
-      'flood_led',
+      'horn_active',
+      'sos_active',
       'water_intrusion',
       'water_sensor_raw',
       'connection_status',
@@ -318,7 +378,8 @@ export default function DashboardScreen({ navigation, route }: Props) {
       entry.signal_strength,
       entry.uptime_seconds,
       entry.running_mode_state ? '1' : '0',
-      entry.flood_mode_state ? '1' : '0',
+      entry.horn_active ? '1' : '0',
+      entry.sos_active ? '1' : '0',
       entry.water_intrusion ? '1' : '0',
       entry.water_sensor_raw,
       entry.connection_status,
@@ -551,7 +612,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
           </ConsolePanel>
         </View>
 
-        {/* Row 3: Control Switches */}
+        {/* Row 3: Controls - Lights and Sound Effects */}
         <ConsolePanel title="External Lighting Control">
           <View style={styles.switchRow}>
             <View style={styles.switchContainer}>
@@ -571,24 +632,46 @@ export default function DashboardScreen({ navigation, route }: Props) {
                 { backgroundColor: telemetry?.running_mode_state ? COLORS.accent : COLORS.ledOff }
               ]} />
             </View>
+          </View>
+        </ConsolePanel>
 
-            <View style={styles.switchContainer}>
-              <Text style={styles.switchLabel}>FLOOD LIGHTS</Text>
-              <TouchableOpacity
-                style={[
-                  styles.industrialSwitch,
-                  telemetry?.flood_mode_state ? styles.switchOn : styles.switchOff,
-                ]}
-                onPress={toggleFloodLED}
-                disabled={togglingFlood}
-              >
-                <View style={styles.switchHandle} />
-              </TouchableOpacity>
+        <ConsolePanel title="Audio System (Hold for Repeat)">
+          <View style={styles.audioButtonRow}>
+            <TouchableOpacity
+              style={[
+                styles.audioButton,
+                styles.hornButton,
+                triggeringHorn && styles.audioButtonActive
+              ]}
+              onPressIn={handleHornPressIn}
+              onPressOut={handleHornPressOut}
+              disabled={triggeringHorn}
+            >
+              <Text style={styles.audioButtonLabel}>HORN</Text>
+              <Text style={styles.audioButtonSubtext}>2 SEC BLAST</Text>
               <View style={[
-                styles.ledIndicatorSmall,
-                { backgroundColor: telemetry?.flood_mode_state ? COLORS.text : COLORS.ledOff }
+                styles.audioIndicator,
+                { backgroundColor: telemetry?.horn_active ? COLORS.accent : COLORS.ledOff }
               ]} />
-            </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.audioButton,
+                styles.sosButton,
+                triggeringSOS && styles.audioButtonActive
+              ]}
+              onPressIn={handleSOSPressIn}
+              onPressOut={handleSOSPressOut}
+              disabled={triggeringSOS}
+            >
+              <Text style={styles.audioButtonLabel}>SOS</Text>
+              <Text style={styles.audioButtonSubtext}>3 ROUNDS</Text>
+              <View style={[
+                styles.audioIndicator,
+                { backgroundColor: telemetry?.sos_active ? COLORS.accent : COLORS.ledOff }
+              ]} />
+            </TouchableOpacity>
           </View>
         </ConsolePanel>
 
@@ -1065,6 +1148,54 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
+  },
+  audioButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 10,
+    gap: 16,
+  },
+  audioButton: {
+    flex: 1,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    backgroundColor: '#2a3547',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: COLORS.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  hornButton: {
+    borderColor: '#4a8cff',
+  },
+  sosButton: {
+    borderColor: '#ff6b6b',
+  },
+  audioButtonActive: {
+    opacity: 0.6,
+    borderColor: COLORS.accent,
+  },
+  audioButtonLabel: {
+    fontSize: 14,
+    fontFamily: FONTS.monospace,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    letterSpacing: 1,
+  },
+  audioButtonSubtext: {
+    fontSize: 8,
+    fontFamily: FONTS.monospace,
+    color: COLORS.secondary,
+  },
+  audioIndicator: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    marginTop: 4,
   },
   loggingContent: {
     width: '100%',

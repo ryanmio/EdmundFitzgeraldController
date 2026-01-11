@@ -666,10 +666,6 @@ export default function DashboardScreen({ navigation, route }: Props) {
                 disabled={triggeringHorn}
               >
                 <Text style={styles.hornButtonText}>HORN</Text>
-                <View style={[
-                  styles.hornIndicator,
-                  { backgroundColor: telemetry?.horn_active ? COLORS.accent : COLORS.ledOff }
-                ]} />
               </TouchableOpacity>
             </View>
           </View>
@@ -690,10 +686,6 @@ export default function DashboardScreen({ navigation, route }: Props) {
             >
               <Text style={styles.radioButtonLabel}>SOS</Text>
               <Text style={styles.radioButtonSubtext}>DISTRESS</Text>
-              <View style={[
-                styles.radioIndicator,
-                { backgroundColor: telemetry?.sos_active ? COLORS.accent : COLORS.ledOff }
-              ]} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -702,7 +694,6 @@ export default function DashboardScreen({ navigation, route }: Props) {
             >
               <Text style={styles.radioButtonLabel}>RADIO 1</Text>
               <Text style={styles.radioButtonSubtext}>PLACEHOLDER</Text>
-              <View style={[styles.radioIndicator, { backgroundColor: COLORS.ledOff }]} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -711,7 +702,6 @@ export default function DashboardScreen({ navigation, route }: Props) {
             >
               <Text style={styles.radioButtonLabel}>RADIO 2</Text>
               <Text style={styles.radioButtonSubtext}>PLACEHOLDER</Text>
-              <View style={[styles.radioIndicator, { backgroundColor: COLORS.ledOff }]} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -720,7 +710,6 @@ export default function DashboardScreen({ navigation, route }: Props) {
             >
               <Text style={styles.radioButtonLabel}>RADIO 3</Text>
               <Text style={styles.radioButtonSubtext}>PLACEHOLDER</Text>
-              <View style={[styles.radioIndicator, { backgroundColor: COLORS.ledOff }]} />
             </TouchableOpacity>
           </View>
         </ConsolePanel>
@@ -1209,8 +1198,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   hornButtonLarge: {
-    width: '80%',
-    paddingVertical: 24,
+    width: '60%',
+    paddingVertical: 18,
     backgroundColor: '#3a4555',
     borderRadius: 50,
     borderWidth: 4,
@@ -1229,19 +1218,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.6,
   },
   hornButtonText: {
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: FONTS.monospace,
     fontWeight: 'bold',
     color: COLORS.text,
     letterSpacing: 3,
-  },
-  hornIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    marginTop: 8,
   },
   radioButtonsGrid: {
     flexDirection: 'row',
@@ -1281,14 +1262,6 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontFamily: FONTS.monospace,
     color: COLORS.secondary,
-  },
-  radioIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    marginTop: 4,
   },
   loggingContent: {
     width: '100%',

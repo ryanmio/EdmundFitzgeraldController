@@ -18,13 +18,15 @@
 #define SERVO_PWM_PIN     19   // RC receiver servo/rudder channel (PWM input)
 
 // ==================== BUILD IDENTIFICATION ====================
-#define FIRMWARE_VERSION   "1.0.0"
-#define BUILD_ID           "20260109"             // YYYYMMDD format
+#define FIRMWARE_VERSION   "1.1.0"
+#define BUILD_ID           "20260110"             // YYYYMMDD format
 
-// ==================== MORSE CODE DEFINITIONS ====================
-// Buzzer gets constant 5V power. GPIO17 drives I/O pin directly for tones.
-#define MORSE_BUZZER_PIN   17              // Buzzer module I/O pin (direct PWM, no MOSFET)
+// ==================== AUDIO OUTPUT DEFINITIONS ====================
+// Audio through PAM8403 amplifier + speaker (or compatible with piezo buzzer module)
+// GPIO17 outputs PWM tone → PAM8403 INL → Speaker for loud sound effects
+#define AUDIO_OUT_PIN      17              // PWM audio output (to amp or buzzer)
 #define MORSE_FREQUENCY    800             // Hz - classic WW2 radio telegraph tone
+#define HORN_FREQUENCY     200             // Hz - boat horn tone (future feature)
 #define MORSE_DIT_MS       150             // Dit (dot) length in milliseconds
 #define MORSE_DAH_MS       (MORSE_DIT_MS * 3)    // Dah (dash) = 3x dit
 #define MORSE_SYMBOL_GAP   MORSE_DIT_MS          // Gap between dits/dahs
@@ -218,53 +220,62 @@ bool isStartupTone = false;  // Flag to distinguish startup tones from SOS
 // Play startup success tone (blocking - used during setup only)
 void playStartupSuccessTone() {
   for (int i = 0; i < 3; i++) {
-    ledcWriteTone(MORSE_BUZZER_PIN, MORSE_FREQUENCY);
+    ledcWriteTone(AUDIO_OUT_PIN, MORSE_FREQUENCY);
     delay(MORSE_DIT_MS);
-    ledcWriteTone(MORSE_BUZZER_PIN, 0);
+    ledcWriteTone(AUDIO_OUT_PIN, 0);
     delay(MORSE_SYMBOL_GAP);
   }
-  ledcWriteTone(MORSE_BUZZER_PIN, 0); // Ensure silent
+  ledcWriteTone(AUDIO_OUT_PIN, 0); // Ensure silent
 }
 
 // Play WiFi connected tone (blocking - used during setup only)
 void playWiFiConnectedTone() {
   // dit-dah-dit pattern
-  ledcWriteTone(MORSE_BUZZER_PIN, MORSE_FREQUENCY);
+  ledcWriteTone(AUDIO_OUT_PIN, MORSE_FREQUENCY);
   delay(MORSE_DIT_MS);
-  ledcWriteTone(MORSE_BUZZER_PIN, 0);
+  ledcWriteTone(AUDIO_OUT_PIN, 0);
   delay(MORSE_SYMBOL_GAP);
   
-  ledcWriteTone(MORSE_BUZZER_PIN, MORSE_FREQUENCY);
+  ledcWriteTone(AUDIO_OUT_PIN, MORSE_FREQUENCY);
   delay(MORSE_DAH_MS);
-  ledcWriteTone(MORSE_BUZZER_PIN, 0);
+  ledcWriteTone(AUDIO_OUT_PIN, 0);
   delay(MORSE_SYMBOL_GAP);
   
-  ledcWriteTone(MORSE_BUZZER_PIN, MORSE_FREQUENCY);
+  ledcWriteTone(AUDIO_OUT_PIN, MORSE_FREQUENCY);
   delay(MORSE_DIT_MS);
-  ledcWriteTone(MORSE_BUZZER_PIN, 0);
+  ledcWriteTone(AUDIO_OUT_PIN, 0);
   delay(500); // Pause at end
+}
+
+// Play boat horn sound (blocking - future feature)
+void playBoatHorn() {
+  // Single long blast (1 second)
+  ledcWriteTone(AUDIO_OUT_PIN, HORN_FREQUENCY);
+  delay(1000);
+  ledcWriteTone(AUDIO_OUT_PIN, 0);
+  delay(500);
 }
 
 // Non-blocking Morse code state machine - call this repeatedly in loop()
 void updateMorseCode() {
   if (!ledFloodState) {
-    // Flood mode off - ensure buzzer is silent and reset
+    // Flood mode off - ensure audio is silent and reset
     if (morseStep != 0 || morseToneOn) {
-      ledcWriteTone(MORSE_BUZZER_PIN, 0);
+      ledcWriteTone(AUDIO_OUT_PIN, 0);
       morseStep = 0;
       morseToneOn = false;
     }
     return;
   }
 
-  // Flood mode on: buzzer has constant power, just drive tones
+  // Flood mode on: play SOS tones
   
   unsigned long currentTime = millis();
   
   if (morseToneOn) {
     // Tone is currently playing - check if it's time to turn it off
     if (currentTime - morseLastChange >= SOS_PATTERN[morseStep]) {
-      ledcWriteTone(MORSE_BUZZER_PIN, 0); // Turn off tone
+      ledcWriteTone(AUDIO_OUT_PIN, 0); // Turn off tone
       morseToneOn = false;
       morseLastChange = currentTime;
     }
@@ -275,7 +286,7 @@ void updateMorseCode() {
       if (morseStep >= 9) {
         morseStep = 0; // Loop back to start of SOS
       }
-      ledcWriteTone(MORSE_BUZZER_PIN, MORSE_FREQUENCY); // Start next tone
+      ledcWriteTone(AUDIO_OUT_PIN, MORSE_FREQUENCY); // Start next tone
       morseToneOn = true;
       morseLastChange = currentTime;
     }
@@ -386,12 +397,12 @@ void handleLed() {
   }
   if (modeFlood) {
     ledFloodState = stateOn;
-    // Buzzer has constant power - just control tones via MORSE_BUZZER_PIN
+    // Audio output (speaker/buzzer) controlled via GPIO17 PWM tones
     digitalWrite(LED_FLOOD_PIN, ledFloodState ? HIGH : LOW);
     
     // If turning off, stop any active Morse tone
     if (!stateOn) {
-      ledcWriteTone(MORSE_BUZZER_PIN, 0);
+      ledcWriteTone(AUDIO_OUT_PIN, 0);
       morseStep = 0;
       morseToneOn = false;
       morseLastChange = 0;
@@ -400,7 +411,7 @@ void handleLed() {
       morseStep = 0;
       morseToneOn = true;
       morseLastChange = millis();
-      ledcWriteTone(MORSE_BUZZER_PIN, MORSE_FREQUENCY);
+      ledcWriteTone(AUDIO_OUT_PIN, MORSE_FREQUENCY);
     }
   }
 
@@ -442,10 +453,10 @@ void setup() {
   digitalWrite(LED_FLOOD_PIN, LOW);
   digitalWrite(RUNNING_OUT_PIN, LOW);
   
-  // Init Morse code buzzer (PWM tone on GPIO17, buzzer has constant 5V power)
-  pinMode(MORSE_BUZZER_PIN, OUTPUT);
-  ledcAttach(MORSE_BUZZER_PIN, MORSE_FREQUENCY, 8); // 8-bit resolution
-  ledcWriteTone(MORSE_BUZZER_PIN, 0); // Start silent
+  // Init audio output (GPIO17 → PAM8403 amp or piezo buzzer module)
+  pinMode(AUDIO_OUT_PIN, OUTPUT);
+  ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8); // 8-bit resolution PWM
+  ledcWriteTone(AUDIO_OUT_PIN, 0); // Start silent
   
   // Init water sensor pin (digital with internal pullup)
   pinMode(WATER_SENSOR_PIN, INPUT_PULLUP);

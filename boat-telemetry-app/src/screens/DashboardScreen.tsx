@@ -1213,9 +1213,6 @@ const styles = StyleSheet.create({
   },
   hornButtonPressed: {
     transform: [{ scale: 0.93 }],
-    backgroundColor: '#2a3342',
-    shadowOpacity: 0.6,
-    borderColor: '#ff8800',
   },
   hornButtonText: {
     fontSize: 18,
@@ -1245,8 +1242,6 @@ const styles = StyleSheet.create({
   },
   radioButtonActive: {
     transform: [{ scale: 0.92 }],
-    backgroundColor: '#1a2332',
-    borderColor: COLORS.accent,
   },
   radioButtonLabel: {
     fontSize: 12,

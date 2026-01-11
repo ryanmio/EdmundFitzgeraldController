@@ -15,11 +15,11 @@ See `/docs/AUDIO_IMPLEMENTATION.md` for complete implementation guide.
 
 ### Historical Radio Transmissions (Primary)
 
-| File | Description | Content | Duration | Status |
-|------|-------------|---------|----------|--------|
-| `radio1.wav` | Final transmission | "We are holding our own" | 2.5s | ⏳ **Recording needed** |
-| `radio2.wav` | Damage report | "I have a fence rail down, two vents lost or damaged" | 2.5s | ⏳ **Recording needed** |
-| `radio3.wav` | Systems failure | "Anderson, this is the Fitzgerald. I have lost both radars" | 2.5s | ⏳ **Recording needed** |
+| File | Track # | Description | Content | Time | Status |
+|------|---------|-------------|---------|------|--------|
+| `fence_down.mp3` | 001 | Damage report | "I have a fence rail down, two vents lost or damaged" | 3:30 PM | ✅ **Complete** |
+| `lost_radar.mp3` | 002 | Systems failure | "Anderson, this is the Fitzgerald. I have lost both radars" | 5:20 PM | ✅ **Complete** |
+| `holding_own.mp3` | 003 | Final transmission | "We are holding our own" | 7:10 PM | ✅ **Complete** |
 
 ### Optional Sound Effects
 
@@ -68,14 +68,14 @@ See `/docs/AUDIO_IMPLEMENTATION.md` for complete implementation guide.
 
 ## Storage Structure
 
-### MicroSD Card Layout
+### DFPlayer Onboard Storage
 ```
-/audio/
-  ├── radio1.wav   (We are holding our own)
-  ├── radio2.wav   (Fence rail down, vents lost)
-  ├── radio3.wav   (Lost both radars)
-  ├── horn.wav     (Optional - boat horn)
-  └── sos.wav      (Optional - Morse SOS)
+Root directory:
+  ├── 001.mp3   (Fence rail down - 3:30 PM)
+  ├── 002.mp3   (Lost both radars - 5:20 PM)
+  ├── 003.mp3   (We are holding our own - 7:10 PM)
+  ├── 004.mp3   (Optional - boat horn)
+  └── 005.mp3   (Optional - SOS signal)
 ```
 
 ### SD Card Requirements
@@ -92,9 +92,9 @@ The firmware already has endpoints for audio playback:
 
 - `POST /horn` → Plays horn sound (currently PWM tone, will play `horn.wav`)
 - `POST /sos` → Plays SOS signal (currently PWM morse, will play `sos.wav`)
-- `POST /radio` with `{"radio_id": 1}` → Plays `radio1.wav`
-- `POST /radio` with `{"radio_id": 2}` → Plays `radio2.wav`
-- `POST /radio` with `{"radio_id": 3}` → Plays `radio3.wav`
+- `POST /radio` with `{"radio_id": 1}` → Plays 001.mp3 (Fence rail down)
+- `POST /radio` with `{"radio_id": 2}` → Plays 002.mp3 (Lost radars)
+- `POST /radio` with `{"radio_id": 3}` → Plays 003.mp3 (Holding our own)
 
 **No app changes needed** - the mobile app already triggers these endpoints correctly.
 

@@ -34,6 +34,13 @@
 #define MORSE_LETTER_GAP   (MORSE_DIT_MS * 3)    // Gap between letters
 #define MORSE_REPEAT_DELAY 2000                  // Pause between SOS repeats
 
+// ==================== AUDIO VOLUME LEVELS ====================
+// PWM duty cycle: 0-255 (0% = silent, 255 = max)
+// These are FIXED permanent volume levels set in firmware
+#define HORN_VOLUME        255             // 100% - LOUD (full volume)
+#define SOS_VOLUME         200             // ~78% - LOUD (SOS needs to be heard)
+#define RADIO_VOLUME       120             // ~47% - MODERATE (quieter than horn/SOS)
+
 // ==================== GLOBALS ====================
 WebServer server(80);
 unsigned long startTime;
@@ -273,14 +280,14 @@ void updateHorn() {
   
   if (elapsed >= HORN_DURATION) {
     // Horn blast complete
-    ledcWriteTone(AUDIO_OUT_PIN, 0);
+    ledcWrite(AUDIO_OUT_PIN, 0);  // Silent
     hornActive = false;
     Serial.println("Horn blast complete");
   }
   // Horn tone stays on for full duration (already started by trigger)
 }
 
-// Update radio sound effect (non-blocking, placeholder tones)
+// Update radio sound effect (non-blocking, placeholder tones at moderate volume)
 void updateRadio() {
   if (!radioActive) return;
   
@@ -288,13 +295,13 @@ void updateRadio() {
   
   if (elapsed >= RADIO_DURATION) {
     // Radio clip complete
-    ledcWriteTone(AUDIO_OUT_PIN, 0);
+    ledcWrite(AUDIO_OUT_PIN, 0);  // Silent
     radioActive = false;
     Serial.print("Radio ");
     Serial.print(currentRadioId);
     Serial.println(" complete");
   }
-  // For now, play a simple tone pattern as placeholder
+  // For now, play a simple tone pattern as placeholder at MODERATE volume
   // In future: play actual audio files via I2S or SD card
 }
 
@@ -306,7 +313,7 @@ void updateSOS() {
   
   // Check if we've completed all rounds
   if (sosRoundsRemaining <= 0) {
-    ledcWriteTone(AUDIO_OUT_PIN, 0);
+    ledcWrite(AUDIO_OUT_PIN, 0);  // Silent
     sosActive = false;
     morseStep = 0;
     morseToneOn = false;
@@ -322,10 +329,12 @@ void updateSOS() {
     morseStep = 0;
     morseToneOn = true;
     morseLastChange = currentTime;
-    ledcWriteTone(AUDIO_OUT_PIN, MORSE_FREQUENCY);
+    ledcSetup(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
+    ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
+    ledcWrite(AUDIO_OUT_PIN, SOS_VOLUME);  // SOS at LOUD volume
     Serial.print("SOS round, ");
     Serial.print(sosRoundsRemaining);
-    Serial.println(" remaining");
+    Serial.println(" remaining at volume level " + String(SOS_VOLUME));
     return;
   }
   
@@ -333,7 +342,7 @@ void updateSOS() {
   if (morseToneOn) {
     // Tone is currently playing - check if it's time to turn it off
     if (currentTime - morseLastChange >= SOS_PATTERN[morseStep]) {
-      ledcWriteTone(AUDIO_OUT_PIN, 0); // Turn off tone
+      ledcWrite(AUDIO_OUT_PIN, 0);  // Silent
       morseToneOn = false;
       morseLastChange = currentTime;
     }
@@ -344,7 +353,9 @@ void updateSOS() {
       if (morseStep >= 9) {
         morseStep = 0; // Loop back to start of SOS within this round
       }
-      ledcWriteTone(AUDIO_OUT_PIN, MORSE_FREQUENCY); // Start next tone
+      ledcSetup(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
+      ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
+      ledcWrite(AUDIO_OUT_PIN, SOS_VOLUME);  // Maintain SOS volume
       morseToneOn = true;
       morseLastChange = currentTime;
     }
@@ -479,11 +490,13 @@ void handleHorn() {
     return;
   }
 
-  // Trigger horn blast (2 seconds)
+  // Trigger horn blast (2 seconds) at LOUD volume
   hornActive = true;
   hornStartTime = millis();
-  ledcWriteTone(AUDIO_OUT_PIN, HORN_FREQUENCY);
-  Serial.println("Horn blast triggered");
+  ledcSetup(AUDIO_OUT_PIN, HORN_FREQUENCY, 8);  // Setup PWM channel
+  ledcAttach(AUDIO_OUT_PIN, HORN_FREQUENCY, 8); // Attach to pin
+  ledcWrite(AUDIO_OUT_PIN, HORN_VOLUME);        // Set volume (0-255 duty cycle)
+  Serial.println("Horn blast triggered at max volume");
 
   String json = "{";
   json += "\"horn_active\":true,";
@@ -499,15 +512,19 @@ void handleSOS() {
     return;
   }
 
-  // Trigger SOS sequence (3 rounds)
+  // Trigger SOS sequence (3 rounds) at LOUD volume
   sosActive = true;
   sosRoundsRemaining = SOS_ROUNDS_PER_TRIGGER;
   sosStartTime = millis();
   morseStep = 0;
   morseToneOn = true;
   morseLastChange = millis();
-  ledcWriteTone(AUDIO_OUT_PIN, MORSE_FREQUENCY);
-  Serial.print("SOS triggered: ");
+  ledcSetup(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
+  ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
+  ledcWrite(AUDIO_OUT_PIN, SOS_VOLUME);  // SOS at LOUD volume
+  Serial.print("SOS triggered at volume ");
+  Serial.print(SOS_VOLUME);
+  Serial.print(": ");
   Serial.print(SOS_ROUNDS_PER_TRIGGER);
   Serial.println(" rounds");
 
@@ -551,7 +568,7 @@ void handleRadio() {
     return;
   }
 
-  // Trigger radio sound effect (placeholder tone for now)
+  // Trigger radio sound effect (placeholder tone at MODERATE volume)
   radioActive = true;
   currentRadioId = radioId;
   radioStartTime = millis();
@@ -565,10 +582,13 @@ void handleRadio() {
     default: frequency = 440;
   }
   
-  ledcWriteTone(AUDIO_OUT_PIN, frequency);
+  ledcSetup(AUDIO_OUT_PIN, frequency, 8);
+  ledcAttach(AUDIO_OUT_PIN, frequency, 8);
+  ledcWrite(AUDIO_OUT_PIN, RADIO_VOLUME);  // Radio at MODERATE volume
   Serial.print("Radio ");
   Serial.print(radioId);
-  Serial.println(" triggered");
+  Serial.print(" triggered at volume ");
+  Serial.println(RADIO_VOLUME);
 
   String json = "{";
   json += "\"radio_active\":true,";

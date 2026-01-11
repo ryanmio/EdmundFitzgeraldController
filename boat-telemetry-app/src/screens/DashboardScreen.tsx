@@ -801,7 +801,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
                 activeOpacity={1}
               >
                 <Text style={styles.radioButtonLabel}>FENCE RAIL DOWN</Text>
-                <Text style={styles.radioButtonSubtext}>3:30 PM</Text>
+                <Text style={styles.radioButtonSubtext}>3:30 PM • DAMAGE REPORT</Text>
               </TouchableOpacity>
             </Animated.View>
 
@@ -813,7 +813,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
                 activeOpacity={1}
               >
                 <Text style={styles.radioButtonLabel}>LOST BOTH RADARS</Text>
-                <Text style={styles.radioButtonSubtext}>5:20 PM</Text>
+                <Text style={styles.radioButtonSubtext}>5:20 PM • SYSTEMS FAILURE</Text>
               </TouchableOpacity>
             </Animated.View>
 

@@ -132,7 +132,7 @@
 **v2.0 Implementation**: DFPlayer Mini with onboard 128MB storage
 - [ ] Power off
 - [ ] Wire DFPlayer: VCC→5V, GND→GND, TX→GPIO25, RX→GPIO26, SPK_1→Speaker+, SPK_2→Speaker-
-- [ ] Upload MP3s to DFPlayer via USB (001.mp3=radio1, 002.mp3=radio2, 003.mp3=radio3)
+- [ ] Upload MP3s to DFPlayer via USB (rename: fence_down→001.mp3, lost_radar→002.mp3, holding_own→003.mp3)
 - [ ] Flash updated firmware v2.0.0 to ESP32 (requires `DFRobotDFPlayerMini` library)
 - [ ] Power on → Test horn, SOS, and radio sounds via app
 

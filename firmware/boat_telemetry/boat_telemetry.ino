@@ -352,7 +352,6 @@ void updateSOS() {
     morseStep = 0;
     morseToneOn = true;
     morseLastChange = currentTime;
-    ledcSetup(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
     ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
     ledcWrite(AUDIO_OUT_PIN, SOS_VOLUME);  // SOS at LOUD volume
     Serial.print("SOS round, ");
@@ -376,7 +375,6 @@ void updateSOS() {
       if (morseStep >= 9) {
         morseStep = 0; // Loop back to start of SOS within this round
       }
-      ledcSetup(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
       ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
       ledcWrite(AUDIO_OUT_PIN, SOS_VOLUME);  // Maintain SOS volume
       morseToneOn = true;
@@ -520,7 +518,6 @@ void handleHorn() {
     // Fallback to PWM tone (if GPIO17 not used for DFPlayer)
     hornActive = true;
     hornStartTime = millis();
-    ledcSetup(AUDIO_OUT_PIN, HORN_FREQUENCY, 8);
     ledcAttach(AUDIO_OUT_PIN, HORN_FREQUENCY, 8);
     ledcWrite(AUDIO_OUT_PIN, HORN_VOLUME);
     Serial.println("Horn (PWM fallback)");
@@ -547,7 +544,6 @@ void handleSOS() {
     morseStep = 0;
     morseToneOn = true;
     morseLastChange = millis();
-    ledcSetup(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
     ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
     ledcWrite(AUDIO_OUT_PIN, SOS_VOLUME);
     Serial.println("SOS (PWM fallback)");
@@ -596,7 +592,6 @@ void handleRadio() {
     radioStartTime = millis();
     
     int frequency = (radioId == 1) ? 440 : (radioId == 2) ? 523 : 659;
-    ledcSetup(AUDIO_OUT_PIN, frequency, 8);
     ledcAttach(AUDIO_OUT_PIN, frequency, 8);
     ledcWrite(AUDIO_OUT_PIN, RADIO_VOLUME);
     Serial.print("Radio ");

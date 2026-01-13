@@ -514,18 +514,14 @@ void handleHorn() {
     return;
   }
 
-  // Track 4: Horn sound (if exists on DFPlayer)
-  if (dfPlayerAvailable) {
-    playDFPlayerTrack(4, 100);  // 100% volume
-  } else {
-    // Fallback to PWM tone (if GPIO17 not used for DFPlayer)
-    hornActive = true;
-    hornStartTime = millis();
-    ledcAttach(AUDIO_OUT_PIN, HORN_FREQUENCY, 8);
-    ledcWrite(AUDIO_OUT_PIN, HORN_VOLUME);
-    Serial.println("Horn (PWM fallback)");
+  // DFPlayer ONLY - no PWM fallback for audio files
+  if (!dfPlayerAvailable) {
+    server.send(503, "application/json", "{\"error\":\"DFPlayer not available\"}");
+    return;
   }
 
+  // Track 4: Horn sound
+  playDFPlayerTrack(4, 100);  // 100% volume
   server.send(200, "application/json", "{\"horn_active\":true}");
 }
 
@@ -536,11 +532,13 @@ void handleSOS() {
     return;
   }
 
-  // Track 5: SOS sound (if exists on DFPlayer)
+  // Track 5: SOS sound (DFPlayer audio file)
+  // Note: SOS has PWM morse code fallback for emergency situations
   if (dfPlayerAvailable) {
     playDFPlayerTrack(5, 78);  // 78% volume
+    Serial.println("SOS (DFPlayer audio)");
   } else {
-    // Fallback to PWM morse code
+    // Emergency fallback: PWM morse code (... --- ...)
     sosActive = true;
     sosRoundsRemaining = SOS_ROUNDS_PER_TRIGGER;
     sosStartTime = millis();
@@ -549,7 +547,7 @@ void handleSOS() {
     morseLastChange = millis();
     ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
     ledcWrite(AUDIO_OUT_PIN, SOS_VOLUME);
-    Serial.println("SOS (PWM fallback)");
+    Serial.println("SOS (morse code emergency fallback)");
   }
 
   server.send(200, "application/json", "{\"sos_active\":true}");
@@ -564,6 +562,12 @@ void handleRadio() {
 
   if (!server.hasArg("plain")) {
     server.send(400, "application/json", "{\"error\":\"Missing request body\"}");
+    return;
+  }
+
+  // DFPlayer ONLY - no PWM fallback for audio files
+  if (!dfPlayerAvailable) {
+    server.send(503, "application/json", "{\"error\":\"DFPlayer not available\"}");
     return;
   }
 
@@ -586,22 +590,8 @@ void handleRadio() {
   }
 
   // DFPlayer tracks: 1=radio1, 2=radio2, 3=radio3
-  if (dfPlayerAvailable) {
-    playDFPlayerTrack(radioId, 47);  // 47% volume
-  } else {
-    // Fallback to PWM tones
-    radioActive = true;
-    currentRadioId = radioId;
-    radioStartTime = millis();
-    
-    int frequency = (radioId == 1) ? 440 : (radioId == 2) ? 523 : 659;
-    ledcAttach(AUDIO_OUT_PIN, frequency, 8);
-    ledcWrite(AUDIO_OUT_PIN, RADIO_VOLUME);
-    Serial.print("Radio ");
-    Serial.print(radioId);
-    Serial.println(" (PWM fallback)");
-  }
-
+  playDFPlayerTrack(radioId, 47);  // 47% volume
+  
   String json = "{\"radio_active\":true,\"radio_id\":" + String(radioId) + "}";
   server.send(200, "application/json", json);
 }
@@ -654,44 +644,41 @@ void setup() {
   Serial.print(" | TX: GPIO");
   Serial.println(DFPLAYER_TX);
   
-  // Initialize Serial2 at 115200 baud for DFPlayer Pro
+  // Initialize Serial2 - EXACT same way as diagnostic that worked
   Serial.println("Starting Serial2 at 115200 baud...");
   Serial2.begin(115200, SERIAL_8N1, DFPLAYER_RX, DFPLAYER_TX);
-  Serial.println("Waiting 3 seconds for DFPlayer Pro to stabilize...");
-  delay(3000);  // DFPlayer Pro needs time to boot and stabilize
+  delay(2000);  // Match diagnostic timing exactly
   
-  // Clear any startup garbage from buffer
-  while(Serial2.available()) {
-    Serial2.read();
-  }
+  Serial.println("Calling DF1201S.begin()...");
   
-  Serial.println("Attempting DF1201S.begin()...");
-  
-  // Initialize DF1201S library
+  // Initialize DF1201S library - EXACT same way as diagnostic
   if (!DF1201S.begin(Serial2)) {
-    Serial.println("✗ DFPlayer Pro init failed - using PWM fallback");
-    Serial.println("  Check: Power, wiring, or try power-cycling ESP32");
+    Serial.println();
+    Serial.println("✗✗✗ DFPlayer Pro FAILED ✗✗✗");
+    Serial.println("Audio will NOT work!");
+    Serial.println("Check:");
+    Serial.println("  1. Power (3.3V or 5V to VIN)");
+    Serial.println("  2. Wiring (TX/RX not swapped)");
+    Serial.println("  3. Try power-cycle ESP32");
+    Serial.println();
     dfPlayerAvailable = false;
   } else {
     Serial.println("✓ DFPlayer Pro connected!");
     
     // Switch to MUSIC mode
-    Serial.println("Switching to MUSIC mode...");
     DF1201S.switchFunction(DF1201S.MUSIC);
-    delay(2000);  // Wait for prompt tone
+    delay(2000);  // Wait for prompt tone (per library docs)
     
-    // Set play mode to single (play once)
-    Serial.println("Setting play mode to SINGLE...");
+    // Set play mode to single
     DF1201S.setPlayMode(DF1201S.SINGLE);
     delay(200);
     
     // Set initial volume (0-30)
-    Serial.println("Setting volume to 20/30...");
     DF1201S.setVol(20);
     delay(200);
     
     dfPlayerAvailable = true;
-    Serial.println("✓ DFPlayer Pro ready for playback!");
+    Serial.println("✓ DFPlayer Pro ready!");
   }
   Serial.println("========================================");;
   

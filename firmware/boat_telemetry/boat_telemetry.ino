@@ -7,7 +7,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include "secrets.h"
-#include <DFRobotDFPlayerMini.h>  // DFPlayer Mini library
+// DFPlayer Mini - using raw serial commands via Serial2 (no library)
 
 // ==================== PIN DEFINITIONS ====================
 #define LED_RUNNING_PIN    2   // Built-in LED on most dev boards (keep for testing)
@@ -20,12 +20,12 @@
 #define SERVO_PWM_PIN     19   // RC receiver servo/rudder channel (PWM input)
 
 // DFPlayer Mini pins (serial communication)
-#define DFPLAYER_RX       25   // ESP32 RX - Connect to DFPlayer TX
-#define DFPLAYER_TX       26   // ESP32 TX - Connect to DFPlayer RX
+#define DFPLAYER_RX       27   // ESP32 RX - Connect to DFPlayer TX
+#define DFPLAYER_TX       26   // ESP32 TX - Connect to DFPlayer RX (with 1K resistor)
 
 // ==================== BUILD IDENTIFICATION ====================
-#define FIRMWARE_VERSION   "2.0.0"
-#define BUILD_ID           "20260111"             // YYYYMMDD format - DFPlayer Mini audio support
+#define FIRMWARE_VERSION   "2.0.2"
+#define BUILD_ID           "20260112-raw"         // Raw serial DFPlayer (no library)
 
 // ==================== AUDIO OUTPUT DEFINITIONS ====================
 // Audio through PAM8403 amplifier + speaker (or compatible with piezo buzzer module)
@@ -48,8 +48,7 @@
 
 // ==================== GLOBALS ====================
 WebServer server(80);
-HardwareSerial dfPlayerSerial(1);  // Use UART1
-DFRobotDFPlayerMini dfPlayer;
+// Using Serial2 for DFPlayer (raw commands, no library)
 unsigned long startTime;
 bool ledRunningState = false;
 bool ledFloodState = false;
@@ -280,17 +279,31 @@ void playWiFiConnectedTone() {
   delay(500); // Pause at end
 }
 
-// Play DFPlayer track with specified volume (0-100%)
+// Play DFPlayer track with raw serial commands (bypassing library)
 void playDFPlayerTrack(int trackNumber, int volumePercent) {
   if (!dfPlayerAvailable) return;
   
-  int volume = map(volumePercent, 0, 100, 0, 30);  // DFPlayer volume: 0-30
-  dfPlayer.volume(volume);
-  dfPlayer.play(trackNumber);
+  // Set volume first (0-30)
+  int volume = map(volumePercent, 0, 100, 0, 30);
   
-  Serial.print("Playing track ");
+  // Volume command: 7E FF 06 06 00 00 VV checksum_high checksum_low EF
+  int volChecksum = -(0xFF + 0x06 + 0x06 + 0x00 + 0x00 + volume);
+  byte volCmd[] = {0x7E, 0xFF, 0x06, 0x06, 0x00, 0x00, (byte)volume, 
+                   (byte)(volChecksum >> 8), (byte)(volChecksum & 0xFF), 0xEF};
+  Serial2.write(volCmd, 10);
+  Serial2.flush();
+  delay(50);
+  
+  // Play command: 7E FF 06 03 00 00 TT checksum_high checksum_low EF
+  int playChecksum = -(0xFF + 0x06 + 0x03 + 0x00 + 0x00 + trackNumber);
+  byte playCmd[] = {0x7E, 0xFF, 0x06, 0x03, 0x00, 0x00, (byte)trackNumber, 
+                    (byte)(playChecksum >> 8), (byte)(playChecksum & 0xFF), 0xEF};
+  Serial2.write(playCmd, 10);
+  Serial2.flush();
+  
+  Serial.print("DFPlayer: Track ");
   Serial.print(trackNumber);
-  Serial.print(" at ");
+  Serial.print(" @ ");
   Serial.print(volumePercent);
   Serial.println("%");
 }
@@ -642,17 +655,103 @@ void setup() {
   ledcWriteTone(AUDIO_OUT_PIN, 0); // Start silent
   
   // Init DFPlayer Mini (onboard 128MB storage audio player)
-  dfPlayerSerial.begin(9600, SERIAL_8N1, DFPLAYER_RX, DFPLAYER_TX);
-  delay(500);
-  Serial.println("Initializing DFPlayer...");
-  if (dfPlayer.begin(dfPlayerSerial)) {
-    dfPlayerAvailable = true;
-    dfPlayer.volume(15);  // Default volume (0-30)
-    Serial.println("DFPlayer initialized successfully");
-  } else {
-    dfPlayerAvailable = false;
-    Serial.println("DFPlayer initialization failed - using PWM fallback");
+  Serial.println();
+  Serial.println("========================================");
+  Serial.println("DFPlayer CRITICAL DIAGNOSTIC");
+  Serial.println("========================================");
+  
+  // CRITICAL TEST: Verify pin assignments
+  Serial.println("[PIN TEST]");
+  Serial.print("  RX Pin GPIO");
+  Serial.print(DFPLAYER_RX);
+  Serial.println(" (ESP32 <- DFPlayer TX)");
+  Serial.print("  TX Pin GPIO");
+  Serial.print(DFPLAYER_TX);
+  Serial.println(" (ESP32 -> DFPlayer RX + 1K resistor)");
+  Serial.println();
+  
+  // Initialize with explicit pins
+  Serial.println("[INIT] Starting Serial2...");
+  Serial2.begin(9600, SERIAL_8N1, DFPLAYER_RX, DFPLAYER_TX);
+  Serial.println("[INIT] Waiting 3 seconds for DFPlayer boot...");
+  delay(3000);
+  
+  // Check for any startup messages from DFPlayer
+  Serial.println("[RX CHECK] Reading any DFPlayer startup messages...");
+  int startupBytes = 0;
+  unsigned long startCheck = millis();
+  while(millis() - startCheck < 1000) {  // Check for 1 second
+    if(Serial2.available()) {
+      byte b = Serial2.read();
+      Serial.print("  RX: 0x");
+      Serial.println(b, HEX);
+      startupBytes++;
+    }
   }
+  Serial.print("[RX CHECK] Received ");
+  Serial.print(startupBytes);
+  Serial.println(" bytes from DFPlayer");
+  
+  if (startupBytes == 0) {
+    Serial.println();
+    Serial.println("*** CRITICAL: NO DATA FROM DFPLAYER! ***");
+    Serial.println("Problem: ESP32 GPIO27 not receiving from DFPlayer TX");
+    Serial.println("Action needed:");
+    Serial.println("  1. Verify DFPlayer TX pin is connected to ESP32 GPIO27");
+    Serial.println("  2. NO resistor on this line (direct connection)");
+    Serial.println("  3. Check DFPlayer has 5V power and GND connected");
+    Serial.println();
+  }
+  
+  // Simple volume command (no ACK needed)
+  Serial.println("[CMD] Sending VOLUME=30 (max)...");
+  byte volCmd[] = {0x7E, 0xFF, 0x06, 0x06, 0x00, 0x00, 0x1E, 0xFE, 0xC7, 0xEF};
+  Serial2.write(volCmd, 10);
+  Serial2.flush();
+  Serial.println("[CMD] Volume sent");
+  delay(100);
+  
+  // Multiple play attempts with delays
+  Serial.println("[CMD] Sending PLAY TRACK 1 (attempt 1)...");
+  byte playCmd[] = {0x7E, 0xFF, 0x06, 0x03, 0x00, 0x00, 0x01, 0xFE, 0xF7, 0xEF};
+  Serial2.write(playCmd, 10);
+  Serial2.flush();
+  delay(500);
+  
+  Serial.println("[CMD] Sending PLAY TRACK 1 (attempt 2)...");
+  Serial2.write(playCmd, 10);
+  Serial2.flush();
+  delay(500);
+  
+  Serial.println("[CMD] Sending PLAY TRACK 1 (attempt 3)...");
+  Serial2.write(playCmd, 10);
+  Serial2.flush();
+  delay(1000);
+  
+  Serial.println();
+  Serial.println("*** CHECK FOR AUDIO ***");
+  Serial.println("If NO sound: TX line (GPIO26) not reaching DFPlayer");
+  Serial.println("If you hear sound: SUCCESS!");
+  Serial.println();
+  
+  // Check for any responses
+  Serial.println("[RX CHECK] Looking for responses...");
+  startCheck = millis();
+  int responseBytes = 0;
+  while(millis() - startCheck < 2000) {
+    if(Serial2.available()) {
+      byte b = Serial2.read();
+      Serial.print("  RX: 0x");
+      Serial.println(b, HEX);
+      responseBytes++;
+    }
+  }
+  Serial.print("[RX CHECK] Got ");
+  Serial.print(responseBytes);
+  Serial.println(" response bytes");
+  
+  dfPlayerAvailable = true;
+  Serial.println("========================================");;
   
   // Init water sensor pin (digital with internal pullup)
   pinMode(WATER_SENSOR_PIN, INPUT_PULLUP);

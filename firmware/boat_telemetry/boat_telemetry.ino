@@ -7,7 +7,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include "secrets.h"
-// DFPlayer Mini - using raw serial commands via Serial2 (no library)
+#include "DFRobot_DF1201S.h"  // DFPlayer Pro (DF1201S) library
 
 // ==================== PIN DEFINITIONS ====================
 #define LED_RUNNING_PIN    2   // Built-in LED on most dev boards (keep for testing)
@@ -19,13 +19,13 @@
 #define THROTTLE_PWM_PIN  18   // RC receiver throttle channel (PWM input)
 #define SERVO_PWM_PIN     19   // RC receiver servo/rudder channel (PWM input)
 
-// DFPlayer Mini pins (serial communication)
+// DFPlayer Pro pins (serial communication at 115200 baud)
 #define DFPLAYER_RX       27   // ESP32 RX - Connect to DFPlayer TX
-#define DFPLAYER_TX       26   // ESP32 TX - Connect to DFPlayer RX (with 1K resistor)
+#define DFPLAYER_TX       26   // ESP32 TX - Connect to DFPlayer RX
 
 // ==================== BUILD IDENTIFICATION ====================
-#define FIRMWARE_VERSION   "2.0.2"
-#define BUILD_ID           "20260112-raw"         // Raw serial DFPlayer (no library)
+#define FIRMWARE_VERSION   "2.1.0"
+#define BUILD_ID           "20260113-pro"         // DFPlayer Pro (DF1201S) support
 
 // ==================== AUDIO OUTPUT DEFINITIONS ====================
 // Audio through PAM8403 amplifier + speaker (or compatible with piezo buzzer module)
@@ -48,7 +48,7 @@
 
 // ==================== GLOBALS ====================
 WebServer server(80);
-// Using Serial2 for DFPlayer (raw commands, no library)
+DFRobot_DF1201S DF1201S;  // DFPlayer Pro object
 unsigned long startTime;
 bool ledRunningState = false;
 bool ledFloodState = false;
@@ -279,29 +279,19 @@ void playWiFiConnectedTone() {
   delay(500); // Pause at end
 }
 
-// Play DFPlayer track with raw serial commands (bypassing library)
+// Play DFPlayer Pro track using DF1201S library
 void playDFPlayerTrack(int trackNumber, int volumePercent) {
   if (!dfPlayerAvailable) return;
   
-  // Set volume first (0-30)
+  // Set volume (0-30 for DF1201S)
   int volume = map(volumePercent, 0, 100, 0, 30);
-  
-  // Volume command: 7E FF 06 06 00 00 VV checksum_high checksum_low EF
-  int volChecksum = -(0xFF + 0x06 + 0x06 + 0x00 + 0x00 + volume);
-  byte volCmd[] = {0x7E, 0xFF, 0x06, 0x06, 0x00, 0x00, (byte)volume, 
-                   (byte)(volChecksum >> 8), (byte)(volChecksum & 0xFF), 0xEF};
-  Serial2.write(volCmd, 10);
-  Serial2.flush();
+  DF1201S.setVol(volume);
   delay(50);
   
-  // Play command: 7E FF 06 03 00 00 TT checksum_high checksum_low EF
-  int playChecksum = -(0xFF + 0x06 + 0x03 + 0x00 + 0x00 + trackNumber);
-  byte playCmd[] = {0x7E, 0xFF, 0x06, 0x03, 0x00, 0x00, (byte)trackNumber, 
-                    (byte)(playChecksum >> 8), (byte)(playChecksum & 0xFF), 0xEF};
-  Serial2.write(playCmd, 10);
-  Serial2.flush();
+  // Play file by number (based on write order to module)
+  DF1201S.playFileNum(trackNumber);
   
-  Serial.print("DFPlayer: Track ");
+  Serial.print("DFPlayer Pro: Track ");
   Serial.print(trackNumber);
   Serial.print(" @ ");
   Serial.print(volumePercent);
@@ -654,103 +644,55 @@ void setup() {
   ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8); // 8-bit resolution PWM
   ledcWriteTone(AUDIO_OUT_PIN, 0); // Start silent
   
-  // Init DFPlayer Mini (onboard 128MB storage audio player)
+  // Init DFPlayer Pro (DF1201S chip, 115200 baud, AT commands)
   Serial.println();
   Serial.println("========================================");
-  Serial.println("DFPlayer CRITICAL DIAGNOSTIC");
+  Serial.println("DFPlayer Pro Initialization");
   Serial.println("========================================");
-  
-  // CRITICAL TEST: Verify pin assignments
-  Serial.println("[PIN TEST]");
-  Serial.print("  RX Pin GPIO");
+  Serial.print("RX: GPIO");
   Serial.print(DFPLAYER_RX);
-  Serial.println(" (ESP32 <- DFPlayer TX)");
-  Serial.print("  TX Pin GPIO");
-  Serial.print(DFPLAYER_TX);
-  Serial.println(" (ESP32 -> DFPlayer RX + 1K resistor)");
-  Serial.println();
+  Serial.print(" | TX: GPIO");
+  Serial.println(DFPLAYER_TX);
   
-  // Initialize with explicit pins
-  Serial.println("[INIT] Starting Serial2...");
-  Serial2.begin(9600, SERIAL_8N1, DFPLAYER_RX, DFPLAYER_TX);
-  Serial.println("[INIT] Waiting 3 seconds for DFPlayer boot...");
-  delay(3000);
+  // Initialize Serial2 at 115200 baud for DFPlayer Pro
+  Serial.println("Starting Serial2 at 115200 baud...");
+  Serial2.begin(115200, SERIAL_8N1, DFPLAYER_RX, DFPLAYER_TX);
+  Serial.println("Waiting 3 seconds for DFPlayer Pro to stabilize...");
+  delay(3000);  // DFPlayer Pro needs time to boot and stabilize
   
-  // Check for any startup messages from DFPlayer
-  Serial.println("[RX CHECK] Reading any DFPlayer startup messages...");
-  int startupBytes = 0;
-  unsigned long startCheck = millis();
-  while(millis() - startCheck < 1000) {  // Check for 1 second
-    if(Serial2.available()) {
-      byte b = Serial2.read();
-      Serial.print("  RX: 0x");
-      Serial.println(b, HEX);
-      startupBytes++;
-    }
-  }
-  Serial.print("[RX CHECK] Received ");
-  Serial.print(startupBytes);
-  Serial.println(" bytes from DFPlayer");
-  
-  if (startupBytes == 0) {
-    Serial.println();
-    Serial.println("*** CRITICAL: NO DATA FROM DFPLAYER! ***");
-    Serial.println("Problem: ESP32 GPIO27 not receiving from DFPlayer TX");
-    Serial.println("Action needed:");
-    Serial.println("  1. Verify DFPlayer TX pin is connected to ESP32 GPIO27");
-    Serial.println("  2. NO resistor on this line (direct connection)");
-    Serial.println("  3. Check DFPlayer has 5V power and GND connected");
-    Serial.println();
+  // Clear any startup garbage from buffer
+  while(Serial2.available()) {
+    Serial2.read();
   }
   
-  // Simple volume command (no ACK needed)
-  Serial.println("[CMD] Sending VOLUME=30 (max)...");
-  byte volCmd[] = {0x7E, 0xFF, 0x06, 0x06, 0x00, 0x00, 0x1E, 0xFE, 0xC7, 0xEF};
-  Serial2.write(volCmd, 10);
-  Serial2.flush();
-  Serial.println("[CMD] Volume sent");
-  delay(100);
+  Serial.println("Attempting DF1201S.begin()...");
   
-  // Multiple play attempts with delays
-  Serial.println("[CMD] Sending PLAY TRACK 1 (attempt 1)...");
-  byte playCmd[] = {0x7E, 0xFF, 0x06, 0x03, 0x00, 0x00, 0x01, 0xFE, 0xF7, 0xEF};
-  Serial2.write(playCmd, 10);
-  Serial2.flush();
-  delay(500);
-  
-  Serial.println("[CMD] Sending PLAY TRACK 1 (attempt 2)...");
-  Serial2.write(playCmd, 10);
-  Serial2.flush();
-  delay(500);
-  
-  Serial.println("[CMD] Sending PLAY TRACK 1 (attempt 3)...");
-  Serial2.write(playCmd, 10);
-  Serial2.flush();
-  delay(1000);
-  
-  Serial.println();
-  Serial.println("*** CHECK FOR AUDIO ***");
-  Serial.println("If NO sound: TX line (GPIO26) not reaching DFPlayer");
-  Serial.println("If you hear sound: SUCCESS!");
-  Serial.println();
-  
-  // Check for any responses
-  Serial.println("[RX CHECK] Looking for responses...");
-  startCheck = millis();
-  int responseBytes = 0;
-  while(millis() - startCheck < 2000) {
-    if(Serial2.available()) {
-      byte b = Serial2.read();
-      Serial.print("  RX: 0x");
-      Serial.println(b, HEX);
-      responseBytes++;
-    }
+  // Initialize DF1201S library
+  if (!DF1201S.begin(Serial2)) {
+    Serial.println("✗ DFPlayer Pro init failed - using PWM fallback");
+    Serial.println("  Check: Power, wiring, or try power-cycling ESP32");
+    dfPlayerAvailable = false;
+  } else {
+    Serial.println("✓ DFPlayer Pro connected!");
+    
+    // Switch to MUSIC mode
+    Serial.println("Switching to MUSIC mode...");
+    DF1201S.switchFunction(DF1201S.MUSIC);
+    delay(2000);  // Wait for prompt tone
+    
+    // Set play mode to single (play once)
+    Serial.println("Setting play mode to SINGLE...");
+    DF1201S.setPlayMode(DF1201S.SINGLE);
+    delay(200);
+    
+    // Set initial volume (0-30)
+    Serial.println("Setting volume to 20/30...");
+    DF1201S.setVol(20);
+    delay(200);
+    
+    dfPlayerAvailable = true;
+    Serial.println("✓ DFPlayer Pro ready for playback!");
   }
-  Serial.print("[RX CHECK] Got ");
-  Serial.print(responseBytes);
-  Serial.println(" response bytes");
-  
-  dfPlayerAvailable = true;
   Serial.println("========================================");;
   
   // Init water sensor pin (digital with internal pullup)

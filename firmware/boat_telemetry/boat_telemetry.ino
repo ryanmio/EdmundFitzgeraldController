@@ -665,9 +665,13 @@ void setup() {
   } else {
     Serial.println("✓ DFPlayer Pro connected!");
     
-    // Switch to MUSIC mode
+    // Disable voice prompts (no "MUSIC!" announcement)
+    DF1201S.setPrompt(false);
+    delay(100);
+    
+    // Switch to MUSIC mode (now silent)
     DF1201S.switchFunction(DF1201S.MUSIC);
-    delay(2000);  // Wait for prompt tone (per library docs)
+    delay(500);  // Shorter delay since no prompt voice
     
     // Set play mode to single
     DF1201S.setPlayMode(DF1201S.SINGLE);

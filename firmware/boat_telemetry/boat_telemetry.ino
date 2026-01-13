@@ -700,6 +700,22 @@ void setup() {
     
     dfPlayerAvailable = true;
     Serial.println("✓ DFPlayer Pro ready for playback!");
+    
+    // INDEX TEST MODE: Play files 1-5 sequentially to verify correct mapping
+    Serial.println();
+    Serial.println("========================================");
+    Serial.println("INDEX TEST MODE - Playing files 1-5");
+    Serial.println("Listen for: 1=Startup, 2=Damage, 3=Radio, 4=Hold, 5=(if exists)");
+    Serial.println("========================================");
+    for (int i = 1; i <= 5; i++) {
+      Serial.print("Playing index ");
+      Serial.print(i);
+      Serial.println("...");
+      DF1201S.playFileNum(i);
+      delay(3000);  // 3 seconds per track
+    }
+    Serial.println("✓ Index test complete!");
+    Serial.println("========================================");
   }
   Serial.println("========================================");
   

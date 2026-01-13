@@ -7,7 +7,8 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include "secrets.h"
-#include "DFRobot_DF1201S.h"  // DFPlayer Pro (DF1201S) library
+#include "esp_system.h"        // For esp_reset_reason
+#include "DFRobot_DF1201S.h"   // DFPlayer Pro (DF1201S) library
 
 // ==================== PIN DEFINITIONS ====================
 #define LED_RUNNING_PIN    2   // Built-in LED on most dev boards (keep for testing)
@@ -76,6 +77,23 @@ bool waterDebouncedState = false;  // Current debounced state (false = secure, t
 bool waterLastRawState = true;     // Last raw sensor reading (true = DRY, false = WET)
 unsigned long waterStateChangeTime = 0;  // Time when current raw state started
 const unsigned long WATER_DEBOUNCE_TIME = 10000;  // 10 seconds in milliseconds
+
+// Human-readable reset reason (helps catch brownout / watchdog resets)
+const char* resetReasonToString(esp_reset_reason_t reason) {
+  switch (reason) {
+    case ESP_RST_POWERON:   return "POWERON";
+    case ESP_RST_EXT:       return "EXT_RESET";
+    case ESP_RST_SW:        return "SW_RESET";
+    case ESP_RST_PANIC:     return "PANIC";
+    case ESP_RST_INT_WDT:   return "INT_WDT";
+    case ESP_RST_TASK_WDT:  return "TASK_WDT";
+    case ESP_RST_WDT:       return "WDT";
+    case ESP_RST_DEEPSLEEP: return "DEEPSLEEP";
+    case ESP_RST_BROWNOUT:  return "BROWNOUT";
+    case ESP_RST_SDIO:      return "SDIO";
+    default:                return "UNKNOWN";
+  }
+}
 
 // ==================== WIFI CONNECT (SCAN + MATCH) ====================
 void connectWiFi() {
@@ -644,47 +662,46 @@ void setup() {
   Serial.print(" | TX: GPIO");
   Serial.println(DFPLAYER_TX);
   
-  // Initialize Serial2 - EXACT same way as diagnostic that worked
+  // Initialize Serial2 at 115200 baud for DFPlayer Pro
   Serial.println("Starting Serial2 at 115200 baud...");
   Serial2.begin(115200, SERIAL_8N1, DFPLAYER_RX, DFPLAYER_TX);
-  delay(2000);  // Match diagnostic timing exactly
+  Serial.println("Waiting 3 seconds for DFPlayer Pro to stabilize...");
+  delay(3000);  // DFPlayer Pro needs time to boot and stabilize
   
-  Serial.println("Calling DF1201S.begin()...");
+  // Clear any startup garbage from buffer
+  while(Serial2.available()) {
+    Serial2.read();
+  }
   
-  // Initialize DF1201S library - EXACT same way as diagnostic
+  Serial.println("Attempting DF1201S.begin()...");
+  
+  // Initialize DF1201S library
   if (!DF1201S.begin(Serial2)) {
-    Serial.println();
-    Serial.println("✗✗✗ DFPlayer Pro FAILED ✗✗✗");
-    Serial.println("Audio will NOT work!");
-    Serial.println("Check:");
-    Serial.println("  1. Power (3.3V or 5V to VIN)");
-    Serial.println("  2. Wiring (TX/RX not swapped)");
-    Serial.println("  3. Try power-cycle ESP32");
-    Serial.println();
+    Serial.println("✗ DFPlayer Pro init failed - using PWM fallback");
+    Serial.println("  Check: Power, wiring, or try power-cycling ESP32");
     dfPlayerAvailable = false;
   } else {
     Serial.println("✓ DFPlayer Pro connected!");
     
-    // Disable voice prompts (no "MUSIC!" announcement)
-    DF1201S.setPrompt(false);
-    delay(100);
-    
-    // Switch to MUSIC mode (now silent)
+    // Switch to MUSIC mode
+    Serial.println("Switching to MUSIC mode...");
     DF1201S.switchFunction(DF1201S.MUSIC);
-    delay(500);  // Shorter delay since no prompt voice
+    delay(2000);  // Wait for prompt tone
     
-    // Set play mode to single
+    // Set play mode to single (play once)
+    Serial.println("Setting play mode to SINGLE...");
     DF1201S.setPlayMode(DF1201S.SINGLE);
     delay(200);
     
     // Set initial volume (0-30)
+    Serial.println("Setting volume to 20/30...");
     DF1201S.setVol(20);
     delay(200);
     
     dfPlayerAvailable = true;
-    Serial.println("✓ DFPlayer Pro ready!");
+    Serial.println("✓ DFPlayer Pro ready for playback!");
   }
-  Serial.println("========================================");;
+  Serial.println("========================================");
   
   // Init water sensor pin (digital with internal pullup)
   pinMode(WATER_SENSOR_PIN, INPUT_PULLUP);

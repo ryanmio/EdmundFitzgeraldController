@@ -111,6 +111,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
   const radio1IntervalRef = useRef<NodeJS.Timeout | null>(null);
   const radio2IntervalRef = useRef<NodeJS.Timeout | null>(null);
   const radio3IntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const radio3EasterEggTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showSystemsCheck, setShowSystemsCheck] = useState(false);
   
@@ -387,19 +388,56 @@ export default function DashboardScreen({ navigation, route }: Props) {
     }
   };
 
+  const triggerEasterEgg = async () => {
+    try {
+      debugLog('Easter egg triggered!');
+      const response = await fetch(`http://${ip}/easter-egg`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      debugLog(`Easter egg response: ${JSON.stringify(data)}`);
+      
+      // Show a subtle alert
+      if (Platform.OS === 'web') {
+        window.alert('🎵 ' + data.message);
+      } else {
+        Alert.alert('🎵 Edmund Fitzgerald', data.message);
+      }
+    } catch (err) {
+      debugLog(`Easter egg failed: ${err}`);
+    }
+  };
+
   const handleRadio3PressIn = () => {
     animateButton(radio3Scale, 0.97);
+    
+    // Normal radio playback
     handleRadioPress(3, setTriggeringRadio3);
     radio3IntervalRef.current = setInterval(() => {
       handleRadioPress(3, setTriggeringRadio3);
+    }, 3000);
+    
+    // Easter egg: trigger after 3 seconds of holding
+    radio3EasterEggTimerRef.current = setTimeout(() => {
+      debugLog('3-second hold detected on Radio 3');
+      triggerEasterEgg();
     }, 3000);
   };
 
   const handleRadio3PressOut = () => {
     animateButton(radio3Scale, 1);
+    
+    // Clear normal repeat interval
     if (radio3IntervalRef.current) {
       clearInterval(radio3IntervalRef.current);
       radio3IntervalRef.current = null;
+    }
+    
+    // Clear easter egg timer (if released before 3 seconds)
+    if (radio3EasterEggTimerRef.current) {
+      clearTimeout(radio3EasterEggTimerRef.current);
+      radio3EasterEggTimerRef.current = null;
     }
   };
 
@@ -411,6 +449,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
       if (radio1IntervalRef.current) clearInterval(radio1IntervalRef.current);
       if (radio2IntervalRef.current) clearInterval(radio2IntervalRef.current);
       if (radio3IntervalRef.current) clearInterval(radio3IntervalRef.current);
+      if (radio3EasterEggTimerRef.current) clearTimeout(radio3EasterEggTimerRef.current);
     };
   }, []);
 

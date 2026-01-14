@@ -550,8 +550,9 @@ void handleSOS() {
     return;
   }
 
-  // SOS always uses PWM morse code (... --- ...) for emergency signaling
-  // No DFPlayer audio - this ensures SOS works even if DFPlayer fails
+  // SOS always uses PWM morse code tones (... --- ...) - classic WWII telegraph sound
+  // 800 Hz tone on GPIO17 → PAM8403 amp → speaker
+  // Pattern: 3 short (dit), 3 long (dah), 3 short (dit)
   sosActive = true;
   sosRoundsRemaining = SOS_ROUNDS_PER_TRIGGER;
   sosStartTime = millis();
@@ -560,7 +561,7 @@ void handleSOS() {
   morseLastChange = millis();
   ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
   ledcWrite(AUDIO_OUT_PIN, SOS_VOLUME);
-  Serial.println("SOS (morse code)");
+  Serial.println("SOS (morse code telegraph - 800Hz)");
 
   server.send(200, "application/json", "{\"sos_active\":true}");
 }

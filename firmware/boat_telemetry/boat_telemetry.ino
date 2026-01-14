@@ -561,7 +561,7 @@ void handleSOS() {
   delay(100);
 
   // Track 5: SOS morse code audio (9 seconds)
-  playDFPlayerTrack(5, 100);  // 100% volume (emergency signal)
+  playDFPlayerTrack(5, 50);  // 50% volume
   Serial.println("SOS (DFPlayer track 5)");
 
   server.send(200, "application/json", "{\"sos_active\":true}");

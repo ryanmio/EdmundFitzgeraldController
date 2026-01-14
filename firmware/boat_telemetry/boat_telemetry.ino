@@ -550,18 +550,15 @@ void handleSOS() {
     return;
   }
 
-  // SOS always uses PWM morse code tones (... --- ...) - classic WWII telegraph sound
-  // 800 Hz tone on GPIO17 → PAM8403 amp → speaker
-  // Pattern: 3 short (dit), 3 long (dah), 3 short (dit)
-  sosActive = true;
-  sosRoundsRemaining = SOS_ROUNDS_PER_TRIGGER;
-  sosStartTime = millis();
-  morseStep = 0;
-  morseToneOn = true;
-  morseLastChange = millis();
-  ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
-  ledcWrite(AUDIO_OUT_PIN, SOS_VOLUME);
-  Serial.println("SOS (morse code telegraph - 800Hz)");
+  // DFPlayer ONLY - no PWM fallback (SOS is critical, should have audio file)
+  if (!dfPlayerAvailable) {
+    server.send(503, "application/json", "{\"error\":\"DFPlayer not available\"}");
+    return;
+  }
+
+  // Track 5: SOS morse code audio (9 seconds)
+  playDFPlayerTrack(5, 100);  // 100% volume (emergency signal)
+  Serial.println("SOS (DFPlayer track 5)");
 
   server.send(200, "application/json", "{\"sos_active\":true}");
 }
@@ -754,10 +751,7 @@ void loop() {
   // Update water sensor debouncing
   updateWaterSensorDebounce();
 
-  // Update sound effects (non-blocking, momentary triggers)
-  updateHorn();
-  updateSOS();
-  updateRadio();
+  // Note: Sound effects now handled by DFPlayer Pro (async playback)
 
   // Retry WiFi every 30 seconds if disconnected
   if (WiFi.status() != WL_CONNECTED && millis() - lastWiFiCheck > 30000) {

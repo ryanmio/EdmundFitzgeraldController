@@ -550,23 +550,17 @@ void handleSOS() {
     return;
   }
 
-  // Track 5: SOS sound (DFPlayer audio file)
-  // Note: SOS has PWM morse code fallback for emergency situations
-  if (dfPlayerAvailable) {
-    playDFPlayerTrack(5, 78);  // 78% volume
-    Serial.println("SOS (DFPlayer audio)");
-  } else {
-    // Emergency fallback: PWM morse code (... --- ...)
-    sosActive = true;
-    sosRoundsRemaining = SOS_ROUNDS_PER_TRIGGER;
-    sosStartTime = millis();
-    morseStep = 0;
-    morseToneOn = true;
-    morseLastChange = millis();
-    ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
-    ledcWrite(AUDIO_OUT_PIN, SOS_VOLUME);
-    Serial.println("SOS (morse code emergency fallback)");
-  }
+  // SOS always uses PWM morse code (... --- ...) for emergency signaling
+  // No DFPlayer audio - this ensures SOS works even if DFPlayer fails
+  sosActive = true;
+  sosRoundsRemaining = SOS_ROUNDS_PER_TRIGGER;
+  sosStartTime = millis();
+  morseStep = 0;
+  morseToneOn = true;
+  morseLastChange = millis();
+  ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
+  ledcWrite(AUDIO_OUT_PIN, SOS_VOLUME);
+  Serial.println("SOS (morse code)");
 
   server.send(200, "application/json", "{\"sos_active\":true}");
 }

@@ -701,34 +701,39 @@ void setup() {
     dfPlayerAvailable = true;
     Serial.println("✓ DFPlayer Pro ready for playback!");
     
-    // INDEX TEST MODE: Play files 1-4 sequentially to verify correct mapping
+    // INDEX TEST MODE: Play indices 1-6 to verify mapping
     Serial.println();
     Serial.println("========================================");
-    Serial.println("INDEX TEST MODE - Playing files 1-4");
-    Serial.println("Listen for: 1=Radio1, 2=Radio2, 3=Radio3, 4=Horn");
+    Serial.println("INDEX TEST MODE - Playing indices 1-6");
+    Serial.println("Expected: 1=Radio1, 2=Radio2, 3=Radio3, 4=Horn, 5-6=Silent");
     Serial.println("========================================");
     
-    for (int i = 1; i <= 4; i++) {
+    for (int i = 1; i <= 6; i++) {
+      // Force SINGLE mode again to prevent auto-advance
+      DF1201S.setPlayMode(DF1201S.SINGLE);
+      delay(50);
+      
       Serial.print("Playing index ");
       Serial.print(i);
       Serial.print("... ");
       
-      // Start track (async, returns immediately)
       DF1201S.playFileNum(i);
-      delay(100);  // Let command settle
+      delay(200); // Wait for command to register
       
-      // Get total track time in seconds (query once)
       uint16_t totalTime = DF1201S.getTotalTime();
+      if (totalTime == 0) {
+        Serial.println("(No file at this index)");
+        delay(500);
+        continue;
+      }
+      
       Serial.print("(");
       Serial.print(totalTime);
       Serial.println("s)");
       
-      // Wait for track to finish naturally (timing-based, not isPlaying())
-      // Add 500ms margin to ensure completion
+      // Wait for track + margin
       delay((totalTime * 1000) + 500);
-      
-      // Pause between tracks (let module settle before next command)
-      delay(500);
+      delay(500); // Gap
     }
     
     Serial.println("✓ Index test complete!");

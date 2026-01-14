@@ -316,6 +316,26 @@ void playDFPlayerTrack(int trackNumber, int volumePercent) {
   Serial.println("%");
 }
 
+// Play Edmund Fitzgerald easter egg by file path (avoids index dependency)
+void playEdmundEasterEgg() {
+  if (!dfPlayerAvailable) return;
+  
+  // Set volume for easter egg (50%)
+  DF1201S.setVol(15);  // 15/30 = 50%
+  delay(100);
+  
+  // Force SINGLE play mode
+  DF1201S.setPlayMode(DF1201S.SINGLE);
+  delay(50);
+  
+  // Play by file path using raw AT command (bypasses FileNumber index)
+  // AT+PLAYFILE requires CRLF termination
+  Serial.println("Playing Edmund Fitzgerald easter egg...");
+  Serial2.print("AT+PLAYFILE=/SFX/EDMUND.MP3\r\n");
+  Serial2.flush();
+  delay(100);
+}
+
 // Update horn sound effect (non-blocking, fixed duration)
 void updateHorn() {
   if (!hornActive) return;
@@ -567,6 +587,25 @@ void handleSOS() {
   server.send(200, "application/json", "{\"sos_active\":true}");
 }
 
+void handleEasterEgg() {
+  addCORSHeaders();
+  if (server.method() != HTTP_POST) {
+    server.send(405, "application/json", "{\"error\":\"POST required\"}");
+    return;
+  }
+
+  // DFPlayer required for easter egg
+  if (!dfPlayerAvailable) {
+    server.send(503, "application/json", "{\"error\":\"DFPlayer not available\"}");
+    return;
+  }
+
+  // Play Edmund Fitzgerald song by file path
+  playEdmundEasterEgg();
+  
+  server.send(200, "application/json", "{\"easter_egg\":true,\"message\":\"The legend lives on...\"}");
+}
+
 void handleRadio() {
   addCORSHeaders();
   if (server.method() != HTTP_POST) {
@@ -731,6 +770,7 @@ void setup() {
   server.on("/horn", HTTP_POST, handleHorn);
   server.on("/sos", HTTP_POST, handleSOS);
   server.on("/radio", HTTP_POST, handleRadio);
+  server.on("/easter-egg", HTTP_POST, handleEasterEgg);
   server.on("/stream", HTTP_GET, handleStream);
   server.on("/status", HTTP_OPTIONS, handleOptions);
   server.on("/telemetry", HTTP_OPTIONS, handleOptions);
@@ -738,6 +778,7 @@ void setup() {
   server.on("/horn", HTTP_OPTIONS, handleOptions);
   server.on("/sos", HTTP_OPTIONS, handleOptions);
   server.on("/radio", HTTP_OPTIONS, handleOptions);
+  server.on("/easter-egg", HTTP_OPTIONS, handleOptions);
   server.on("/stream", HTTP_OPTIONS, handleOptions);
   server.onNotFound(handleNotFound);
 

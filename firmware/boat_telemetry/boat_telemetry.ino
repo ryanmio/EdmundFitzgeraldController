@@ -707,25 +707,30 @@ void setup() {
     Serial.println("INDEX TEST MODE - Playing files 1-4");
     Serial.println("Listen for: 1=Radio1, 2=Radio2, 3=Radio3, 4=Horn");
     Serial.println("========================================");
+    
     for (int i = 1; i <= 4; i++) {
       Serial.print("Playing index ");
       Serial.print(i);
-      Serial.println("...");
+      Serial.print("... ");
       
-      // Stop any current playback first
-      DF1201S.pause();
-      delay(100);
-      
-      // Start new track
+      // Start track (async, returns immediately)
       DF1201S.playFileNum(i);
+      delay(100);  // Let command settle
       
-      // Wait for track to finish (5 seconds should be enough)
-      delay(5000);
+      // Get total track time in seconds (query once)
+      uint16_t totalTime = DF1201S.getTotalTime();
+      Serial.print("(");
+      Serial.print(totalTime);
+      Serial.println("s)");
       
-      // Explicitly stop after each track
-      DF1201S.pause();
-      delay(500);  // Pause between tracks
+      // Wait for track to finish naturally (timing-based, not isPlaying())
+      // Add 500ms margin to ensure completion
+      delay((totalTime * 1000) + 500);
+      
+      // Pause between tracks (let module settle before next command)
+      delay(500);
     }
+    
     Serial.println("✓ Index test complete!");
     Serial.println("========================================");
   }

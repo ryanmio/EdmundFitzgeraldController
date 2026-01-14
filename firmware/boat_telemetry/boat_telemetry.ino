@@ -556,6 +556,10 @@ void handleSOS() {
     return;
   }
 
+  // Force SINGLE play mode (play once and stop - don't continue to next tracks)
+  DF1201S.setPlayMode(DF1201S.SINGLE);
+  delay(100);
+
   // Track 5: SOS morse code audio (9 seconds)
   playDFPlayerTrack(5, 100);  // 100% volume (emergency signal)
   Serial.println("SOS (DFPlayer track 5)");

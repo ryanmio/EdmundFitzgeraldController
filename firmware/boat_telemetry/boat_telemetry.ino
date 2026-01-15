@@ -570,8 +570,6 @@ void loop() {
   // Update water sensor debouncing
   updateWaterSensorDebounce();
 
-  // Note: Sound effects now handled by DFPlayer Pro (async playback)
-
   // Retry WiFi every 30 seconds if disconnected
   if (WiFi.status() != WL_CONNECTED && millis() - lastWiFiCheck > 30000) {
     lastWiFiCheck = millis();

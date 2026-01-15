@@ -10,6 +10,7 @@ import {
   checkCoreProcessor,
   checkProcessorTemperature,
   checkLEDControlPath,
+  checkDFPlayerModule,
 } from '../services/systemsCheckService';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -36,7 +37,7 @@ export function useSystemsCheck(
     
     let checksPassed = 0;
     let checksFailed = 0;
-    const totalChecks = 8;
+    const totalChecks = 8; // DFPlayer is check 9, but non-critical, so doesn't count toward total
     
     addLog('═══════════════════════════════════════');
     addLog('EDMUND FITZGERALD SYSTEMS CHECK');
@@ -75,6 +76,10 @@ export function useSystemsCheck(
     const result8 = await checkLEDControlPath(ip, telemetry, addLog);
     await delay(400);
     if (result8.passed) checksPassed++; else checksFailed++;
+    
+    // Non-critical check - doesn't affect pass/fail count
+    const result9 = await checkDFPlayerModule(telemetry, addLog);
+    await delay(400);
     
     // Final status
     addLog('═══════════════════════════════════════');

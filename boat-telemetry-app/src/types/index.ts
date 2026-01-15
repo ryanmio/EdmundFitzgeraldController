@@ -6,8 +6,7 @@ export interface StatusResponse {
   uptime_seconds: number;
   running_led: boolean;
   flood_led: boolean;
-  horn_active: boolean;
-  sos_active: boolean;
+  dfplayer_available: boolean;
 }
 
 export interface TelemetryResponse {
@@ -19,8 +18,7 @@ export interface TelemetryResponse {
   internal_temp_c: number;
   running_mode_state: boolean;
   flood_mode_state: boolean;
-  horn_active: boolean;
-  sos_active: boolean;
+  dfplayer_available: boolean;
   water_intrusion: boolean;
   water_sensor_raw: number;
   throttle_pwm: number;

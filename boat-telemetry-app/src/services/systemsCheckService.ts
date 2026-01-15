@@ -16,7 +16,7 @@ export async function checkConnectionStability(
   ip: string,
   addLog: (msg: string) => void
 ): Promise<CheckResult> {
-  addLog('[1/8] Testing connection stability...');
+  addLog('[1/9] Testing connection stability...');
   await delay(400);
   
   try {
@@ -50,7 +50,7 @@ export async function checkHullIntegrity(
   telemetry: TelemetryResponse | null,
   addLog: (msg: string) => void
 ): Promise<CheckResult> {
-  addLog('[2/8] Checking hull integrity...');
+  addLog('[2/9] Checking hull integrity...');
   await delay(600);
   
   if (!telemetry) {
@@ -74,7 +74,7 @@ export async function checkPowerSystems(
   telemetry: TelemetryResponse | null,
   addLog: (msg: string) => void
 ): Promise<CheckResult> {
-  addLog('[3/8] Measuring DC bus potential...');
+  addLog('[3/9] Measuring DC bus potential...');
   await delay(600);
   
   if (!telemetry) {
@@ -99,7 +99,7 @@ export async function checkRFCommunications(
   telemetry: TelemetryResponse | null,
   addLog: (msg: string) => void
 ): Promise<CheckResult> {
-  addLog('[4/8] Analyzing signal strength...');
+  addLog('[4/9] Analyzing signal strength...');
   await delay(600);
   
   if (!telemetry) {
@@ -124,7 +124,7 @@ export async function checkRCLink(
   telemetry: TelemetryResponse | null,
   addLog: (msg: string) => void
 ): Promise<CheckResult> {
-  addLog('[5/8] Validating RC receiver...');
+  addLog('[5/9] Validating RC receiver...');
   await delay(700);
   
   if (!telemetry || typeof telemetry.throttle_pwm !== 'number' || typeof telemetry.servo_pwm !== 'number') {
@@ -148,7 +148,7 @@ export async function checkCoreProcessor(
   telemetry: TelemetryResponse | null,
   addLog: (msg: string) => void
 ): Promise<CheckResult> {
-  addLog('[6/8] Checking processor health...');
+  addLog('[6/9] Checking processor health...');
   await delay(600);
   
   if (!telemetry || typeof telemetry.free_heap !== 'number' || isNaN(telemetry.free_heap)) {
@@ -173,7 +173,7 @@ export async function checkProcessorTemperature(
   telemetry: TelemetryResponse | null,
   addLog: (msg: string) => void
 ): Promise<CheckResult> {
-  addLog('[7/8] Scanning thermal sensors...');
+  addLog('[7/9] Scanning thermal sensors...');
   await delay(600);
   
   if (!telemetry || typeof telemetry.internal_temp_c !== 'number' || isNaN(telemetry.internal_temp_c)) {
@@ -202,7 +202,7 @@ export async function checkLEDControlPath(
   telemetry: TelemetryResponse | null,
   addLog: (msg: string) => void
 ): Promise<CheckResult> {
-  addLog('[8/8] Testing LED control path...');
+  addLog('[8/9] Testing LED control path...');
   await delay(500);
   
   try {
@@ -233,3 +233,26 @@ export async function checkLEDControlPath(
   }
 }
 
+/**
+ * Check 9: DFPlayer Audio Module (Non-Critical)
+ */
+export async function checkDFPlayerModule(
+  telemetry: TelemetryResponse | null,
+  addLog: (msg: string) => void
+): Promise<CheckResult> {
+  addLog('[9/9] Checking DFPlayer Pro audio module...');
+  await delay(600);
+  
+  if (!telemetry) {
+    addLog(`  ⚠ No telemetry data available`);
+    return { passed: false, message: 'No telemetry data available' };
+  }
+  
+  if (telemetry.dfplayer_available) {
+    addLog(`  ✓ DFPlayer Pro online (audio ready)`);
+    return { passed: true, message: 'DFPlayer Pro online (audio ready)' };
+  } else {
+    addLog(`  ⚠ DFPlayer Pro offline (non-critical)`);
+    return { passed: true, message: 'DFPlayer Pro offline (non-critical)' };  // Still pass - non-critical
+  }
+}

@@ -1,13 +1,12 @@
 /*
  * boat_telemetry.ino
- * Simplified pre-camera firmware for ESP32 dev board.
- * Endpoints: /status, /telemetry, /led, /stream (placeholder)
+ * ESP32 boat telemetry and control system
+ * Endpoints: /status, /telemetry, /led, /radio, /horn, /sos, /easter-egg, /stream
  */
 
 #include <WiFi.h>
 #include <WebServer.h>
 #include "secrets.h"
-#include "esp_system.h"        // For esp_reset_reason
 #include "DFRobot_DF1201S.h"   // DFPlayer Pro (DF1201S) library
 
 // ==================== PIN DEFINITIONS ====================
@@ -25,27 +24,15 @@
 #define DFPLAYER_TX       26   // ESP32 TX - Connect to DFPlayer RX
 
 // ==================== BUILD IDENTIFICATION ====================
-#define FIRMWARE_VERSION   "2.1.0"
-#define BUILD_ID           "20260113-pro"         // DFPlayer Pro (DF1201S) support
+#define FIRMWARE_VERSION   "2.2.0"
+#define BUILD_ID           "20260114-prod"
 
-// ==================== AUDIO OUTPUT DEFINITIONS ====================
-// Audio through PAM8403 amplifier + speaker (or compatible with piezo buzzer module)
-// GPIO17 outputs PWM tone → PAM8403 INL → Speaker for loud sound effects
-#define AUDIO_OUT_PIN      17              // PWM audio output (to amp or buzzer)
-#define MORSE_FREQUENCY    800             // Hz - classic WW2 radio telegraph tone
-#define HORN_FREQUENCY     200             // Hz - boat horn tone (future feature)
-#define MORSE_DIT_MS       150             // Dit (dot) length in milliseconds
+// ==================== AUDIO OUTPUT (PWM for startup/WiFi tones) ====================
+#define AUDIO_OUT_PIN      17              // PWM audio output for system tones
+#define MORSE_FREQUENCY    800             // Hz for morse code tones
+#define MORSE_DIT_MS       150             // Morse code dit (dot) duration
 #define MORSE_DAH_MS       (MORSE_DIT_MS * 3)    // Dah (dash) = 3x dit
-#define MORSE_SYMBOL_GAP   MORSE_DIT_MS          // Gap between dits/dahs
-#define MORSE_LETTER_GAP   (MORSE_DIT_MS * 3)    // Gap between letters
-#define MORSE_REPEAT_DELAY 2000                  // Pause between SOS repeats
-
-// ==================== AUDIO VOLUME LEVELS ====================
-// PWM duty cycle: 0-255 (0% = silent, 255 = max)
-// These are FIXED permanent volume levels set in firmware
-#define HORN_VOLUME        255             // 100% - LOUD (full volume)
-#define SOS_VOLUME         200             // ~78% - LOUD (SOS needs to be heard)
-#define RADIO_VOLUME       120             // ~47% - MODERATE (quieter than horn/SOS)
+#define MORSE_SYMBOL_GAP   MORSE_DIT_MS          // Gap between symbols
 
 // ==================== GLOBALS ====================
 WebServer server(80);
@@ -53,47 +40,13 @@ DFRobot_DF1201S DF1201S;  // DFPlayer Pro object
 unsigned long startTime;
 bool ledRunningState = false;
 bool ledFloodState = false;
-bool dfPlayerAvailable = false;  // Track if DFPlayer is working
-
-// Audio sound effect state (horn and SOS are momentary, not toggle)
-bool hornActive = false;
-unsigned long hornStartTime = 0;
-const unsigned long HORN_DURATION = 2000;  // 2 seconds per blast
-
-bool sosActive = false;
-unsigned long sosStartTime = 0;
-int sosRoundsRemaining = 0;
-const int SOS_ROUNDS_PER_TRIGGER = 3;  // Play 3 full SOS sequences per button press
-const unsigned long SOS_ROUND_DURATION = 6000;  // ~6 seconds per SOS round (... --- ... + gaps)
-
-// Radio sound effect state (momentary, for future audio file playback)
-bool radioActive = false;
-unsigned long radioStartTime = 0;
-int currentRadioId = 0;  // Which radio sound is playing (1, 2, or 3)
-const unsigned long RADIO_DURATION = 2500;  // 2.5 seconds per radio clip (placeholder)
+bool dfPlayerAvailable = false;  // Track if DFPlayer is initialized
 
 // Water sensor debouncing variables
 bool waterDebouncedState = false;  // Current debounced state (false = secure, true = breached)
 bool waterLastRawState = true;     // Last raw sensor reading (true = DRY, false = WET)
 unsigned long waterStateChangeTime = 0;  // Time when current raw state started
 const unsigned long WATER_DEBOUNCE_TIME = 10000;  // 10 seconds in milliseconds
-
-// Human-readable reset reason (helps catch brownout / watchdog resets)
-const char* resetReasonToString(esp_reset_reason_t reason) {
-  switch (reason) {
-    case ESP_RST_POWERON:   return "POWERON";
-    case ESP_RST_EXT:       return "EXT_RESET";
-    case ESP_RST_SW:        return "SW_RESET";
-    case ESP_RST_PANIC:     return "PANIC";
-    case ESP_RST_INT_WDT:   return "INT_WDT";
-    case ESP_RST_TASK_WDT:  return "TASK_WDT";
-    case ESP_RST_WDT:       return "WDT";
-    case ESP_RST_DEEPSLEEP: return "DEEPSLEEP";
-    case ESP_RST_BROWNOUT:  return "BROWNOUT";
-    case ESP_RST_SDIO:      return "SDIO";
-    default:                return "UNKNOWN";
-  }
-}
 
 // ==================== WIFI CONNECT (SCAN + MATCH) ====================
 void connectWiFi() {
@@ -230,43 +183,7 @@ void updateWaterSensorDebounce() {
   }
 }
 
-// ==================== MORSE CODE FUNCTIONS (NON-BLOCKING) ====================
-// SOS pattern: ... --- ... (9 symbols total)
-const int SOS_PATTERN[] = {
-  MORSE_DIT_MS, MORSE_DIT_MS, MORSE_DIT_MS,  // S
-  MORSE_DAH_MS, MORSE_DAH_MS, MORSE_DAH_MS,  // O
-  MORSE_DIT_MS, MORSE_DIT_MS, MORSE_DIT_MS   // S
-};
-const int SOS_GAPS[] = {
-  MORSE_SYMBOL_GAP, MORSE_SYMBOL_GAP, MORSE_LETTER_GAP,  // After S
-  MORSE_SYMBOL_GAP, MORSE_SYMBOL_GAP, MORSE_LETTER_GAP,  // After O
-  MORSE_SYMBOL_GAP, MORSE_SYMBOL_GAP, MORSE_REPEAT_DELAY // After S
-};
-
-// Startup success tone: dit-dit-dit (... - three short beeps)
-const int STARTUP_SUCCESS_PATTERN[] = {
-  MORSE_DIT_MS, MORSE_DIT_MS, MORSE_DIT_MS
-};
-const int STARTUP_SUCCESS_GAPS[] = {
-  MORSE_SYMBOL_GAP, MORSE_SYMBOL_GAP, 500  // Pause at end
-};
-
-// WiFi connected tone: dit-dah-dit (.-. - understood/acknowledged)
-const int WIFI_CONNECTED_PATTERN[] = {
-  MORSE_DIT_MS, MORSE_DAH_MS, MORSE_DIT_MS
-};
-const int WIFI_CONNECTED_GAPS[] = {
-  MORSE_SYMBOL_GAP, MORSE_SYMBOL_GAP, 500  // Pause at end
-};
-
-int morseStep = 0;
-bool morseToneOn = false;
-unsigned long morseLastChange = 0;
-const int* currentPattern = NULL;
-const int* currentGaps = NULL;
-int patternLength = 0;
-bool isStartupTone = false;  // Flag to distinguish startup tones from SOS
-
+// ==================== SYSTEM TONES (BLOCKING, USED DURING SETUP) ====================
 // Play startup success tone (blocking - used during setup only)
 void playStartupSuccessTone() {
   for (int i = 0; i < 3; i++) {
@@ -337,94 +254,6 @@ void playEdmundEasterEgg() {
   delay(100);
 }
 
-// Update horn sound effect (non-blocking, fixed duration)
-void updateHorn() {
-  if (!hornActive) return;
-  
-  unsigned long elapsed = millis() - hornStartTime;
-  
-  if (elapsed >= HORN_DURATION) {
-    // Horn blast complete
-    ledcWrite(AUDIO_OUT_PIN, 0);  // Silent
-    hornActive = false;
-    Serial.println("Horn blast complete");
-  }
-  // Horn tone stays on for full duration (already started by trigger)
-}
-
-// Update radio sound effect (non-blocking, placeholder tones at moderate volume)
-void updateRadio() {
-  if (!radioActive) return;
-  
-  unsigned long elapsed = millis() - radioStartTime;
-  
-  if (elapsed >= RADIO_DURATION) {
-    // Radio clip complete
-    ledcWrite(AUDIO_OUT_PIN, 0);  // Silent
-    radioActive = false;
-    Serial.print("Radio ");
-    Serial.print(currentRadioId);
-    Serial.println(" complete");
-  }
-  // For now, play a simple tone pattern as placeholder at MODERATE volume
-  // In future: play actual audio files via I2S or SD card
-}
-
-// Update SOS sound effect (non-blocking, plays fixed number of rounds)
-void updateSOS() {
-  if (!sosActive) return;
-  
-  unsigned long currentTime = millis();
-  
-  // Check if we've completed all rounds
-  if (sosRoundsRemaining <= 0) {
-    ledcWrite(AUDIO_OUT_PIN, 0);  // Silent
-    sosActive = false;
-    morseStep = 0;
-    morseToneOn = false;
-    Serial.println("SOS sequence complete");
-    return;
-  }
-  
-  // Check if current round is complete
-  unsigned long roundElapsed = currentTime - sosStartTime;
-  if (roundElapsed >= SOS_ROUND_DURATION) {
-    sosRoundsRemaining--;
-    sosStartTime = currentTime;
-    morseStep = 0;
-    morseToneOn = true;
-    morseLastChange = currentTime;
-    ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
-    ledcWrite(AUDIO_OUT_PIN, SOS_VOLUME);  // SOS at LOUD volume
-    Serial.print("SOS round, ");
-    Serial.print(sosRoundsRemaining);
-    Serial.println(" remaining at volume level " + String(SOS_VOLUME));
-    return;
-  }
-  
-  // Play SOS pattern
-  if (morseToneOn) {
-    // Tone is currently playing - check if it's time to turn it off
-    if (currentTime - morseLastChange >= SOS_PATTERN[morseStep]) {
-      ledcWrite(AUDIO_OUT_PIN, 0);  // Silent
-      morseToneOn = false;
-      morseLastChange = currentTime;
-    }
-  } else {
-    // Silence gap - check if it's time to start next tone
-    if (currentTime - morseLastChange >= SOS_GAPS[morseStep]) {
-      morseStep++;
-      if (morseStep >= 9) {
-        morseStep = 0; // Loop back to start of SOS within this round
-      }
-      ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8);
-      ledcWrite(AUDIO_OUT_PIN, SOS_VOLUME);  // Maintain SOS volume
-      morseToneOn = true;
-      morseLastChange = currentTime;
-    }
-  }
-}
-
 // ==================== CORS HELPER ====================
 void addCORSHeaders() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
@@ -454,8 +283,7 @@ void handleStatus() {
   json += "\"uptime_seconds\":" + String(uptimeSec) + ",";
   json += "\"running_led\":" + String(ledRunningState ? "true" : "false") + ",";
   json += "\"flood_led\":" + String(ledFloodState ? "true" : "false") + ",";
-  json += "\"horn_active\":" + String(hornActive ? "true" : "false") + ",";
-  json += "\"sos_active\":" + String(sosActive ? "true" : "false");
+  json += "\"dfplayer_available\":" + String(dfPlayerAvailable ? "true" : "false");
   json += "}";
   server.send(200, "application/json", json);
 }

@@ -27,13 +27,6 @@
 #define FIRMWARE_VERSION   "2.2.0"
 #define BUILD_ID           "20260114-prod"
 
-// ==================== AUDIO OUTPUT (PWM for startup/WiFi tones) ====================
-#define AUDIO_OUT_PIN      17              // PWM audio output for system tones
-#define MORSE_FREQUENCY    800             // Hz for morse code tones
-#define MORSE_DIT_MS       150             // Morse code dit (dot) duration
-#define MORSE_DAH_MS       (MORSE_DIT_MS * 3)    // Dah (dash) = 3x dit
-#define MORSE_SYMBOL_GAP   MORSE_DIT_MS          // Gap between symbols
-
 // ==================== GLOBALS ====================
 WebServer server(80);
 DFRobot_DF1201S DF1201S;  // DFPlayer Pro object
@@ -129,12 +122,9 @@ void connectWiFi() {
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
     
-    // WiFi connected: visual + audio feedback
+    // WiFi connected: visual feedback
     delay(500);  // Brief pause after connection
     flashRunningLights(2, 200, 200);
-    
-    // Play WiFi connected tone (buzzer has constant power)
-    playWiFiConnectedTone();  // dit-dah-dit tone
   } else {
     Serial.println();
     Serial.print("WiFi connection failed. Status: ");
@@ -183,37 +173,7 @@ void updateWaterSensorDebounce() {
   }
 }
 
-// ==================== SYSTEM TONES (BLOCKING, USED DURING SETUP) ====================
-// Play startup success tone (blocking - used during setup only)
-void playStartupSuccessTone() {
-  for (int i = 0; i < 3; i++) {
-    ledcWriteTone(AUDIO_OUT_PIN, MORSE_FREQUENCY);
-    delay(MORSE_DIT_MS);
-    ledcWriteTone(AUDIO_OUT_PIN, 0);
-    delay(MORSE_SYMBOL_GAP);
-  }
-  ledcWriteTone(AUDIO_OUT_PIN, 0); // Ensure silent
-}
-
-// Play WiFi connected tone (blocking - used during setup only)
-void playWiFiConnectedTone() {
-  // dit-dah-dit pattern
-  ledcWriteTone(AUDIO_OUT_PIN, MORSE_FREQUENCY);
-  delay(MORSE_DIT_MS);
-  ledcWriteTone(AUDIO_OUT_PIN, 0);
-  delay(MORSE_SYMBOL_GAP);
-  
-  ledcWriteTone(AUDIO_OUT_PIN, MORSE_FREQUENCY);
-  delay(MORSE_DAH_MS);
-  ledcWriteTone(AUDIO_OUT_PIN, 0);
-  delay(MORSE_SYMBOL_GAP);
-  
-  ledcWriteTone(AUDIO_OUT_PIN, MORSE_FREQUENCY);
-  delay(MORSE_DIT_MS);
-  ledcWriteTone(AUDIO_OUT_PIN, 0);
-  delay(500); // Pause at end
-}
-
+// ==================== DFPLAYER AUDIO FUNCTIONS ====================
 // Play DFPlayer Pro track using DF1201S library
 void playDFPlayerTrack(int trackNumber, int volumePercent) {
   if (!dfPlayerAvailable) return;
@@ -511,11 +471,6 @@ void setup() {
   digitalWrite(RUNNING_OUT_PIN, LOW);
   digitalWrite(FLOOD_OUT_PIN, LOW);
   
-  // Init audio output (GPIO17 → PAM8403 amp or piezo buzzer module)
-  pinMode(AUDIO_OUT_PIN, OUTPUT);
-  ledcAttach(AUDIO_OUT_PIN, MORSE_FREQUENCY, 8); // 8-bit resolution PWM
-  ledcWriteTone(AUDIO_OUT_PIN, 0); // Start silent
-  
   // Init DFPlayer Pro (DF1201S chip, 115200 baud, AT commands)
   Serial.println();
   Serial.println("========================================");
@@ -583,10 +538,9 @@ void setup() {
 
   startTime = millis();
   
-  // Startup feedback: visual flash + audio tone = "Boot successful"
-  Serial.println("Boot complete - flashing running lights and playing startup tone");
+  // Startup feedback: visual flash = "Boot successful"
+  Serial.println("Boot complete - flashing running lights");
   flashRunningLights(1, 1000, 0);
-  playStartupSuccessTone();  // dit-dit-dit tone (buzzer has constant power)
   delay(500);  // Brief pause before WiFi connection
 
   // Connect WiFi

@@ -287,8 +287,7 @@ void handleTelemetry() {
   json += "\"internal_temp_c\":" + String(internalTemp, 1) + ",";
   json += "\"running_mode_state\":" + String(ledRunningState ? "true" : "false") + ",";
   json += "\"flood_mode_state\":" + String(ledFloodState ? "true" : "false") + ",";
-  json += "\"horn_active\":" + String(hornActive ? "true" : "false") + ",";
-  json += "\"sos_active\":" + String(sosActive ? "true" : "false") + ",";
+  json += "\"dfplayer_available\":" + String(dfPlayerAvailable ? "true" : "false") + ",";
   json += "\"water_intrusion\":" + String(waterDetected ? "true" : "false") + ",";
   json += "\"water_sensor_raw\":" + String(waterRaw) + ",";
   json += "\"throttle_pwm\":" + String(throttlePWM) + ",";

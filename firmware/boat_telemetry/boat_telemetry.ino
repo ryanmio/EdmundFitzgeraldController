@@ -320,8 +320,9 @@ void playDFPlayerTrack(int trackNumber, int volumePercent) {
 void playEdmundEasterEgg() {
   if (!dfPlayerAvailable) return;
   
-  // Set volume for easter egg (50%)
-  DF1201S.setVol(15);  // 15/30 = 50%
+  // Set volume for easter egg (85%)
+  int volume = map(85, 0, 100, 0, 30);  // 85% = 25.5/30
+  DF1201S.setVol(volume);
   delay(100);
   
   // Force SINGLE play mode

@@ -412,17 +412,28 @@ export default function DashboardScreen({ navigation, route }: Props) {
   const handleRadio3PressIn = () => {
     animateButton(radio3Scale, 0.97);
     
-    // Normal radio playback
+    // Normal radio playback (immediate)
     handleRadioPress(3, setTriggeringRadio3);
-    radio3IntervalRef.current = setInterval(() => {
-      handleRadioPress(3, setTriggeringRadio3);
-    }, 3000);
     
-    // Easter egg: trigger after 3 seconds of holding
+    // Easter egg: trigger after 3 seconds of holding (BEFORE the repeat interval)
     radio3EasterEggTimerRef.current = setTimeout(() => {
-      debugLog('3-second hold detected on Radio 3');
+      debugLog('🎵 3-second hold detected on Radio 3 - triggering easter egg!');
+      
+      // Cancel the repeat interval to prevent Radio 3 from playing again
+      if (radio3IntervalRef.current) {
+        clearInterval(radio3IntervalRef.current);
+        radio3IntervalRef.current = null;
+      }
+      
       triggerEasterEgg();
     }, 3000);
+    
+    // Set up repeat interval AFTER easter egg timer (4 seconds)
+    // If user holds past 3s, easter egg fires and cancels this
+    radio3IntervalRef.current = setInterval(() => {
+      debugLog('Radio 3 repeat triggered');
+      handleRadioPress(3, setTriggeringRadio3);
+    }, 4000); // 4 seconds to avoid conflict with 3-second easter egg
   };
 
   const handleRadio3PressOut = () => {

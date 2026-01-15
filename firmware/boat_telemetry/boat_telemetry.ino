@@ -1,7 +1,7 @@
 /*
  * boat_telemetry.ino
  * ESP32 boat telemetry and control system
- * Endpoints: /status, /telemetry, /led, /radio, /horn, /sos, /easter-egg, /stream
+ * Endpoints: /status, /telemetry, /led, /radio, /horn, /sos, /easter-egg
  */
 
 #include <WiFi.h>
@@ -437,12 +437,6 @@ void handleRadio() {
   server.send(200, "application/json", json);
 }
 
-void handleStream() {
-  addCORSHeaders();
-  // Placeholder until camera hardware arrives
-  server.send(200, "text/plain", "Camera not connected. Stream will be available after ESP32-CAM integration.");
-}
-
 void handleOptions() {
   addCORSHeaders();
   server.send(200);
@@ -553,7 +547,6 @@ void setup() {
   server.on("/sos", HTTP_POST, handleSOS);
   server.on("/radio", HTTP_POST, handleRadio);
   server.on("/easter-egg", HTTP_POST, handleEasterEgg);
-  server.on("/stream", HTTP_GET, handleStream);
   server.on("/status", HTTP_OPTIONS, handleOptions);
   server.on("/telemetry", HTTP_OPTIONS, handleOptions);
   server.on("/led", HTTP_OPTIONS, handleOptions);
@@ -561,7 +554,6 @@ void setup() {
   server.on("/sos", HTTP_OPTIONS, handleOptions);
   server.on("/radio", HTTP_OPTIONS, handleOptions);
   server.on("/easter-egg", HTTP_OPTIONS, handleOptions);
-  server.on("/stream", HTTP_OPTIONS, handleOptions);
   server.onNotFound(handleNotFound);
 
   server.begin();

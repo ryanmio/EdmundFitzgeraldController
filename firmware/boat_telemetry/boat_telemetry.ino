@@ -1,13 +1,16 @@
 /*
  * boat_telemetry.ino
- * ESP32 boat telemetry and control system
- * Endpoints: /status, /telemetry, /led, /radio, /horn, /sos, /easter-egg
+ * ESP32 boat telemetry and control system with engine audio
+ * Endpoints: /status, /telemetry, /led, /radio, /horn, /sos, /easter-egg, /engine-debug
  */
 
 #include <WiFi.h>
 #include <WebServer.h>
 #include "secrets.h"
 #include "DFRobot_DF1201S.h"   // DFPlayer Pro (DF1201S) library
+#include "driver/i2s.h"         // ESP32 I2S driver for MAX98357A
+#include "driver/rmt.h"         // ESP32 RMT for PWM capture
+#include "audio_engine.h"       // Engine audio sampler
 
 // ==================== PIN DEFINITIONS ====================
 #define LED_RUNNING_PIN    2   // Built-in LED on most dev boards (keep for testing)
@@ -23,9 +26,23 @@
 #define DFPLAYER_RX       27   // ESP32 RX - Connect to DFPlayer TX
 #define DFPLAYER_TX       26   // ESP32 TX - Connect to DFPlayer RX
 
+// I2S pins for MAX98357A (engine audio output)
+#define I2S_BCLK_PIN      25   // Bit clock
+#define I2S_LRC_PIN       22   // Left/Right clock (word select)
+#define I2S_DIN_PIN       23   // Data out to MAX98357A
+
+// RMT configuration for throttle PWM capture
+#define RMT_RX_CHANNEL    RMT_CHANNEL_0
+#define RMT_CLK_DIV       80   // 1 MHz tick rate (80 MHz / 80)
+
 // ==================== BUILD IDENTIFICATION ====================
-#define FIRMWARE_VERSION   "2.2.0"
-#define BUILD_ID           "20260114-prod"
+#define FIRMWARE_VERSION   "3.0.0"
+#define BUILD_ID           "20260115-engine-audio"
+
+// ==================== I2S CONFIGURATION ====================
+#define I2S_NUM           I2S_NUM_0
+#define I2S_SAMPLE_RATE   22050
+#define I2S_BUFFER_SIZE   512
 
 // ==================== GLOBALS ====================
 WebServer server(80);
@@ -34,6 +51,10 @@ unsigned long startTime;
 bool ledRunningState = false;
 bool ledFloodState = false;
 bool dfPlayerAvailable = false;  // Track if DFPlayer is initialized
+
+// RMT throttle capture variables (non-blocking PWM read)
+volatile uint32_t throttle_pulse_us = 1500; // Cached throttle value (safe default)
+volatile unsigned long last_throttle_update = 0;
 
 // Water sensor debouncing variables
 bool waterDebouncedState = false;  // Current debounced state (false = secure, true = breached)
@@ -173,6 +194,151 @@ void updateWaterSensorDebounce() {
   }
 }
 
+// ==================== RMT THROTTLE CAPTURE (NON-BLOCKING PWM) ====================
+// Initialize RMT for throttle PWM capture
+void setupRMT() {
+  rmt_config_t rmt_rx_config = RMT_DEFAULT_CONFIG_RX((gpio_num_t)THROTTLE_PWM_PIN, RMT_RX_CHANNEL);
+  rmt_rx_config.clk_div = RMT_CLK_DIV;
+  rmt_rx_config.rx_filter_en = true;
+  rmt_rx_config.rx_filter_thresh_ticks = 100;
+  rmt_rx_config.idle_threshold = 30000;  // 30ms idle = end of pulse
+  rmt_config(&rmt_rx_config);
+  rmt_driver_install(RMT_RX_CHANNEL, 1000, 0);
+  rmt_rx_start(RMT_RX_CHANNEL, true);
+  
+  Serial.println("RMT PWM capture initialized on GPIO18");
+  Serial.println("  Clock: 1 MHz (1 tick = 1 us)");
+  Serial.println("  Expected range: 1000-2000 us");
+}
+
+// Update throttle value from RMT (call periodically from loop)
+void updateThrottleRMT() {
+  size_t rx_size = 0;
+  rmt_item32_t* items = NULL;
+  
+  // Non-blocking receive with immediate timeout
+  items = (rmt_item32_t*) xRingbufferReceive(
+    rmt_get_ringbuf_handle(RMT_RX_CHANNEL),
+    &rx_size,
+    0  // don't block
+  );
+  
+  if (items) {
+    // Parse RMT items to extract pulse width
+    uint32_t high_ticks = 0;
+    for (size_t i = 0; i < rx_size / sizeof(rmt_item32_t); i++) {
+      if (items[i].level0 == 1) {  // HIGH portion of PWM
+        high_ticks += items[i].duration0;
+      }
+      if (items[i].level1 == 1) {
+        high_ticks += items[i].duration1;
+      }
+    }
+    
+    // Convert ticks to microseconds (1 tick = 1us at 1MHz clock)
+    uint32_t pulse_us = high_ticks;
+    
+    // Validate range (typical RC PWM: 1000-2000us)
+    if (pulse_us >= 800 && pulse_us <= 2200) {
+      throttle_pulse_us = pulse_us;
+      last_throttle_update = millis();
+    }
+    
+    // Return buffer to ringbuffer
+    vRingbufferReturnItem(rmt_get_ringbuf_handle(RMT_RX_CHANNEL), (void*) items);
+  }
+  
+  // Timeout handling: revert to safe idle if no signal
+  if (millis() - last_throttle_update > 500) {
+    throttle_pulse_us = 1500;  // neutral position
+  }
+}
+
+// ==================== I2S AUDIO OUTPUT ====================
+// Initialize I2S driver for MAX98357A amplifier
+void setupI2S() {
+  Serial.println("Initializing I2S for MAX98357A...");
+  
+  i2s_config_t i2s_config = {
+    .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),
+    .sample_rate = I2S_SAMPLE_RATE,
+    .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+    .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,  // mono
+    .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+    .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
+    .dma_buf_count = 4,
+    .dma_buf_len = I2S_BUFFER_SIZE,
+    .use_apll = false,
+    .tx_desc_auto_clear = true,
+    .fixed_mclk = 0
+  };
+  
+  i2s_pin_config_t pin_config = {
+    .bck_io_num = I2S_BCLK_PIN,
+    .ws_io_num = I2S_LRC_PIN,
+    .data_out_num = I2S_DIN_PIN,
+    .data_in_num = I2S_PIN_NO_CHANGE
+  };
+  
+  // Install and configure I2S driver
+  esp_err_t err = i2s_driver_install(I2S_NUM, &i2s_config, 0, NULL);
+  if (err != ESP_OK) {
+    Serial.printf("ERROR: I2S driver install failed: %d\n", err);
+    return;
+  }
+  
+  err = i2s_set_pin(I2S_NUM, &pin_config);
+  if (err != ESP_OK) {
+    Serial.printf("ERROR: I2S pin config failed: %d\n", err);
+    return;
+  }
+  
+  i2s_zero_dma_buffer(I2S_NUM);
+  
+  Serial.println("  ✓ I2S driver installed");
+  Serial.printf("  Sample rate: %d Hz\n", I2S_SAMPLE_RATE);
+  Serial.printf("  Pins: BCLK=%d, LRC=%d, DIN=%d\n", I2S_BCLK_PIN, I2S_LRC_PIN, I2S_DIN_PIN);
+}
+
+// ==================== AUDIO ENGINE TASK ====================
+// FreeRTOS task for continuous audio rendering
+void audioTaskFunction(void* param) {
+  int16_t audio_buffer[I2S_BUFFER_SIZE];
+  size_t bytes_written;
+  
+  Serial.println("Audio engine task started on Core 1");
+  
+  while (true) {
+    // Read cached throttle from RMT
+    float throttle_norm = (throttle_pulse_us - 1000.0f) / 1000.0f;
+    throttle_norm = constrain(throttle_norm, 0.0f, 1.0f);
+    
+    // Update engine state (applies smoothing, rev detection, etc.)
+    audioEngine_updateThrottle(throttle_norm);
+    
+    // Render PCM samples into buffer
+    audioEngine_renderSamples(audio_buffer, I2S_BUFFER_SIZE);
+    
+    // Write to I2S (blocks until DMA buffer has space)
+    i2s_write(I2S_NUM, audio_buffer, I2S_BUFFER_SIZE * 2, &bytes_written, portMAX_DELAY);
+  }
+}
+
+// Create and start audio task
+void setupAudioTask() {
+  xTaskCreatePinnedToCore(
+    audioTaskFunction,
+    "AudioEngine",
+    4096,          // stack size (4KB)
+    NULL,          // no parameters
+    5,             // priority (higher than main loop)
+    NULL,          // no task handle needed
+    1              // core 1 (core 0 runs WiFi)
+  );
+  
+  Serial.println("Audio engine task created on Core 1 (priority 5)");
+}
+
 // ==================== DFPLAYER AUDIO FUNCTIONS ====================
 // Play DFPlayer Pro track using DF1201S library
 void playDFPlayerTrack(int trackNumber, int volumePercent) {
@@ -269,8 +435,9 @@ void handleTelemetry() {
 
   // RC receiver PWM readings (pulse width in microseconds)
   // Typical range: 1000-2000µs, 1500µs = center/neutral
-  unsigned int throttlePWM = readPWM(THROTTLE_PWM_PIN);
-  unsigned int servoPWM = readPWM(SERVO_PWM_PIN);
+  // Throttle is captured via RMT (non-blocking), servo still uses blocking pulseIn
+  unsigned int throttlePWM = throttle_pulse_us;  // From RMT cache
+  unsigned int servoPWM = readPWM(SERVO_PWM_PIN);  // Servo still uses old method
 
   // ESP32 diagnostics
   uint32_t freeHeap = ESP.getFreeHeap();
@@ -295,6 +462,32 @@ void handleTelemetry() {
   json += "\"connection_status\":\"" + String(WiFi.status() == WL_CONNECTED ? "online" : "offline") + "\",";
   json += "\"ip_address\":\"" + WiFi.localIP().toString() + "\"";
   json += "}";
+  server.send(200, "application/json", json);
+}
+
+void handleEngineDebug() {
+  addCORSHeaders();
+  
+  // Get raw and normalized throttle values
+  float throttle_norm = (throttle_pulse_us - 1000.0f) / 1000.0f;
+  throttle_norm = constrain(throttle_norm, 0.0f, 1.0f);
+  
+  // Get current engine state
+  float engine_rate = audioEngine_getRate();
+  float engine_gain = audioEngine_getGain();
+  float smoothed = audioEngine_getSmoothedThrottle();
+  bool rev_active = audioEngine_isRevActive();
+  
+  String json = "{";
+  json += "\"throttle_raw_us\":" + String(throttle_pulse_us) + ",";
+  json += "\"throttle_normalized\":" + String(throttle_norm, 3) + ",";
+  json += "\"throttle_smoothed\":" + String(smoothed, 3) + ",";
+  json += "\"engine_rate\":" + String(engine_rate, 3) + ",";
+  json += "\"engine_gain\":" + String(engine_gain, 3) + ",";
+  json += "\"rev_active\":" + String(rev_active ? "true" : "false") + ",";
+  json += "\"last_update_ms\":" + String(last_throttle_update);
+  json += "}";
+  
   server.send(200, "application/json", json);
 }
 
@@ -432,7 +625,7 @@ void handleRadio() {
 
   // DFPlayer tracks: 1=radio1, 2=radio2, 3=radio3
   playDFPlayerTrack(radioId, 47);  // 47% volume
-  
+
   String json = "{\"radio_active\":true,\"radio_id\":" + String(radioId) + "}";
   server.send(200, "application/json", json);
 }
@@ -463,6 +656,32 @@ void setup() {
   digitalWrite(LED_FLOOD_PIN, LOW);
   digitalWrite(RUNNING_OUT_PIN, LOW);
   digitalWrite(FLOOD_OUT_PIN, LOW);
+  
+  // Init RMT for non-blocking throttle PWM capture
+  Serial.println();
+  Serial.println("========================================");
+  Serial.println("RMT PWM Capture Initialization");
+  Serial.println("========================================");
+  setupRMT();
+  delay(100);  // Let RMT stabilize
+  Serial.println("========================================");
+  
+  // Init I2S audio output for MAX98357A
+  Serial.println();
+  Serial.println("========================================");
+  Serial.println("I2S Audio System Initialization");
+  Serial.println("========================================");
+  setupI2S();
+  Serial.println("========================================");
+  
+  // Init audio engine and start FreeRTOS task
+  Serial.println();
+  Serial.println("========================================");
+  Serial.println("Engine Audio System Initialization");
+  Serial.println("========================================");
+  audioEngine_init();
+  setupAudioTask();
+  Serial.println("========================================");
   
   // Init DFPlayer Pro (DF1201S chip, 115200 baud, AT commands)
   Serial.println();
@@ -508,7 +727,7 @@ void setup() {
     // Set initial volume (0-30)
     Serial.println("Setting volume to 20/30...");
     DF1201S.setVol(20);
-    delay(200);
+  delay(200);
     
     dfPlayerAvailable = true;
     Serial.println("✓ DFPlayer Pro ready for playback!");
@@ -547,6 +766,7 @@ void setup() {
   server.on("/sos", HTTP_POST, handleSOS);
   server.on("/radio", HTTP_POST, handleRadio);
   server.on("/easter-egg", HTTP_POST, handleEasterEgg);
+  server.on("/engine-debug", HTTP_GET, handleEngineDebug);
   server.on("/status", HTTP_OPTIONS, handleOptions);
   server.on("/telemetry", HTTP_OPTIONS, handleOptions);
   server.on("/led", HTTP_OPTIONS, handleOptions);
@@ -554,6 +774,7 @@ void setup() {
   server.on("/sos", HTTP_OPTIONS, handleOptions);
   server.on("/radio", HTTP_OPTIONS, handleOptions);
   server.on("/easter-egg", HTTP_OPTIONS, handleOptions);
+  server.on("/engine-debug", HTTP_OPTIONS, handleOptions);
   server.onNotFound(handleNotFound);
 
   server.begin();
@@ -566,6 +787,9 @@ unsigned long lastWiFiCheck = 0;
 void loop() {
   // Always handle HTTP requests (whether WiFi is connected or not)
   server.handleClient();
+  
+  // Update throttle from RMT (non-blocking)
+  updateThrottleRMT();
   
   // Update water sensor debouncing
   updateWaterSensorDebounce();

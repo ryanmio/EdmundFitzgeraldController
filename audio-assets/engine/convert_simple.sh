@@ -1,12 +1,12 @@
 #!/bin/bash
-# Simplified audio conversion using ffmpeg only, no pydub
+# Engine Audio Conversion - FFT circular filtering version
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-echo "=== Engine Audio Conversion (Simplified) ==="
+echo "=== Engine Audio Conversion (FFT Circular) ==="
 echo ""
 
 # Check for ffmpeg
@@ -15,22 +15,21 @@ if ! command -v ffmpeg &> /dev/null; then
     exit 1
 fi
 
-echo "[1/2] Converting engine.mp3 to mono 16-bit PCM WAV at 44100 Hz with anti-aliasing filter..."
-# Apply low-pass filter at 8kHz to prevent aliasing when pitch-shifting up to 1.5x
-# Use 44.1kHz sample rate for more headroom
-ffmpeg -i engine.mp3 -ar 44100 -ac 1 -af "lowpass=f=8000" -c:a pcm_s16le engine_loop.wav -y -loglevel warning
+echo "[1/3] Converting engine.mp3 to raw WAV..."
+ffmpeg -y -i engine.mp3 -ac 1 -ar 44100 -c:a pcm_s16le engine_raw_temp.wav -y -loglevel warning
 
-echo "[2/2] Generating C header file with PCM data array..."
+echo "[2/3] Applying FFT-domain circular High-Pass Filter (300Hz)..."
+# Using the new Python script for zero-phase circular filtering
+python3 make_engine_filtered_fft.py engine_raw_temp.wav engine_loop.wav
+
+echo "[3/3] Generating C headers..."
 python3 generate_pcm_header.py engine_loop.wav engine_pcm.h
+python3 generate_pcm_header_raw.py engine_raw_temp.wav engine_pcm_raw.h
+
+# Cleanup
+rm -f engine_raw_temp.wav
 
 echo ""
 echo "=== Conversion Complete ==="
-echo "  Output: engine_loop.wav"
-echo "  Header: engine_pcm.h"
-echo ""
-echo "Next steps:"
-echo "  1. Review engine_loop.wav in an audio editor"
-echo "  2. Copy engine_pcm.h to firmware folders:"
-echo "     cp engine_pcm.h ../boat_telemetry/"
-echo "     cp engine_pcm.h ../audio_diagnostic/"
-echo "  3. Build and flash firmware"
+echo "Filtered PCM: engine_pcm.h"
+echo "Raw PCM: engine_pcm_raw.h"

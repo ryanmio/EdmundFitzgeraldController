@@ -3,6 +3,7 @@
  * Standalone diagnostic for I2S/MAX98357A engine audio testing
  * 
  * Tests without RC receiver - simulates throttle via serial commands
+ * Includes embedded audio engine (no linking issues)
  * 
  * Serial Commands:
  *   0-9: Set throttle 0-100% (0=idle, 9=full)
@@ -13,7 +14,7 @@
  */
 
 #include "driver/i2s.h"
-#include "../boat_telemetry/audio_engine.h"  // Reuse audio engine
+#include "engine_pcm.h"  // PCM audio data (generated)
 
 // I2S Configuration
 #define I2S_NUM           I2S_NUM_0
@@ -23,7 +24,120 @@
 #define I2S_LRC_PIN       22
 #define I2S_DIN_PIN       23
 
-// Test mode state
+// ==================== EMBEDDED AUDIO ENGINE ====================
+// Tuning parameters
+#define THROTTLE_SMOOTH_ALPHA   0.15f
+#define RATE_MIN                0.8f
+#define RATE_MAX                1.5f
+#define GAIN_MIN                0.4f
+#define GAIN_MAX                1.0f
+#define REV_BOOST_RATE          1.1f
+#define REV_BOOST_GAIN          1.2f
+#define REV_DECAY_MS            300
+#define REV_THRESHOLD           0.15f
+
+// Audio engine state
+typedef struct {
+  float position;
+  float rate;
+  float gain;
+  float smoothed_throttle;
+  float prev_throttle;
+  uint32_t rev_timer_ms;
+  uint32_t last_update_ms;
+} EngineAudioState;
+
+EngineAudioState engineState;
+
+// Linear interpolation
+static inline float lerp(float a, float b, float t) {
+  return a + (b - a) * t;
+}
+
+// Initialize audio engine
+void audioEngine_init() {
+  engineState.position = 0.0f;
+  engineState.rate = 1.0f;
+  engineState.gain = GAIN_MIN;
+  engineState.smoothed_throttle = 0.0f;
+  engineState.prev_throttle = 0.0f;
+  engineState.rev_timer_ms = 0;
+  engineState.last_update_ms = millis();
+}
+
+// Update throttle
+void audioEngine_updateThrottle(float throttle_normalized) {
+  if (throttle_normalized < 0.0f) throttle_normalized = 0.0f;
+  if (throttle_normalized > 1.0f) throttle_normalized = 1.0f;
+  
+  uint32_t current_ms = millis();
+  uint32_t delta_ms = current_ms - engineState.last_update_ms;
+  engineState.last_update_ms = current_ms;
+  
+  engineState.smoothed_throttle = 
+    engineState.smoothed_throttle * (1.0f - THROTTLE_SMOOTH_ALPHA) +
+    throttle_normalized * THROTTLE_SMOOTH_ALPHA;
+  
+  float throttle_delta = throttle_normalized - engineState.prev_throttle;
+  if (throttle_delta > REV_THRESHOLD) {
+    engineState.rev_timer_ms = REV_DECAY_MS;
+  }
+  engineState.prev_throttle = throttle_normalized;
+  
+  if (engineState.rev_timer_ms > 0) {
+    if (delta_ms >= engineState.rev_timer_ms) {
+      engineState.rev_timer_ms = 0;
+    } else {
+      engineState.rev_timer_ms -= delta_ms;
+    }
+  }
+  
+  float base_rate = RATE_MIN + engineState.smoothed_throttle * (RATE_MAX - RATE_MIN);
+  float base_gain = GAIN_MIN + engineState.smoothed_throttle * (GAIN_MAX - GAIN_MIN);
+  
+  if (engineState.rev_timer_ms > 0) {
+    float rev_progress = (float)engineState.rev_timer_ms / REV_DECAY_MS;
+    base_rate *= 1.0f + (REV_BOOST_RATE - 1.0f) * rev_progress;
+    base_gain *= 1.0f + (REV_BOOST_GAIN - 1.0f) * rev_progress;
+  }
+  
+  engineState.rate = base_rate;
+  engineState.gain = base_gain;
+}
+
+// Render samples
+void audioEngine_renderSamples(int16_t* buffer, size_t count) {
+  for (size_t i = 0; i < count; i++) {
+    uint32_t idx = (uint32_t)engineState.position;
+    float frac = engineState.position - (float)idx;
+    
+    if (idx >= ENGINE_PCM_LENGTH) {
+      idx = idx % ENGINE_PCM_LENGTH;
+      engineState.position = (float)idx + frac;
+    }
+    
+    int16_t sample0 = ENGINE_PCM_DATA[idx];
+    int16_t sample1 = ENGINE_PCM_DATA[(idx + 1) % ENGINE_PCM_LENGTH];
+    
+    float interpolated = lerp((float)sample0, (float)sample1, frac);
+    interpolated *= engineState.gain;
+    
+    if (interpolated > 32767.0f) interpolated = 32767.0f;
+    if (interpolated < -32768.0f) interpolated = -32768.0f;
+    
+    buffer[i] = (int16_t)interpolated;
+    
+    engineState.position += engineState.rate;
+  }
+}
+
+// Getters for status
+float audioEngine_getRate() { return engineState.rate; }
+float audioEngine_getGain() { return engineState.gain; }
+float audioEngine_getSmoothedThrottle() { return engineState.smoothed_throttle; }
+bool audioEngine_isRevActive() { return engineState.rev_timer_ms > 0; }
+
+// ==================== TEST MODE ====================
 float simulated_throttle = 0.0f;
 bool auto_sweep_mode = false;
 unsigned long last_sweep_update = 0;

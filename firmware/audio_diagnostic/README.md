@@ -13,12 +13,15 @@ Use this to:
 
 ## Prerequisites
 
-1. **Generate PCM audio data** (if not already done):
+1. **Generate PCM audio data** (one-time setup):
    ```bash
    cd ../../audio-assets/engine
    ./convert_engine_audio.sh
    cp engine_pcm.h ../boat_telemetry/
+   cp engine_pcm.h ../audio_diagnostic/  # Copy here too!
    ```
+   
+   This creates `engine_pcm.h` which contains the audio samples. The diagnostic sketch needs this file in the same directory.
 
 2. **Hardware setup**:
    - ESP32 Dev Board
@@ -35,16 +38,28 @@ Use this to:
 
 ## How to Use
 
-### 1. Upload the Sketch
+### 1. Copy Audio Data
 
-Open `audio_diagnostic.ino` in Arduino IDE and upload to ESP32.
+The diagnostic sketch embeds the audio engine, so you need the PCM data file. After running the conversion script:
 
-### 2. Open Serial Monitor
+```bash
+cp audio-assets/engine/engine_pcm.h firmware/audio_diagnostic/
+```
+
+This puts `engine_pcm.h` in the same folder as the diagnostic sketch.
+
+### 2. Upload the Sketch
+
+Open `firmware/audio_diagnostic/audio_diagnostic.ino` in Arduino IDE and upload to ESP32.
+- Arduino will compile with the embedded audio engine and PCM data
+- No linker errors if `engine_pcm.h` is in the same directory
+
+### 3. Open Serial Monitor
 
 - Set baud rate to **115200**
 - You should see initialization messages
 
-### 3. Test Commands
+### 4. Test Commands
 
 Send single characters via serial monitor:
 
@@ -63,7 +78,7 @@ Send single characters via serial monitor:
 - **`i`** - Print current status (throttle, rate, gain, memory)
 - **`h`** or **`?`** - Show help
 
-### 4. What You Should Hear
+### 5. What You Should Hear
 
 - **Idle (`0`)**: Quiet, low-pitched engine rumble
 - **Half (`5`)**: Medium pitch and volume
@@ -71,7 +86,7 @@ Send single characters via serial monitor:
 - **Auto sweep (`a`)**: Smooth transition up and down
 - **Rev (`r`)**: Quick burst of pitch+volume, then decay
 
-### 5. Expected Serial Output
+### 6. Expected Serial Output
 
 ```
 ========================================

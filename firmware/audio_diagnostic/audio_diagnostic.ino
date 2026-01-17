@@ -29,8 +29,8 @@
 #define THROTTLE_SMOOTH_ALPHA   0.15f
 #define RATE_MIN                0.8f
 #define RATE_MAX                1.5f
-#define GAIN_MIN                0.9f    // Louder for outdoor use
-#define GAIN_MAX                1.5f    // Much louder (safe with HPF removing bass)
+#define GAIN_MIN                1.2f    // Loud even at idle
+#define GAIN_MAX                1.8f    // Maximum safe gain
 #define REV_BOOST_RATE          1.25f   // 25% pitch boost (was 1.1)
 #define REV_BOOST_GAIN          1.4f    // 40% volume boost (was 1.2)
 #define REV_DECAY_MS            400     // Longer decay (was 300)
@@ -132,9 +132,9 @@ void audioEngine_updateThrottle(float throttle_normalized) {
 }
 
 // High-pass filter to remove bass frequencies that cause speaker rattling
-// Simple 1st order HPF at ~150Hz to cut out rumble that small speakers can't handle
+// More aggressive 1st order HPF at ~400Hz - cuts more bass for tiny speakers
 static inline float highPassFilter(float input) {
-  const float alpha = 0.98f;  // ~150Hz cutoff at 44.1kHz
+  const float alpha = 0.94f;  // ~400Hz cutoff at 44.1kHz (was 0.98/150Hz)
   
   float output = alpha * (engineState.hp_prev_out + input - engineState.hp_prev_in);
   

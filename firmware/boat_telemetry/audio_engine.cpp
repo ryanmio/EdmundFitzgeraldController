@@ -101,9 +101,9 @@ static inline float lerp(float a, float b, float t) {
 }
 
 // High-pass filter to remove bass frequencies that cause speaker rattling
-// Simple 1st order HPF at ~150Hz to cut out rumble that small speakers can't handle
+// More aggressive 1st order HPF at ~400Hz - cuts more bass for tiny speakers
 static inline float highPassFilter(float input) {
-  const float alpha = 0.98f;  // ~150Hz cutoff at 44.1kHz
+  const float alpha = 0.94f;  // ~400Hz cutoff at 44.1kHz (was 0.98/150Hz)
   
   float output = alpha * (engineState.hp_prev_out + input - engineState.hp_prev_in);
   

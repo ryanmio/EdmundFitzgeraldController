@@ -11,10 +11,12 @@
  *   r: Rev test (snap throttle up)
  *   s: Stop/idle
  *   i: Print info/status
+ *   f: Toggle filter (compare filtered vs raw audio)
  */
 
 #include "driver/i2s.h"
-#include "engine_pcm.h"  // PCM audio data (generated)
+#include "engine_pcm.h"      // Filtered PCM (with anti-aliasing)
+#include "engine_pcm_raw.h"  // Raw PCM (minimal processing)
 
 // I2S Configuration
 #define I2S_NUM           I2S_NUM_0
@@ -146,22 +148,28 @@ static inline float highPassFilter(float input) {
 
 // Render samples
 void audioEngine_renderSamples(int16_t* buffer, size_t count) {
+  // Select which PCM array to use
+  const int16_t* pcm_data = use_filtered ? ENGINE_PCM_DATA : ENGINE_PCM_RAW_DATA;
+  uint32_t pcm_length = use_filtered ? ENGINE_PCM_LENGTH : ENGINE_PCM_RAW_LENGTH;
+  
   for (size_t i = 0; i < count; i++) {
     uint32_t idx = (uint32_t)engineState.position;
     float frac = engineState.position - (float)idx;
     
-    if (idx >= ENGINE_PCM_LENGTH) {
-      idx = idx % ENGINE_PCM_LENGTH;
+    if (idx >= pcm_length) {
+      idx = idx % pcm_length;
       engineState.position = (float)idx + frac;
     }
     
-    int16_t sample0 = ENGINE_PCM_DATA[idx];
-    int16_t sample1 = ENGINE_PCM_DATA[(idx + 1) % ENGINE_PCM_LENGTH];
+    int16_t sample0 = pcm_data[idx];
+    int16_t sample1 = pcm_data[(idx + 1) % pcm_length];
     
     float interpolated = audioLerp((float)sample0, (float)sample1, frac);
     
-    // Apply high-pass filter BEFORE gain to remove bass that causes rattling
-    interpolated = highPassFilter(interpolated);
+    // Apply high-pass filter ONLY if using filtered version
+    if (use_filtered) {
+      interpolated = highPassFilter(interpolated);
+    }
     
     // Apply gain
     interpolated *= engineState.gain;
@@ -186,6 +194,7 @@ bool audioEngine_isRevActive() { return engineState.rev_timer_ms > 0; }
 float simulated_throttle = 0.0f;
 bool auto_sweep_mode = false;
 unsigned long last_sweep_update = 0;
+bool use_filtered = true;  // Toggle between filtered and raw audio
 
 void setup() {
   Serial.begin(115200);
@@ -280,6 +289,21 @@ void handleCommand(char cmd) {
       printStatus();
       break;
       
+    case 'f':
+    case 'F':
+      use_filtered = !use_filtered;
+      // Reset filter state when switching
+      engineState.hp_prev_in = 0.0f;
+      engineState.hp_prev_out = 0.0f;
+      Serial.println("========================================");
+      Serial.printf("Audio mode: %s\n", use_filtered ? "FILTERED (400Hz HPF + low-pass)" : "RAW (minimal processing)");
+      Serial.println("========================================");
+      if (!use_filtered) {
+        Serial.println("WARNING: Raw audio may rattle on small speakers!");
+      }
+      printStatus();
+      break;
+      
     case 'h':
     case 'H':
     case '?':
@@ -303,6 +327,7 @@ void printHelp() {
   Serial.println("  a    Toggle auto sweep mode (slow ramp)");
   Serial.println("  r    Rev test (snap throttle)");
   Serial.println("  s    Stop/idle");
+  Serial.println("  f    Toggle filter (compare filtered vs raw audio)");
   Serial.println("  i    Print current status");
   Serial.println("  h/?  Show this help");
   Serial.println();
@@ -310,6 +335,7 @@ void printHelp() {
 
 void printStatus() {
   Serial.println("----------------------------------------");
+  Serial.printf("Audio Mode:    %s\n", use_filtered ? "FILTERED" : "RAW");
   Serial.printf("Throttle:      %.1f%% (%.3f normalized)\n", 
     simulated_throttle * 100, simulated_throttle);
   Serial.printf("Smoothed:      %.3f\n", audioEngine_getSmoothedThrottle());

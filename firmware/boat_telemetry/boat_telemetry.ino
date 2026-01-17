@@ -41,7 +41,7 @@
 
 // ==================== I2S CONFIGURATION ====================
 #define I2S_NUM           I2S_NUM_0
-#define I2S_SAMPLE_RATE   22050
+#define I2S_SAMPLE_RATE   44100
 #define I2S_BUFFER_SIZE   512
 
 // ==================== GLOBALS ====================

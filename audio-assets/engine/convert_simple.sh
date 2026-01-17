@@ -15,10 +15,11 @@ if ! command -v ffmpeg &> /dev/null; then
     exit 1
 fi
 
-echo "[1/2] Converting engine.mp3 to mono 16-bit PCM WAV at 44100 Hz with anti-aliasing filter..."
-# Apply low-pass filter at 8kHz to prevent aliasing when pitch-shifting up to 1.5x
-# Use 44.1kHz sample rate for more headroom
-ffmpeg -i engine.mp3 -ar 44100 -ac 1 -af "lowpass=f=8000" -c:a pcm_s16le engine_loop.wav -y -loglevel warning
+echo "[1/2] Converting engine.mp3 to mono 16-bit PCM WAV at 44100 Hz with normalization and filtering..."
+# 1. Normalize audio to maximize loudness without clipping
+# 2. Apply low-pass filter at 8kHz to prevent aliasing when pitch-shifting up to 1.5x
+# 3. Use 44.1kHz sample rate for more headroom
+ffmpeg -i engine.mp3 -ar 44100 -ac 1 -af "loudnorm=I=-16:TP=-1.5:LRA=11,lowpass=f=8000" -c:a pcm_s16le engine_loop.wav -y -loglevel warning
 
 echo "[2/2] Generating C header file with PCM data array..."
 python3 generate_pcm_header.py engine_loop.wav engine_pcm.h

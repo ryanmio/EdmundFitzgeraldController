@@ -98,6 +98,24 @@ static inline float lerp(float a, float b, float t) {
   return a + (b - a) * t;
 }
 
+// Soft saturation function (smoother than hard clipping)
+static inline float softClip(float x) {
+  const float max_val = 32767.0f;
+  if (x > max_val) return max_val;
+  if (x < -max_val) return -max_val;
+  
+  // Soft saturation above 70% of max to prevent harsh clipping
+  float threshold = max_val * 0.7f;
+  if (x > threshold) {
+    float excess = (x - threshold) / (max_val - threshold);
+    return threshold + (max_val - threshold) * tanh(excess);
+  } else if (x < -threshold) {
+    float excess = (x + threshold) / (max_val - threshold);
+    return -threshold - (max_val - threshold) * tanh(-excess);
+  }
+  return x;
+}
+
 // Render PCM samples into buffer
 void audioEngine_renderSamples(int16_t* buffer, size_t count) {
   for (size_t i = 0; i < count; i++) {
@@ -121,9 +139,8 @@ void audioEngine_renderSamples(int16_t* buffer, size_t count) {
     // Apply gain
     interpolated *= engineState.gain;
     
-    // Clamp to int16 range
-    if (interpolated > 32767.0f) interpolated = 32767.0f;
-    if (interpolated < -32768.0f) interpolated = -32768.0f;
+    // Apply soft clipping instead of hard clipping for warmer sound
+    interpolated = softClip(interpolated);
     
     buffer[i] = (int16_t)interpolated;
     

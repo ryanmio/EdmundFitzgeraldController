@@ -30,7 +30,7 @@
 #define RATE_MIN                0.8f
 #define RATE_MAX                1.5f
 #define GAIN_MIN                0.7f    // Louder idle for outdoor use
-#define GAIN_MAX                1.8f    // Much louder at full throttle (may clip slightly)
+#define GAIN_MAX                1.3f    // Louder without harsh clipping
 #define REV_BOOST_RATE          1.25f   // 25% pitch boost (was 1.1)
 #define REV_BOOST_GAIN          1.4f    // 40% volume boost (was 1.2)
 #define REV_DECAY_MS            400     // Longer decay (was 300)
@@ -127,6 +127,24 @@ void audioEngine_updateThrottle(float throttle_normalized) {
   engineState.gain = base_gain;
 }
 
+// Soft saturation function (smoother than hard clipping)
+static inline float softClip(float x) {
+  const float max_val = 32767.0f;
+  if (x > max_val) return max_val;
+  if (x < -max_val) return -max_val;
+  
+  // Soft saturation above 70% of max to prevent harsh clipping
+  float threshold = max_val * 0.7f;
+  if (x > threshold) {
+    float excess = (x - threshold) / (max_val - threshold);
+    return threshold + (max_val - threshold) * tanh(excess);
+  } else if (x < -threshold) {
+    float excess = (x + threshold) / (max_val - threshold);
+    return -threshold - (max_val - threshold) * tanh(-excess);
+  }
+  return x;
+}
+
 // Render samples
 void audioEngine_renderSamples(int16_t* buffer, size_t count) {
   for (size_t i = 0; i < count; i++) {
@@ -144,8 +162,8 @@ void audioEngine_renderSamples(int16_t* buffer, size_t count) {
     float interpolated = audioLerp((float)sample0, (float)sample1, frac);
     interpolated *= engineState.gain;
     
-    if (interpolated > 32767.0f) interpolated = 32767.0f;
-    if (interpolated < -32768.0f) interpolated = -32768.0f;
+    // Apply soft clipping instead of hard clipping for warmer sound
+    interpolated = softClip(interpolated);
     
     buffer[i] = (int16_t)interpolated;
     

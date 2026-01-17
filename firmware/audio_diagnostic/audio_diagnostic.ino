@@ -49,8 +49,8 @@ typedef struct {
 
 EngineAudioState engineState;
 
-// Linear interpolation
-static inline float lerp(float a, float b, float t) {
+// Linear interpolation (audioLerp to avoid std::lerp conflict)
+static inline float audioLerp(float a, float b, float t) {
   return a + (b - a) * t;
 }
 
@@ -119,7 +119,7 @@ void audioEngine_renderSamples(int16_t* buffer, size_t count) {
     int16_t sample0 = ENGINE_PCM_DATA[idx];
     int16_t sample1 = ENGINE_PCM_DATA[(idx + 1) % ENGINE_PCM_LENGTH];
     
-    float interpolated = lerp((float)sample0, (float)sample1, frac);
+    float interpolated = audioLerp((float)sample0, (float)sample1, frac);
     interpolated *= engineState.gain;
     
     if (interpolated > 32767.0f) interpolated = 32767.0f;

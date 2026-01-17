@@ -29,8 +29,8 @@
 #define THROTTLE_SMOOTH_ALPHA   0.15f
 #define RATE_MIN                0.8f
 #define RATE_MAX                1.5f
-#define GAIN_MIN                0.4f
-#define GAIN_MAX                1.0f
+#define GAIN_MIN                0.7f    // Louder idle for outdoor use
+#define GAIN_MAX                1.8f    // Much louder at full throttle (may clip slightly)
 #define REV_BOOST_RATE          1.25f   // 25% pitch boost (was 1.1)
 #define REV_BOOST_GAIN          1.4f    // 40% volume boost (was 1.2)
 #define REV_DECAY_MS            400     // Longer decay (was 300)

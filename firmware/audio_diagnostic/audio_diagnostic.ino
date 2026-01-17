@@ -29,8 +29,8 @@
 #define THROTTLE_SMOOTH_ALPHA   0.15f
 #define RATE_MIN                0.8f
 #define RATE_MAX                1.5f
-#define GAIN_MIN                0.7f    // Louder idle for outdoor use
-#define GAIN_MAX                1.3f    // Louder without harsh clipping
+#define GAIN_MIN                0.6f    // Moderate volume for outdoor use
+#define GAIN_MAX                1.1f    // Louder but no clipping
 #define REV_BOOST_RATE          1.25f   // 25% pitch boost (was 1.1)
 #define REV_BOOST_GAIN          1.4f    // 40% volume boost (was 1.2)
 #define REV_DECAY_MS            400     // Longer decay (was 300)
@@ -46,6 +46,8 @@ typedef struct {
   float prev_throttle;
   uint32_t rev_timer_ms;
   uint32_t last_update_ms;
+  float hp_prev_in;   // High-pass filter state
+  float hp_prev_out;
 } EngineAudioState;
 
 EngineAudioState engineState;
@@ -64,6 +66,8 @@ void audioEngine_init() {
   engineState.prev_throttle = 0.0f;
   engineState.rev_timer_ms = 0;
   engineState.last_update_ms = millis();
+  engineState.hp_prev_in = 0.0f;
+  engineState.hp_prev_out = 0.0f;
 }
 
 // Update throttle
@@ -127,22 +131,17 @@ void audioEngine_updateThrottle(float throttle_normalized) {
   engineState.gain = base_gain;
 }
 
-// Soft saturation function (smoother than hard clipping)
-static inline float softClip(float x) {
-  const float max_val = 32767.0f;
-  if (x > max_val) return max_val;
-  if (x < -max_val) return -max_val;
+// High-pass filter to remove bass frequencies that cause speaker rattling
+// Simple 1st order HPF at ~150Hz to cut out rumble that small speakers can't handle
+static inline float highPassFilter(float input) {
+  const float alpha = 0.98f;  // ~150Hz cutoff at 44.1kHz
   
-  // Soft saturation above 70% of max to prevent harsh clipping
-  float threshold = max_val * 0.7f;
-  if (x > threshold) {
-    float excess = (x - threshold) / (max_val - threshold);
-    return threshold + (max_val - threshold) * tanh(excess);
-  } else if (x < -threshold) {
-    float excess = (x + threshold) / (max_val - threshold);
-    return -threshold - (max_val - threshold) * tanh(-excess);
-  }
-  return x;
+  float output = alpha * (engineState.hp_prev_out + input - engineState.hp_prev_in);
+  
+  engineState.hp_prev_in = input;
+  engineState.hp_prev_out = output;
+  
+  return output;
 }
 
 // Render samples
@@ -160,10 +159,16 @@ void audioEngine_renderSamples(int16_t* buffer, size_t count) {
     int16_t sample1 = ENGINE_PCM_DATA[(idx + 1) % ENGINE_PCM_LENGTH];
     
     float interpolated = audioLerp((float)sample0, (float)sample1, frac);
+    
+    // Apply high-pass filter BEFORE gain to remove bass that causes rattling
+    interpolated = highPassFilter(interpolated);
+    
+    // Apply gain
     interpolated *= engineState.gain;
     
-    // Apply soft clipping instead of hard clipping for warmer sound
-    interpolated = softClip(interpolated);
+    // Simple clipping
+    if (interpolated > 32767.0f) interpolated = 32767.0f;
+    if (interpolated < -32768.0f) interpolated = -32768.0f;
     
     buffer[i] = (int16_t)interpolated;
     

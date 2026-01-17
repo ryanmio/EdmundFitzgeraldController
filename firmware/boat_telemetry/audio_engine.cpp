@@ -17,6 +17,8 @@ void audioEngine_init() {
   engineState.prev_throttle = 0.0f;
   engineState.rev_timer_ms = 0;
   engineState.last_update_ms = millis();
+  engineState.hp_prev_in = 0.0f;
+  engineState.hp_prev_out = 0.0f;
   
   Serial.println("Audio engine initialized");
   Serial.printf("  PCM samples: %d (%.2fs @ %d Hz)\n", 
@@ -98,22 +100,17 @@ static inline float lerp(float a, float b, float t) {
   return a + (b - a) * t;
 }
 
-// Soft saturation function (smoother than hard clipping)
-static inline float softClip(float x) {
-  const float max_val = 32767.0f;
-  if (x > max_val) return max_val;
-  if (x < -max_val) return -max_val;
+// High-pass filter to remove bass frequencies that cause speaker rattling
+// Simple 1st order HPF at ~150Hz to cut out rumble that small speakers can't handle
+static inline float highPassFilter(float input) {
+  const float alpha = 0.98f;  // ~150Hz cutoff at 44.1kHz
   
-  // Soft saturation above 70% of max to prevent harsh clipping
-  float threshold = max_val * 0.7f;
-  if (x > threshold) {
-    float excess = (x - threshold) / (max_val - threshold);
-    return threshold + (max_val - threshold) * tanh(excess);
-  } else if (x < -threshold) {
-    float excess = (x + threshold) / (max_val - threshold);
-    return -threshold - (max_val - threshold) * tanh(-excess);
-  }
-  return x;
+  float output = alpha * (engineState.hp_prev_out + input - engineState.hp_prev_in);
+  
+  engineState.hp_prev_in = input;
+  engineState.hp_prev_out = output;
+  
+  return output;
 }
 
 // Render PCM samples into buffer
@@ -136,11 +133,15 @@ void audioEngine_renderSamples(int16_t* buffer, size_t count) {
     // Linear interpolation for smooth pitch shifting
     float interpolated = lerp((float)sample0, (float)sample1, frac);
     
+    // Apply high-pass filter BEFORE gain to remove bass that causes rattling
+    interpolated = highPassFilter(interpolated);
+    
     // Apply gain
     interpolated *= engineState.gain;
     
-    // Apply soft clipping instead of hard clipping for warmer sound
-    interpolated = softClip(interpolated);
+    // Simple clipping
+    if (interpolated > 32767.0f) interpolated = 32767.0f;
+    if (interpolated < -32768.0f) interpolated = -32768.0f;
     
     buffer[i] = (int16_t)interpolated;
     

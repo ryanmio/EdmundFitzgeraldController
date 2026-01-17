@@ -11,8 +11,8 @@
 #define THROTTLE_SMOOTH_ALPHA   0.15f   // Exponential smoothing (0.1=slow, 0.5=fast)
 #define RATE_MIN                0.8f    // Minimum playback rate (pitch at idle)
 #define RATE_MAX                1.5f    // Maximum playback rate (pitch at full throttle)
-#define GAIN_MIN                0.7f    // Minimum gain (volume at idle) - louder for outdoor use
-#define GAIN_MAX                1.3f    // Maximum gain (volume at full throttle) - louder without harsh clipping
+#define GAIN_MIN                0.6f    // Minimum gain (volume at idle)
+#define GAIN_MAX                1.1f    // Maximum gain (volume at full throttle)
 #define REV_BOOST_RATE          1.25f   // Rate multiplier during rev (25% boost)
 #define REV_BOOST_GAIN          1.4f    // Gain multiplier during rev (40% boost)
 #define REV_RAMP_MS             150     // Rev ramp-in time (milliseconds)
@@ -28,6 +28,8 @@ typedef struct {
   float prev_throttle;      // Previous throttle for derivative calculation
   uint32_t rev_timer_ms;    // Milliseconds remaining in rev transient
   uint32_t last_update_ms;  // Timestamp of last update (for decay)
+  float hp_prev_in;         // High-pass filter state (previous input)
+  float hp_prev_out;        // High-pass filter state (previous output)
 } EngineAudioState;
 
 // Global engine state (accessed by audio task)

@@ -31,10 +31,11 @@
 #define RATE_MAX                1.5f
 #define GAIN_MIN                0.4f
 #define GAIN_MAX                1.0f
-#define REV_BOOST_RATE          1.1f
-#define REV_BOOST_GAIN          1.2f
-#define REV_DECAY_MS            300
+#define REV_BOOST_RATE          1.25f   // 25% pitch boost (was 1.1)
+#define REV_BOOST_GAIN          1.4f    // 40% volume boost (was 1.2)
+#define REV_DECAY_MS            400     // Longer decay (was 300)
 #define REV_THRESHOLD           0.15f
+#define REV_RAMP_MS             150     // Ramp-in time (was 100)
 
 // Audio engine state
 typedef struct {
@@ -74,16 +75,14 @@ void audioEngine_updateThrottle(float throttle_normalized) {
   uint32_t delta_ms = current_ms - engineState.last_update_ms;
   engineState.last_update_ms = current_ms;
   
-  engineState.smoothed_throttle = 
-    engineState.smoothed_throttle * (1.0f - THROTTLE_SMOOTH_ALPHA) +
-    throttle_normalized * THROTTLE_SMOOTH_ALPHA;
-  
+  // Detect rev transient (rapid throttle increase)
   float throttle_delta = throttle_normalized - engineState.prev_throttle;
   if (throttle_delta > REV_THRESHOLD) {
-    engineState.rev_timer_ms = REV_DECAY_MS;
+    engineState.rev_timer_ms = REV_DECAY_MS + REV_RAMP_MS;
   }
   engineState.prev_throttle = throttle_normalized;
   
+  // Decay rev timer
   if (engineState.rev_timer_ms > 0) {
     if (delta_ms >= engineState.rev_timer_ms) {
       engineState.rev_timer_ms = 0;
@@ -92,22 +91,32 @@ void audioEngine_updateThrottle(float throttle_normalized) {
     }
   }
   
+  // Apply faster smoothing during rev transient for more responsive feel
+  float smooth_alpha = THROTTLE_SMOOTH_ALPHA;
+  if (engineState.rev_timer_ms > 0) {
+    smooth_alpha = 0.35f;  // Much faster response during rev
+  }
+  
+  engineState.smoothed_throttle = 
+    engineState.smoothed_throttle * (1.0f - smooth_alpha) +
+    throttle_normalized * smooth_alpha;
+  
   float base_rate = RATE_MIN + engineState.smoothed_throttle * (RATE_MAX - RATE_MIN);
   float base_gain = GAIN_MIN + engineState.smoothed_throttle * (GAIN_MAX - GAIN_MIN);
   
+  // Apply rev boost if active (ramp-in then decay for realistic effect)
   if (engineState.rev_timer_ms > 0) {
-    // Rev has two phases: ramp-in (first 100ms) and decay (remaining time)
-    float rev_elapsed = REV_DECAY_MS - engineState.rev_timer_ms;
-    float ramp_in_time = 100.0f;  // 100ms to ramp in
+    float total_time = REV_DECAY_MS + REV_RAMP_MS;
+    float rev_elapsed = total_time - engineState.rev_timer_ms;
     
     float rev_amount = 0.0f;
-    if (rev_elapsed < ramp_in_time) {
+    if (rev_elapsed < REV_RAMP_MS) {
       // Ramp-in phase: smoothly increase rev effect
-      rev_amount = rev_elapsed / ramp_in_time;
+      rev_amount = rev_elapsed / REV_RAMP_MS;
     } else {
       // Decay phase: gradually fade rev effect
-      float decay_progress = (float)engineState.rev_timer_ms / REV_DECAY_MS;
-      rev_amount = decay_progress;
+      float decay_elapsed = rev_elapsed - REV_RAMP_MS;
+      rev_amount = 1.0f - (decay_elapsed / REV_DECAY_MS);
     }
     
     base_rate *= 1.0f + (REV_BOOST_RATE - 1.0f) * rev_amount;
@@ -226,10 +235,11 @@ void handleCommand(char cmd) {
     case 'r':
     case 'R':
       auto_sweep_mode = false;
-      Serial.println("Rev test: 0% -> 80% snap");
-      simulated_throttle = 0.0f;
-      delay(500);
-      simulated_throttle = 0.8f;
+      {
+        float prev = simulated_throttle;
+        simulated_throttle = (prev < 0.5f) ? 0.8f : 0.2f;  // Snap up from low, down from high
+        Serial.printf("Rev test: %.0f%% -> %.0f%% snap\n", prev * 100, simulated_throttle * 100);
+      }
       printStatus();
       break;
       

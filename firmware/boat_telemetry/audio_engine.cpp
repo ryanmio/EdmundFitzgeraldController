@@ -38,15 +38,10 @@ void audioEngine_updateThrottle(float throttle_normalized) {
   uint32_t delta_ms = current_ms - engineState.last_update_ms;
   engineState.last_update_ms = current_ms;
   
-  // Exponential smoothing (boat-like inertia)
-  engineState.smoothed_throttle = 
-    engineState.smoothed_throttle * (1.0f - THROTTLE_SMOOTH_ALPHA) +
-    throttle_normalized * THROTTLE_SMOOTH_ALPHA;
-  
   // Detect rev transient (rapid throttle increase)
   float throttle_delta = throttle_normalized - engineState.prev_throttle;
   if (throttle_delta > REV_THRESHOLD) {
-    engineState.rev_timer_ms = REV_DECAY_MS;
+    engineState.rev_timer_ms = REV_DECAY_MS + REV_RAMP_MS;
   }
   engineState.prev_throttle = throttle_normalized;
   
@@ -59,24 +54,34 @@ void audioEngine_updateThrottle(float throttle_normalized) {
     }
   }
   
+  // Apply faster smoothing during rev transient for more responsive feel
+  float smooth_alpha = THROTTLE_SMOOTH_ALPHA;
+  if (engineState.rev_timer_ms > 0) {
+    smooth_alpha = 0.35f;  // Much faster response during rev
+  }
+  
+  // Exponential smoothing (boat-like inertia, faster during rev)
+  engineState.smoothed_throttle = 
+    engineState.smoothed_throttle * (1.0f - smooth_alpha) +
+    throttle_normalized * smooth_alpha;
+  
   // Calculate base rate and gain from smoothed throttle
   float base_rate = RATE_MIN + engineState.smoothed_throttle * (RATE_MAX - RATE_MIN);
   float base_gain = GAIN_MIN + engineState.smoothed_throttle * (GAIN_MAX - GAIN_MIN);
   
   // Apply rev boost if active (ramp-in then decay for realistic effect)
   if (engineState.rev_timer_ms > 0) {
-    // Rev has two phases: ramp-in (first 100ms) and decay (remaining time)
-    float rev_elapsed = REV_DECAY_MS - engineState.rev_timer_ms;
-    float ramp_in_time = 100.0f;  // 100ms to ramp in
+    float total_time = REV_DECAY_MS + REV_RAMP_MS;
+    float rev_elapsed = total_time - engineState.rev_timer_ms;
     
     float rev_amount = 0.0f;
-    if (rev_elapsed < ramp_in_time) {
+    if (rev_elapsed < REV_RAMP_MS) {
       // Ramp-in phase: smoothly increase rev effect
-      rev_amount = rev_elapsed / ramp_in_time;
+      rev_amount = rev_elapsed / REV_RAMP_MS;
     } else {
       // Decay phase: gradually fade rev effect
-      float decay_progress = (float)engineState.rev_timer_ms / REV_DECAY_MS;
-      rev_amount = decay_progress;
+      float decay_elapsed = rev_elapsed - REV_RAMP_MS;
+      rev_amount = 1.0f - (decay_elapsed / REV_DECAY_MS);
     }
     
     base_rate *= 1.0f + (REV_BOOST_RATE - 1.0f) * rev_amount;

@@ -237,7 +237,8 @@ void handleCommand(char cmd) {
       auto_sweep_mode = false;
       {
         float prev = simulated_throttle;
-        simulated_throttle = (prev < 0.5f) ? 0.8f : 0.2f;  // Snap up from low, down from high
+        simulated_throttle = prev + 0.4f;  // Add 40% throttle
+        if (simulated_throttle > 1.0f) simulated_throttle = 1.0f;
         Serial.printf("Rev test: %.0f%% -> %.0f%% snap\n", prev * 100, simulated_throttle * 100);
       }
       printStatus();

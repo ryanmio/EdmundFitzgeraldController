@@ -59,6 +59,12 @@ static inline float audioLerp(float a, float b, float t) {
   return a + (b - a) * t;
 }
 
+// ==================== TEST MODE ====================
+float simulated_throttle = 0.0f;
+bool auto_sweep_mode = false;
+unsigned long last_sweep_update = 0;
+bool use_filtered = true;  // Toggle between filtered and raw audio
+
 // Initialize audio engine
 void audioEngine_init() {
   engineState.position = 0.0f;
@@ -189,12 +195,6 @@ float audioEngine_getRate() { return engineState.rate; }
 float audioEngine_getGain() { return engineState.gain; }
 float audioEngine_getSmoothedThrottle() { return engineState.smoothed_throttle; }
 bool audioEngine_isRevActive() { return engineState.rev_timer_ms > 0; }
-
-// ==================== TEST MODE ====================
-float simulated_throttle = 0.0f;
-bool auto_sweep_mode = false;
-unsigned long last_sweep_update = 0;
-bool use_filtered = true;  // Toggle between filtered and raw audio
 
 void setup() {
   Serial.begin(115200);

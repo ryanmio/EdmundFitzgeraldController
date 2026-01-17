@@ -63,11 +63,24 @@ void audioEngine_updateThrottle(float throttle_normalized) {
   float base_rate = RATE_MIN + engineState.smoothed_throttle * (RATE_MAX - RATE_MIN);
   float base_gain = GAIN_MIN + engineState.smoothed_throttle * (GAIN_MAX - GAIN_MIN);
   
-  // Apply rev boost if active (exponential decay)
+  // Apply rev boost if active (ramp-in then decay for realistic effect)
   if (engineState.rev_timer_ms > 0) {
-    float rev_progress = (float)engineState.rev_timer_ms / REV_DECAY_MS;
-    base_rate *= 1.0f + (REV_BOOST_RATE - 1.0f) * rev_progress;
-    base_gain *= 1.0f + (REV_BOOST_GAIN - 1.0f) * rev_progress;
+    // Rev has two phases: ramp-in (first 100ms) and decay (remaining time)
+    float rev_elapsed = REV_DECAY_MS - engineState.rev_timer_ms;
+    float ramp_in_time = 100.0f;  // 100ms to ramp in
+    
+    float rev_amount = 0.0f;
+    if (rev_elapsed < ramp_in_time) {
+      // Ramp-in phase: smoothly increase rev effect
+      rev_amount = rev_elapsed / ramp_in_time;
+    } else {
+      // Decay phase: gradually fade rev effect
+      float decay_progress = (float)engineState.rev_timer_ms / REV_DECAY_MS;
+      rev_amount = decay_progress;
+    }
+    
+    base_rate *= 1.0f + (REV_BOOST_RATE - 1.0f) * rev_amount;
+    base_gain *= 1.0f + (REV_BOOST_GAIN - 1.0f) * rev_amount;
   }
   
   // Update state

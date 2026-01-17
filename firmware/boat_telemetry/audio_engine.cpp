@@ -1,12 +1,26 @@
 // audio_engine.cpp
 // Implementation of real-time engine audio sampler
+// Uses FFT-filtered PCM data (offline processing) for click-free looping
 
 #include "audio_engine.h"
-#include "engine_pcm.h"  // Generated header with ENGINE_PCM_DATA, ENGINE_PCM_LENGTH
+#include "engine_pcm.h"  // FFT-filtered PCM data
 #include <Arduino.h>
 
 // Global engine state
 EngineAudioState engineState;
+
+// Linear interpolation helper
+static inline float lerp(float a, float b, float t) {
+  return a + (b - a) * t;
+}
+
+// Soft clip using tanh - prevents harsh clipping artifacts
+static inline float softClip(float x) {
+  const float max_val = 32767.0f;
+  const float k = 2.0f;
+  float normalized = x / max_val;
+  return (tanh(k * normalized) / tanh(k)) * max_val;
+}
 
 // Initialize audio engine
 void audioEngine_init() {
@@ -17,10 +31,9 @@ void audioEngine_init() {
   engineState.prev_throttle = 0.0f;
   engineState.rev_timer_ms = 0;
   engineState.last_update_ms = millis();
-  engineState.hp_prev_in = 0.0f;
-  engineState.hp_prev_out = 0.0f;
+  engineState.startup_fade_remaining = (uint32_t)(44100 * START_FADE_MS / 1000);
   
-  Serial.println("Audio engine initialized");
+  Serial.println("Audio engine initialized (FFT-filtered loop)");
   Serial.printf("  PCM samples: %d (%.2fs @ %d Hz)\n", 
     ENGINE_PCM_LENGTH, 
     (float)ENGINE_PCM_LENGTH / ENGINE_PCM_SAMPLE_RATE,
@@ -95,24 +108,6 @@ void audioEngine_updateThrottle(float throttle_normalized) {
   engineState.gain = base_gain;
 }
 
-// Linear interpolation helper
-static inline float lerp(float a, float b, float t) {
-  return a + (b - a) * t;
-}
-
-// High-pass filter to remove bass frequencies that cause speaker rattling
-// More aggressive 1st order HPF at ~400Hz - cuts more bass for tiny speakers
-static inline float highPassFilter(float input) {
-  const float alpha = 0.94f;  // ~400Hz cutoff at 44.1kHz (was 0.98/150Hz)
-  
-  float output = alpha * (engineState.hp_prev_out + input - engineState.hp_prev_in);
-  
-  engineState.hp_prev_in = input;
-  engineState.hp_prev_out = output;
-  
-  return output;
-}
-
 // Render PCM samples into buffer
 void audioEngine_renderSamples(int16_t* buffer, size_t count) {
   for (size_t i = 0; i < count; i++) {
@@ -120,10 +115,10 @@ void audioEngine_renderSamples(int16_t* buffer, size_t count) {
     uint32_t idx = (uint32_t)engineState.position;
     float frac = engineState.position - (float)idx;
     
-    // Wrap around loop boundary
+    // Simple wrap (FFT filtering ensures periodic continuity)
     if (idx >= ENGINE_PCM_LENGTH) {
-      idx = idx % ENGINE_PCM_LENGTH;
-      engineState.position = (float)idx + frac;
+      engineState.position = frac;
+      idx = 0;
     }
     
     // Get current and next samples for interpolation
@@ -133,17 +128,18 @@ void audioEngine_renderSamples(int16_t* buffer, size_t count) {
     // Linear interpolation for smooth pitch shifting
     float interpolated = lerp((float)sample0, (float)sample1, frac);
     
-    // Apply high-pass filter BEFORE gain to remove bass that causes rattling
-    interpolated = highPassFilter(interpolated);
-    
     // Apply gain
     interpolated *= engineState.gain;
     
-    // Simple clipping
-    if (interpolated > 32767.0f) interpolated = 32767.0f;
-    if (interpolated < -32768.0f) interpolated = -32768.0f;
+    // Startup fade-in to prevent initial pop
+    if (engineState.startup_fade_remaining > 0) {
+      float progress = 1.0f - ((float)engineState.startup_fade_remaining / (44100 * START_FADE_MS / 1000));
+      interpolated *= progress;
+      engineState.startup_fade_remaining--;
+    }
     
-    buffer[i] = (int16_t)interpolated;
+    // Soft clip to prevent harsh distortion
+    buffer[i] = (int16_t)softClip(interpolated);
     
     // Advance position by playback rate
     engineState.position += engineState.rate;

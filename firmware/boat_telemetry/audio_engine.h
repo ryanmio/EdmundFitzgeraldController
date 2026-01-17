@@ -1,53 +1,50 @@
 // audio_engine.h
 // Real-time engine audio sampler with throttle-driven pitch and volume control
-// Implements loop sampling, linear interpolation, smoothing, and rev transients
+// Uses FFT-filtered PCM (offline processing) for click-free looping
 
 #ifndef AUDIO_ENGINE_H
 #define AUDIO_ENGINE_H
 
 #include <stdint.h>
 
-// Tuning parameters - adjust these for feel
+// Tuning parameters
 #define THROTTLE_SMOOTH_ALPHA   0.15f   // Exponential smoothing (0.1=slow, 0.5=fast)
 #define RATE_MIN                0.8f    // Minimum playback rate (pitch at idle)
 #define RATE_MAX                1.5f    // Maximum playback rate (pitch at full throttle)
-#define GAIN_MIN                1.8f    // Minimum gain (volume at idle) - loud for filtered version
-#define GAIN_MAX                2.2f    // Maximum gain (volume at full throttle) - maximum safe gain
+#define GAIN_MIN                0.6f    // Minimum gain (volume at idle)
+#define GAIN_MAX                1.0f    // Maximum gain (volume at full throttle)
 #define REV_BOOST_RATE          1.25f   // Rate multiplier during rev (25% boost)
 #define REV_BOOST_GAIN          1.4f    // Gain multiplier during rev (40% boost)
 #define REV_RAMP_MS             150     // Rev ramp-in time (milliseconds)
 #define REV_DECAY_MS            400     // Rev transient decay time (milliseconds)
 #define REV_THRESHOLD           0.15f   // Throttle delta to trigger rev transient
+#define START_FADE_MS           10      // Startup fade-in to prevent initial pop
 
 // Audio engine state
 typedef struct {
   float position;           // Fractional sample position in loop
   float rate;               // Current playback rate (1.0 = normal pitch)
-  float gain;               // Current volume multiplier (0.0-1.0)
+  float gain;               // Current volume multiplier
   float smoothed_throttle;  // Low-pass filtered throttle value
   float prev_throttle;      // Previous throttle for derivative calculation
   uint32_t rev_timer_ms;    // Milliseconds remaining in rev transient
   uint32_t last_update_ms;  // Timestamp of last update (for decay)
-  float hp_prev_in;         // High-pass filter state (previous input)
-  float hp_prev_out;        // High-pass filter state (previous output)
+  uint32_t startup_fade_remaining; // Samples remaining in startup fade
 } EngineAudioState;
 
 // Global engine state (accessed by audio task)
 extern EngineAudioState engineState;
 
 // Initialize audio engine
-// Must be called before any other functions
 void audioEngine_init();
 
 // Update throttle and recalculate rate/gain
 // throttle_normalized: 0.0 = idle, 1.0 = full throttle
-// Should be called before each render cycle
 void audioEngine_updateThrottle(float throttle_normalized);
 
 // Render PCM samples into buffer
 // buffer: output buffer (16-bit signed mono)
 // count: number of samples to render
-// Uses current rate/gain from state
 void audioEngine_renderSamples(int16_t* buffer, size_t count);
 
 // Get current state (for debugging)

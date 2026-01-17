@@ -213,10 +213,10 @@ void handleCommand(char cmd) {
     case 'r':
     case 'R':
       auto_sweep_mode = false;
-      Serial.println("Rev test: 0% -> 80% snap");
+      Serial.println("Rev test: 0% -> 50% snap");
       simulated_throttle = 0.0f;
       delay(500);
-      simulated_throttle = 0.8f;
+      simulated_throttle = 0.5f;
       printStatus();
       break;
       

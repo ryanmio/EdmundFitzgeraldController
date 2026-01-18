@@ -8,15 +8,12 @@
 #include <stdint.h>
 #include <cstddef>
 
-// Audio settings (22050 Hz to fit in flash)
-#define AUDIO_SAMPLE_RATE       22050
-
 // Tuning parameters
 #define THROTTLE_SMOOTH_ALPHA   0.15f   // Exponential smoothing (0.1=slow, 0.5=fast)
 #define RATE_MIN                0.8f    // Minimum playback rate (pitch at idle)
 #define RATE_MAX                1.5f    // Maximum playback rate (pitch at full throttle)
-#define GAIN_MIN                0.6f    // Minimum gain (volume at idle)
-#define GAIN_MAX                1.0f    // Maximum gain (volume at full throttle)
+#define GAIN_MIN                0.3f    // Minimum gain (volume at idle) - reduced for boat integration
+#define GAIN_MAX                0.6f    // Maximum gain (volume at full throttle)
 #define REV_BOOST_RATE          1.25f   // Rate multiplier during rev (25% boost)
 #define REV_BOOST_GAIN          1.4f    // Gain multiplier during rev (40% boost)
 #define REV_RAMP_MS             150     // Rev ramp-in time (milliseconds)

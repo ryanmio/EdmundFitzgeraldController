@@ -10,6 +10,7 @@
 #include "DFRobot_DF1201S.h"   // DFPlayer Pro (DF1201S) library
 #include "driver/i2s.h"         // ESP32 I2S driver for MAX98357A
 #include "driver/rmt.h"         // ESP32 RMT for PWM capture
+#include "esp_adc/adc_oneshot.h" // ESP-IDF 5.x ADC driver (avoids legacy conflict)
 #include "audio_engine.h"       // Engine audio sampler
 
 // ==================== PIN DEFINITIONS ====================
@@ -51,6 +52,9 @@ unsigned long startTime;
 bool ledRunningState = false;
 bool ledFloodState = false;
 bool dfPlayerAvailable = false;  // Track if DFPlayer is initialized
+
+// ADC oneshot handle for battery monitoring (ESP-IDF 5.x driver)
+adc_oneshot_unit_handle_t adc1_handle = NULL;
 
 // RMT throttle capture variables (non-blocking PWM read)
 volatile uint32_t throttle_pulse_us = 1500; // Cached throttle value (safe default)
@@ -416,11 +420,15 @@ void handleTelemetry() {
   unsigned long uptimeSec = (millis() - startTime) / 1000;
   int rssi = WiFi.RSSI();
   
-  // Battery voltage reading - TEMPORARILY DISABLED to diagnose ADC conflict
-  // Will re-enable using ESP-IDF oneshot driver once boot works
+  // Battery voltage reading using ESP-IDF oneshot ADC driver (GPIO34 = ADC1_CH6)
   int adcValue = 0;
-  float batteryPinVoltage = 0.0;
-  float batteryVoltage = 0.0;
+  if (adc1_handle != NULL) {
+    adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &adcValue);
+  }
+  // ADC: 0-4095 maps to 0-3.3V (12-bit default)
+  float batteryPinVoltage = (adcValue / 4095.0) * 3.3;
+  // Calibration: Voltage divider 100kΩ + 47kΩ, 3.3V input was reading 1.16V
+  float batteryVoltage = batteryPinVoltage * 2.84;
   
   // Water intrusion sensor (debounced digital read with pullup)
   // Debounced state: true = water breached hull, false = hull secure
@@ -735,8 +743,19 @@ void setup() {
   waterDebouncedState = false;  // Start as secure
   waterStateChangeTime = millis();
   
-  // Init battery ADC pin - TEMPORARILY DISABLED to diagnose ADC conflict
-  // pinMode(BATTERY_ADC_PIN, INPUT);
+  // Init battery ADC using ESP-IDF oneshot driver (GPIO34 = ADC1_CHANNEL_6)
+  adc_oneshot_unit_init_cfg_t init_config = {
+    .unit_id = ADC_UNIT_1,
+    .ulp_mode = ADC_ULP_MODE_DISABLE,
+  };
+  adc_oneshot_new_unit(&init_config, &adc1_handle);
+  
+  adc_oneshot_chan_cfg_t chan_config = {
+    .atten = ADC_ATTEN_DB_12,  // Full range 0-3.3V (was ADC_ATTEN_DB_11 in older IDF)
+    .bitwidth = ADC_BITWIDTH_12,
+  };
+  adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_6, &chan_config);
+  Serial.println("Battery ADC initialized (ESP-IDF oneshot driver)");
   
   // Init RC receiver PWM input pins (no pullup - receiver drives the signal)
   pinMode(THROTTLE_PWM_PIN, INPUT);

@@ -31,7 +31,7 @@ void audioEngine_init() {
   engineState.prev_throttle = 0.0f;
   engineState.rev_timer_ms = 0;
   engineState.last_update_ms = millis();
-  engineState.startup_fade_remaining = (uint32_t)(AUDIO_SAMPLE_RATE * START_FADE_MS / 1000);
+  engineState.startup_fade_remaining = (uint32_t)(44100 * START_FADE_MS / 1000);
   
   Serial.println("Audio engine initialized (FFT-filtered loop)");
   Serial.printf("  PCM samples: %d (%.2fs @ %d Hz)\n", 
@@ -133,7 +133,7 @@ void audioEngine_renderSamples(int16_t* buffer, size_t count) {
     
     // Startup fade-in to prevent initial pop
     if (engineState.startup_fade_remaining > 0) {
-      float progress = 1.0f - ((float)engineState.startup_fade_remaining / (AUDIO_SAMPLE_RATE * START_FADE_MS / 1000));
+      float progress = 1.0f - ((float)engineState.startup_fade_remaining / (44100 * START_FADE_MS / 1000));
       interpolated *= progress;
       engineState.startup_fade_remaining--;
     }

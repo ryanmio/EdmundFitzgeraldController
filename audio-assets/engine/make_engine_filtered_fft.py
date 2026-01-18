@@ -4,7 +4,6 @@ import os
 import numpy as np
 from scipy.io import wavfile
 from scipy.fft import rfft, irfft, rfftfreq
-from scipy.signal import resample
 
 def main():
     if len(sys.argv) < 3:
@@ -13,16 +12,9 @@ def main():
 
     input_wav = sys.argv[1]
     output_wav = sys.argv[2]
-    target_sr = 22050  # Reduce sample rate for flash space
 
     # 1. Read input WAV
     sr, data = wavfile.read(input_wav)
-    
-    # 1b. Downsample to target rate if needed
-    if sr != target_sr:
-        num_samples = int(len(data) * target_sr / sr)
-        data = resample(data, num_samples)
-        sr = target_sr
     
     # 2. Convert to float32
     x = data.astype(np.float32) / 32768.0
@@ -56,9 +48,9 @@ def main():
     if peak > 0:
         y = y * (0.98 / peak)
     
-    # 9. Write output WAV at target sample rate
+    # 9. Write output WAV
     output_data = (y * 32767.0).astype(np.int16)
-    wavfile.write(output_wav, target_sr, output_data)
+    wavfile.write(output_wav, sr, output_data)
     
     # Boundary mismatch debug
     mismatch = abs(int(output_data[0]) - int(output_data[-1]))

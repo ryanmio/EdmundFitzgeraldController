@@ -270,6 +270,11 @@ void setupI2S() {
     .fixed_mclk = 0
   };
   
+  // Explicitly ensure we are NOT using built-in DAC/ADC mode which causes conflicts
+  // on the original ESP32 with newer IDF drivers.
+  i2s_config.mode = (i2s_mode_t)(i2s_config.mode & ~I2S_MODE_DAC_BUILT_IN);
+  i2s_config.mode = (i2s_mode_t)(i2s_config.mode & ~I2S_MODE_ADC_BUILT_IN);
+  
   i2s_pin_config_t pin_config = {
     .bck_io_num = I2S_BCLK_PIN,
     .ws_io_num = I2S_LRC_PIN,
@@ -416,11 +421,16 @@ void handleTelemetry() {
   unsigned long uptimeSec = (millis() - startTime) / 1000;
   int rssi = WiFi.RSSI();
   
-  // Battery voltage reading - DISABLED due to ADC driver conflict in ESP-IDF 5.x
-  // TODO: Re-enable once ADC driver conflict is resolved
-  int adcValue = 0;
-  float batteryPinVoltage = 0.0;
-  float batteryVoltage = 0.0;
+  // Battery voltage reading (GPIO 34 ADC)
+  // Voltage divider: 100kΩ + 47kΩ
+  // ADC: 0-4095 maps to 0-3.3V
+  // In ESP32 Core 3.x, analogReadMilliVolts is the preferred, stable way to read ADC
+  uint32_t mv = analogReadMilliVolts(BATTERY_ADC_PIN);
+  float batteryPinVoltage = mv / 1000.0;
+  
+  // Calibration: 3.3V input was reading 1.16V, so multiply by 3.3/1.16 = 2.84
+  float batteryVoltage = batteryPinVoltage * 2.84;
+  int adcValue = analogRead(BATTERY_ADC_PIN); // Keep for JSON but mv is used for calc
   
   // Water intrusion sensor (debounced digital read with pullup)
   // Debounced state: true = water breached hull, false = hull secure
@@ -735,8 +745,8 @@ void setup() {
   waterDebouncedState = false;  // Start as secure
   waterStateChangeTime = millis();
   
-  // Init battery ADC pin - DISABLED due to ADC driver conflict in ESP-IDF 5.x
-  // pinMode(BATTERY_ADC_PIN, INPUT);
+  // Init battery ADC pin
+  pinMode(BATTERY_ADC_PIN, ANALOG);
   
   // Init RC receiver PWM input pins (no pullup - receiver drives the signal)
   pinMode(THROTTLE_PWM_PIN, INPUT);

@@ -416,13 +416,11 @@ void handleTelemetry() {
   unsigned long uptimeSec = (millis() - startTime) / 1000;
   int rssi = WiFi.RSSI();
   
-  // Battery voltage reading (GPIO 34 ADC)
-  // Voltage divider: 100kΩ + 47kΩ
-  // ADC: 0-4095 maps to 0-3.3V
-  // Calibration: 3.3V input was reading 1.16V, so multiply by 3.3/1.16 = 2.84
-  int adcValue = analogRead(BATTERY_ADC_PIN);
-  float batteryPinVoltage = (adcValue / 4095.0) * 3.3;
-  float batteryVoltage = batteryPinVoltage * 2.84;
+  // Battery voltage reading - DISABLED due to ADC driver conflict in ESP-IDF 5.x
+  // TODO: Re-enable once ADC driver conflict is resolved
+  int adcValue = 0;
+  float batteryPinVoltage = 0.0;
+  float batteryVoltage = 0.0;
   
   // Water intrusion sensor (debounced digital read with pullup)
   // Debounced state: true = water breached hull, false = hull secure
@@ -737,8 +735,8 @@ void setup() {
   waterDebouncedState = false;  // Start as secure
   waterStateChangeTime = millis();
   
-  // Init battery ADC pin
-  pinMode(BATTERY_ADC_PIN, INPUT);
+  // Init battery ADC pin - DISABLED due to ADC driver conflict in ESP-IDF 5.x
+  // pinMode(BATTERY_ADC_PIN, INPUT);
   
   // Init RC receiver PWM input pins (no pullup - receiver drives the signal)
   pinMode(THROTTLE_PWM_PIN, INPUT);

@@ -10,8 +10,9 @@
 #include "DFRobot_DF1201S.h"   // DFPlayer Pro (DF1201S) library
 #include "driver/i2s.h"         // ESP32 I2S driver for MAX98357A
 #include "driver/rmt.h"         // ESP32 RMT for PWM capture
-#include "esp_adc/adc_oneshot.h" // ESP-IDF 5.x ADC driver (avoids legacy conflict)
 #include "audio_engine.h"       // Engine audio sampler
+// NOTE: Using Arduino's analogRead() for ADC - do NOT use esp_adc/adc_oneshot.h
+// as it conflicts with the legacy driver used by WiFi/I2S
 
 // ==================== PIN DEFINITIONS ====================
 #define LED_RUNNING_PIN    2   // Built-in LED on most dev boards (keep for testing)
@@ -52,9 +53,7 @@ unsigned long startTime;
 bool ledRunningState = false;
 bool ledFloodState = false;
 bool dfPlayerAvailable = false;  // Track if DFPlayer is initialized
-
-// ADC oneshot handle for battery monitoring (ESP-IDF 5.x driver)
-adc_oneshot_unit_handle_t adc1_handle = NULL;
+bool adcInitialized = false;     // Track if ADC was initialized before I2S
 
 // RMT throttle capture variables (non-blocking PWM read)
 volatile uint32_t throttle_pulse_us = 1500; // Cached throttle value (safe default)
@@ -420,12 +419,10 @@ void handleTelemetry() {
   unsigned long uptimeSec = (millis() - startTime) / 1000;
   int rssi = WiFi.RSSI();
   
-  // Battery voltage reading using ESP-IDF oneshot ADC driver (GPIO34 = ADC1_CH6)
-  int adcValue = 0;
-  if (adc1_handle != NULL) {
-    adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &adcValue);
-  }
-  // ADC: 0-4095 maps to 0-3.3V (12-bit default)
+  // Battery voltage reading (GPIO 34 ADC)
+  // Using Arduino's analogRead() - must be initialized BEFORE I2S to avoid driver conflict
+  int adcValue = adcInitialized ? analogRead(BATTERY_ADC_PIN) : 0;
+  // ADC: 0-4095 maps to 0-3.3V (12-bit)
   float batteryPinVoltage = (adcValue / 4095.0) * 3.3;
   // Calibration: Voltage divider 100kΩ + 47kΩ, 3.3V input was reading 1.16V
   float batteryVoltage = batteryPinVoltage * 2.84;
@@ -644,10 +641,17 @@ void handleNotFound() {
 
 // ==================== SETUP ====================
 void setup() {
+  // CRITICAL: Initialize ADC FIRST before any other drivers to prevent conflict
+  // The Arduino Core 3.x uses the new ADC driver, but WiFi/I2S may trigger legacy
+  pinMode(BATTERY_ADC_PIN, INPUT);
+  int dummy = analogRead(BATTERY_ADC_PIN);  // Force ADC init before I2S/WiFi
+  adcInitialized = true;
+  
   Serial.begin(115200);
   delay(1000);
   Serial.println();
   Serial.println("=== Boat Telemetry Starting ===");
+  Serial.printf("Battery ADC pre-initialized (dummy read: %d)\n", dummy);
 
   // Init LED pins
   pinMode(LED_RUNNING_PIN, OUTPUT);
@@ -743,19 +747,7 @@ void setup() {
   waterDebouncedState = false;  // Start as secure
   waterStateChangeTime = millis();
   
-  // Init battery ADC using ESP-IDF oneshot driver (GPIO34 = ADC1_CHANNEL_6)
-  adc_oneshot_unit_init_cfg_t init_config = {
-    .unit_id = ADC_UNIT_1,
-    .ulp_mode = ADC_ULP_MODE_DISABLE,
-  };
-  adc_oneshot_new_unit(&init_config, &adc1_handle);
-  
-  adc_oneshot_chan_cfg_t chan_config = {
-    .atten = ADC_ATTEN_DB_12,  // Full range 0-3.3V (was ADC_ATTEN_DB_11 in older IDF)
-    .bitwidth = ADC_BITWIDTH_12,
-  };
-  adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_6, &chan_config);
-  Serial.println("Battery ADC initialized (ESP-IDF oneshot driver)");
+  // Battery ADC already initialized at top of setup()
   
   // Init RC receiver PWM input pins (no pullup - receiver drives the signal)
   pinMode(THROTTLE_PWM_PIN, INPUT);

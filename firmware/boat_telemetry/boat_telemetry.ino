@@ -40,7 +40,7 @@
 #define BUILD_ID           "20260115-engine-audio"
 
 // ==================== I2S CONFIGURATION ====================
-#define I2S_NUM           I2S_NUM_0
+#define I2S_NUM           I2S_NUM_1   // Switch to I2S_NUM_1 to avoid ADC conflict on I2S_NUM_0
 #define I2S_SAMPLE_RATE   44100
 #define I2S_BUFFER_SIZE   512
 
@@ -270,11 +270,6 @@ void setupI2S() {
     .fixed_mclk = 0
   };
   
-  // Explicitly ensure we are NOT using built-in DAC/ADC mode which causes conflicts
-  // on the original ESP32 with newer IDF drivers.
-  i2s_config.mode = (i2s_mode_t)(i2s_config.mode & ~I2S_MODE_DAC_BUILT_IN);
-  i2s_config.mode = (i2s_mode_t)(i2s_config.mode & ~I2S_MODE_ADC_BUILT_IN);
-  
   i2s_pin_config_t pin_config = {
     .bck_io_num = I2S_BCLK_PIN,
     .ws_io_num = I2S_LRC_PIN,
@@ -422,15 +417,13 @@ void handleTelemetry() {
   int rssi = WiFi.RSSI();
   
   // Battery voltage reading (GPIO 34 ADC)
-  // Voltage divider: 100kΩ + 47kΩ
-  // ADC: 0-4095 maps to 0-3.3V
-  // In ESP32 Core 3.x, analogReadMilliVolts is the preferred, stable way to read ADC
+  // In ESP32 Core 3.x, analogReadMilliVolts is the safe, modern way to read ADC
   uint32_t mv = analogReadMilliVolts(BATTERY_ADC_PIN);
   float batteryPinVoltage = mv / 1000.0;
   
   // Calibration: 3.3V input was reading 1.16V, so multiply by 3.3/1.16 = 2.84
   float batteryVoltage = batteryPinVoltage * 2.84;
-  int adcValue = analogRead(BATTERY_ADC_PIN); // Keep for JSON but mv is used for calc
+  int adcValue = (int)((batteryPinVoltage / 3.3) * 4095); // Reconstruct raw value for JSON
   
   // Water intrusion sensor (debounced digital read with pullup)
   // Debounced state: true = water breached hull, false = hull secure
@@ -745,8 +738,8 @@ void setup() {
   waterDebouncedState = false;  // Start as secure
   waterStateChangeTime = millis();
   
-  // Init battery ADC pin
-  pinMode(BATTERY_ADC_PIN, ANALOG);
+  // Init battery ADC pin (Core 3.x doesn't require pinMode for ANALOG, but use INPUT to be safe)
+  pinMode(BATTERY_ADC_PIN, INPUT);
   
   // Init RC receiver PWM input pins (no pullup - receiver drives the signal)
   pinMode(THROTTLE_PWM_PIN, INPUT);

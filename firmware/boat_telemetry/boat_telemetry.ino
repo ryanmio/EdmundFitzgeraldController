@@ -41,7 +41,7 @@
 
 // ==================== I2S CONFIGURATION ====================
 #define I2S_NUM           I2S_NUM_0
-#define I2S_SAMPLE_RATE   22050   // 22050 Hz to reduce flash usage
+#define I2S_SAMPLE_RATE   44100
 #define I2S_BUFFER_SIZE   512
 
 // ==================== GLOBALS ====================
@@ -438,7 +438,7 @@ void handleTelemetry() {
 
   // ESP32 diagnostics
   uint32_t freeHeap = ESP.getFreeHeap();
-  float internalTemp = temperatureRead();
+  // float internalTemp = temperatureRead();  // Disabled: conflicts with analogRead() in ESP-IDF 5.x
 
   String json = "{";
   json += "\"timestamp\":\"" + String(millis()) + "\",";
@@ -448,7 +448,6 @@ void handleTelemetry() {
   json += "\"signal_strength\":\"" + String(rssi) + "dBm\",";
   json += "\"uptime_seconds\":" + String(uptimeSec) + ",";
   json += "\"free_heap\":" + String(freeHeap) + ",";
-  json += "\"internal_temp_c\":" + String(internalTemp, 1) + ",";
   json += "\"running_mode_state\":" + String(ledRunningState ? "true" : "false") + ",";
   json += "\"flood_mode_state\":" + String(ledFloodState ? "true" : "false") + ",";
   json += "\"dfplayer_available\":" + String(dfPlayerAvailable ? "true" : "false") + ",";

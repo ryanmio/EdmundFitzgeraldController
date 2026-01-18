@@ -9,8 +9,8 @@
 // Global engine state
 EngineAudioState engineState;
 
-// Linear interpolation helper
-static inline float lerp(float a, float b, float t) {
+// Linear interpolation helper (audioLerp to avoid std::lerp conflict)
+static inline float audioLerp(float a, float b, float t) {
   return a + (b - a) * t;
 }
 
@@ -126,7 +126,7 @@ void audioEngine_renderSamples(int16_t* buffer, size_t count) {
     int16_t sample1 = ENGINE_PCM_DATA[(idx + 1) % ENGINE_PCM_LENGTH];
     
     // Linear interpolation for smooth pitch shifting
-    float interpolated = lerp((float)sample0, (float)sample1, frac);
+    float interpolated = audioLerp((float)sample0, (float)sample1, frac);
     
     // Apply gain
     interpolated *= engineState.gain;

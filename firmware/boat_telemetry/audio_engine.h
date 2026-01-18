@@ -6,6 +6,7 @@
 #define AUDIO_ENGINE_H
 
 #include <stdint.h>
+#include <cstddef>
 
 // Tuning parameters
 #define THROTTLE_SMOOTH_ALPHA   0.15f   // Exponential smoothing (0.1=slow, 0.5=fast)

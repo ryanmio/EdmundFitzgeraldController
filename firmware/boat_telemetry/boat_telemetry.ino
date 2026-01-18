@@ -199,9 +199,6 @@ void updateWaterSensorDebounce() {
 void setupRMT() {
   rmt_config_t rmt_rx_config = RMT_DEFAULT_CONFIG_RX((gpio_num_t)THROTTLE_PWM_PIN, RMT_RX_CHANNEL);
   rmt_rx_config.clk_div = RMT_CLK_DIV;
-  rmt_rx_config.rx_filter_en = true;
-  rmt_rx_config.rx_filter_thresh_ticks = 100;
-  rmt_rx_config.idle_threshold = 30000;  // 30ms idle = end of pulse
   rmt_config(&rmt_rx_config);
   rmt_driver_install(RMT_RX_CHANNEL, 1000, 0);
   rmt_rx_start(RMT_RX_CHANNEL, true);
@@ -215,13 +212,13 @@ void setupRMT() {
 void updateThrottleRMT() {
   size_t rx_size = 0;
   rmt_item32_t* items = NULL;
+  RingbufHandle_t rb = NULL;
+  
+  // Get ringbuffer handle
+  rmt_get_ringbuf_handle(RMT_RX_CHANNEL, &rb);
   
   // Non-blocking receive with immediate timeout
-  items = (rmt_item32_t*) xRingbufferReceive(
-    rmt_get_ringbuf_handle(RMT_RX_CHANNEL),
-    &rx_size,
-    0  // don't block
-  );
+  items = (rmt_item32_t*) xRingbufferReceive(rb, &rx_size, 0);
   
   if (items) {
     // Parse RMT items to extract pulse width
@@ -245,7 +242,7 @@ void updateThrottleRMT() {
     }
     
     // Return buffer to ringbuffer
-    vRingbufferReturnItem(rmt_get_ringbuf_handle(RMT_RX_CHANNEL), (void*) items);
+    vRingbufferReturnItem(rb, (void*) items);
   }
   
   // Timeout handling: revert to safe idle if no signal

@@ -1,5 +1,5 @@
 // ESP32 HTTP service with timeout support
-import { StatusResponse, TelemetryResponse, LEDResponse, LEDMode, LEDState, HornResponse, SOSResponse, RadioResponse } from '../types';
+import { StatusResponse, TelemetryResponse, LEDResponse, LEDMode, LEDState, HornResponse, SOSResponse, RadioResponse, MuteResponse } from '../types';
 
 const TIMEOUT_MS = 5000;
 
@@ -138,3 +138,22 @@ export async function triggerRadio(ip: string, radioId: number): Promise<RadioRe
   return response.json();
 }
 
+/**
+ * Mute or unmute engine audio
+ */
+export async function muteEngine(ip: string, muted: boolean): Promise<MuteResponse> {
+  const url = buildUrl(ip, '/engine-mute');
+  const response = await fetchWithTimeout(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ muted }),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Engine mute failed: ${response.status}`);
+  }
+  
+  return response.json();
+}

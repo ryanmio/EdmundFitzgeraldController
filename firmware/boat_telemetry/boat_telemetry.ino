@@ -36,8 +36,8 @@
 #define RMT_CLK_DIV       80   // 1 MHz tick rate (80 MHz / 80)
 
 // ==================== BUILD IDENTIFICATION ====================
-#define FIRMWARE_VERSION   "3.0.0"
-#define BUILD_ID           "20260115-engine-audio"
+#define FIRMWARE_VERSION   "3.1.0"
+#define BUILD_ID           "20260118-engine-mute"
 
 // ==================== I2S CONFIGURATION ====================
 #define I2S_NUM           I2S_NUM_1   // Switch to I2S_NUM_1 to avoid ADC conflict on I2S_NUM_0
@@ -463,6 +463,7 @@ void handleTelemetry() {
   json += "\"water_sensor_raw\":" + String(waterRaw) + ",";
   json += "\"throttle_pwm\":" + String(throttlePWM) + ",";
   json += "\"servo_pwm\":" + String(servoPWM) + ",";
+  json += "\"engine_muted\":" + String(audioEngine_getMuted() ? "true" : "false") + ",";
   json += "\"connection_status\":\"" + String(WiFi.status() == WL_CONNECTED ? "online" : "offline") + "\",";
   json += "\"ip_address\":\"" + WiFi.localIP().toString() + "\"";
   json += "}";
@@ -490,6 +491,28 @@ void handleEngineDebug() {
   json += "\"engine_gain\":" + String(engine_gain, 3) + ",";
   json += "\"rev_active\":" + String(rev_active ? "true" : "false") + ",";
   json += "\"last_update_ms\":" + String(last_throttle_update);
+  json += "}";
+  
+  server.send(200, "application/json", json);
+}
+
+void handleEngineMute() {
+  addCORSHeaders();
+  if (server.method() != HTTP_POST) {
+    server.send(405, "application/json", "{\"error\":\"POST required\"}");
+    return;
+  }
+
+  String body = server.arg("plain");
+  
+  // Parse JSON body: {"muted": true/false}
+  bool muted = body.indexOf("\"muted\":true") >= 0 || body.indexOf("\"muted\": true") >= 0;
+  
+  audioEngine_setMuted(muted);
+  
+  String json = "{";
+  json += "\"muted\":" + String(muted ? "true" : "false") + ",";
+  json += "\"message\":\"Engine audio " + String(muted ? "muted" : "unmuted") + "\"";
   json += "}";
   
   server.send(200, "application/json", json);
@@ -777,6 +800,7 @@ void setup() {
   server.on("/radio", HTTP_POST, handleRadio);
   server.on("/easter-egg", HTTP_POST, handleEasterEgg);
   server.on("/engine-debug", HTTP_GET, handleEngineDebug);
+  server.on("/engine-mute", HTTP_POST, handleEngineMute);
   server.on("/status", HTTP_OPTIONS, handleOptions);
   server.on("/telemetry", HTTP_OPTIONS, handleOptions);
   server.on("/led", HTTP_OPTIONS, handleOptions);
@@ -785,6 +809,7 @@ void setup() {
   server.on("/radio", HTTP_OPTIONS, handleOptions);
   server.on("/easter-egg", HTTP_OPTIONS, handleOptions);
   server.on("/engine-debug", HTTP_OPTIONS, handleOptions);
+  server.on("/engine-mute", HTTP_OPTIONS, handleOptions);
   server.onNotFound(handleNotFound);
 
   server.begin();

@@ -31,6 +31,7 @@ typedef struct {
   uint32_t rev_timer_ms;    // Milliseconds remaining in rev transient
   uint32_t last_update_ms;  // Timestamp of last update (for decay)
   uint32_t startup_fade_remaining; // Samples remaining in startup fade
+  bool muted;               // Mute flag (true = output silence)
 } EngineAudioState;
 
 // Global engine state (accessed by audio task)
@@ -47,6 +48,10 @@ void audioEngine_updateThrottle(float throttle_normalized);
 // buffer: output buffer (16-bit signed mono)
 // count: number of samples to render
 void audioEngine_renderSamples(int16_t* buffer, size_t count);
+
+// Mute control
+void audioEngine_setMuted(bool muted);
+bool audioEngine_getMuted();
 
 // Get current state (for debugging)
 inline float audioEngine_getRate() { return engineState.rate; }

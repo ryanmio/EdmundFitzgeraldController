@@ -18,7 +18,7 @@ import { WebView } from 'react-native-webview';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getTelemetry, setLED, triggerHorn, triggerSOS, triggerRadio } from '../services/esp32Service';
+import { getTelemetry, setLED, triggerHorn, triggerSOS, triggerRadio, muteEngine } from '../services/esp32Service';
 import { TelemetryResponse } from '../types';
 import { COLORS, FONTS } from '../constants/Theme';
 import { SystemsCheckModal } from '../components/SystemsCheckModal';
@@ -101,6 +101,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
   const [triggeringRadio1, setTriggeringRadio1] = useState(false);
   const [triggeringRadio2, setTriggeringRadio2] = useState(false);
   const [triggeringRadio3, setTriggeringRadio3] = useState(false);
+  const [togglingMute, setTogglingMute] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
   const [logData, setLogData] = useState<LogEntry[]>([]);
   const [logStartTime, setLogStartTime] = useState<Date | null>(null);
@@ -274,6 +275,20 @@ export default function DashboardScreen({ navigation, route }: Props) {
       Alert.alert('Error', 'Failed to toggle flood light');
     } finally {
       setTogglingFlood(false);
+    }
+  };
+
+  const toggleEngineMute = async () => {
+    if (!telemetry || togglingMute) return;
+    setTogglingMute(true);
+    try {
+      const newState = !telemetry.engine_muted;
+      await muteEngine(ip, newState);
+      setTelemetry({ ...telemetry, engine_muted: newState });
+    } catch (err) {
+      Alert.alert('Error', 'Failed to toggle engine mute');
+    } finally {
+      setTogglingMute(false);
     }
   };
 
@@ -612,6 +627,18 @@ export default function DashboardScreen({ navigation, route }: Props) {
               </Text>
             </Text>
           </View>
+          <TouchableOpacity 
+            style={styles.muteButton} 
+            onPress={toggleEngineMute}
+            disabled={togglingMute}
+          >
+            <View style={[
+              styles.muteButtonInner,
+              telemetry?.engine_muted && styles.muteButtonActive
+            ]}>
+              <Text style={styles.muteIcon}>{telemetry?.engine_muted ? '🔇' : '🔊'}</Text>
+            </View>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.diagButton} onPress={() => setShowSystemsCheck(true)}>
             <View style={styles.diagButtonInner}>
               <Text style={styles.diagIcon}>◈</Text>
@@ -1022,6 +1049,30 @@ const styles = StyleSheet.create({
   chronometerSeconds: {
     fontSize: 14,
     color: COLORS.secondary,
+  },
+  muteButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 4,
+    backgroundColor: COLORS.secondary,
+    padding: 2,
+    marginRight: 8,
+  },
+  muteButtonInner: {
+    flex: 1,
+    backgroundColor: '#3a4b63',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 2,
+    borderWidth: 1,
+    borderColor: '#5a6f8f',
+  },
+  muteButtonActive: {
+    backgroundColor: '#634b3a',
+    borderColor: '#8f6f5a',
+  },
+  muteIcon: {
+    fontSize: 18,
   },
   diagButton: {
     width: 44,

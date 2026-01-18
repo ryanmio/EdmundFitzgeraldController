@@ -32,6 +32,7 @@ void audioEngine_init() {
   engineState.rev_timer_ms = 0;
   engineState.last_update_ms = millis();
   engineState.startup_fade_remaining = (uint32_t)(44100 * START_FADE_MS / 1000);
+  engineState.muted = false;
   
   Serial.println("Audio engine initialized (FFT-filtered loop)");
   Serial.printf("  PCM samples: %d (%.2fs @ %d Hz)\n", 
@@ -40,6 +41,16 @@ void audioEngine_init() {
     ENGINE_PCM_SAMPLE_RATE);
   Serial.printf("  Rate range: %.2f - %.2f\n", RATE_MIN, RATE_MAX);
   Serial.printf("  Gain range: %.2f - %.2f\n", GAIN_MIN, GAIN_MAX);
+}
+
+// Mute control functions
+void audioEngine_setMuted(bool muted) {
+  engineState.muted = muted;
+  Serial.printf("Engine audio %s\n", muted ? "MUTED" : "UNMUTED");
+}
+
+bool audioEngine_getMuted() {
+  return engineState.muted;
 }
 
 // Update throttle and recalculate rate/gain
@@ -110,6 +121,14 @@ void audioEngine_updateThrottle(float throttle_normalized) {
 
 // Render PCM samples into buffer
 void audioEngine_renderSamples(int16_t* buffer, size_t count) {
+  // If muted, output silence
+  if (engineState.muted) {
+    for (size_t i = 0; i < count; i++) {
+      buffer[i] = 0;
+    }
+    return;
+  }
+  
   for (size_t i = 0; i < count; i++) {
     // Get integer and fractional parts of position
     uint32_t idx = (uint32_t)engineState.position;

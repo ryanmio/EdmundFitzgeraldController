@@ -23,6 +23,7 @@ export interface TelemetryResponse {
   water_sensor_raw: number;
   throttle_pwm: number;
   servo_pwm: number;
+  engine_muted: boolean;
   connection_status: string;
   ip_address: string;
 }
@@ -46,6 +47,11 @@ export interface RadioResponse {
   radio_active: boolean;
   radio_id: number;
   duration_ms: number;
+}
+
+export interface MuteResponse {
+  muted: boolean;
+  message: string;
 }
 
 export type LEDMode = 'running' | 'flood';

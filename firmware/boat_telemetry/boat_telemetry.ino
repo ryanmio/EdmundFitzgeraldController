@@ -8,11 +8,9 @@
 #include <WebServer.h>
 #include "secrets.h"
 #include "DFRobot_DF1201S.h"   // DFPlayer Pro (DF1201S) library
-#include "driver/i2s.h"         // ESP32 I2S driver for MAX98357A
+#include "driver/i2s_std.h"     // ESP-IDF 5.x NEW I2S driver (no ADC conflict)
 #include "driver/rmt.h"         // ESP32 RMT for PWM capture
 #include "audio_engine.h"       // Engine audio sampler
-// NOTE: Using Arduino's analogRead() for ADC - do NOT use esp_adc/adc_oneshot.h
-// as it conflicts with the legacy driver used by WiFi/I2S
 
 // ==================== PIN DEFINITIONS ====================
 #define LED_RUNNING_PIN    2   // Built-in LED on most dev boards (keep for testing)
@@ -255,47 +253,54 @@ void updateThrottleRMT() {
 }
 
 // ==================== I2S AUDIO OUTPUT ====================
-// Initialize I2S driver for MAX98357A amplifier
+// Initialize I2S driver for MAX98357A amplifier using NEW ESP-IDF 5.x API
+i2s_chan_handle_t i2s_tx_handle = NULL;
+
 void setupI2S() {
-  Serial.println("Initializing I2S for MAX98357A...");
+  Serial.println("Initializing I2S for MAX98357A (new driver)...");
   
-  i2s_config_t i2s_config = {
-    .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),
-    .sample_rate = I2S_SAMPLE_RATE,
-    .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
-    .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,  // mono
-    .communication_format = I2S_COMM_FORMAT_STAND_I2S,
-    .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-    .dma_buf_count = 4,
-    .dma_buf_len = I2S_BUFFER_SIZE,
-    .use_apll = false,
-    .tx_desc_auto_clear = true,
-    .fixed_mclk = 0
-  };
+  // Channel configuration
+  i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM, I2S_ROLE_MASTER);
+  chan_cfg.dma_desc_num = 4;
+  chan_cfg.dma_frame_num = I2S_BUFFER_SIZE;
   
-  i2s_pin_config_t pin_config = {
-    .bck_io_num = I2S_BCLK_PIN,
-    .ws_io_num = I2S_LRC_PIN,
-    .data_out_num = I2S_DIN_PIN,
-    .data_in_num = I2S_PIN_NO_CHANGE
-  };
-  
-  // Install and configure I2S driver
-  esp_err_t err = i2s_driver_install(I2S_NUM, &i2s_config, 0, NULL);
+  esp_err_t err = i2s_new_channel(&chan_cfg, &i2s_tx_handle, NULL);
   if (err != ESP_OK) {
-    Serial.printf("ERROR: I2S driver install failed: %d\n", err);
+    Serial.printf("ERROR: I2S channel creation failed: %d\n", err);
     return;
   }
   
-  err = i2s_set_pin(I2S_NUM, &pin_config);
+  // Standard mode configuration (Philips I2S)
+  i2s_std_config_t std_cfg = {
+    .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(I2S_SAMPLE_RATE),
+    .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO),
+    .gpio_cfg = {
+      .mclk = I2S_GPIO_UNUSED,
+      .bclk = (gpio_num_t)I2S_BCLK_PIN,
+      .ws = (gpio_num_t)I2S_LRC_PIN,
+      .dout = (gpio_num_t)I2S_DIN_PIN,
+      .din = I2S_GPIO_UNUSED,
+      .invert_flags = {
+        .mclk_inv = false,
+        .bclk_inv = false,
+        .ws_inv = false,
+      },
+    },
+  };
+  
+  err = i2s_channel_init_std_mode(i2s_tx_handle, &std_cfg);
   if (err != ESP_OK) {
-    Serial.printf("ERROR: I2S pin config failed: %d\n", err);
+    Serial.printf("ERROR: I2S std mode init failed: %d\n", err);
     return;
   }
   
-  i2s_zero_dma_buffer(I2S_NUM);
+  err = i2s_channel_enable(i2s_tx_handle);
+  if (err != ESP_OK) {
+    Serial.printf("ERROR: I2S channel enable failed: %d\n", err);
+    return;
+  }
   
-  Serial.println("  ✓ I2S driver installed");
+  Serial.println("  ✓ I2S driver installed (NEW API)");
   Serial.printf("  Sample rate: %d Hz\n", I2S_SAMPLE_RATE);
   Serial.printf("  Pins: BCLK=%d, LRC=%d, DIN=%d\n", I2S_BCLK_PIN, I2S_LRC_PIN, I2S_DIN_PIN);
 }
@@ -319,8 +324,8 @@ void audioTaskFunction(void* param) {
     // Render PCM samples into buffer
     audioEngine_renderSamples(audio_buffer, I2S_BUFFER_SIZE);
     
-    // Write to I2S (blocks until DMA buffer has space)
-    i2s_write(I2S_NUM, audio_buffer, I2S_BUFFER_SIZE * 2, &bytes_written, portMAX_DELAY);
+    // Write to I2S using NEW API (blocks until DMA buffer has space)
+    i2s_channel_write(i2s_tx_handle, audio_buffer, I2S_BUFFER_SIZE * 2, &bytes_written, portMAX_DELAY);
   }
 }
 

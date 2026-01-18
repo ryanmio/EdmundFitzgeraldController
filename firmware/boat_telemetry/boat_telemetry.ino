@@ -416,14 +416,11 @@ void handleTelemetry() {
   unsigned long uptimeSec = (millis() - startTime) / 1000;
   int rssi = WiFi.RSSI();
   
-  // Battery voltage reading (GPIO 34 ADC)
-  // In ESP32 Core 3.x, analogReadMilliVolts is the safe, modern way to read ADC
-  uint32_t mv = analogReadMilliVolts(BATTERY_ADC_PIN);
-  float batteryPinVoltage = mv / 1000.0;
-  
-  // Calibration: 3.3V input was reading 1.16V, so multiply by 3.3/1.16 = 2.84
-  float batteryVoltage = batteryPinVoltage * 2.84;
-  int adcValue = (int)((batteryPinVoltage / 3.3) * 4095); // Reconstruct raw value for JSON
+  // Battery voltage reading - TEMPORARILY DISABLED to diagnose ADC conflict
+  // Will re-enable using ESP-IDF oneshot driver once boot works
+  int adcValue = 0;
+  float batteryPinVoltage = 0.0;
+  float batteryVoltage = 0.0;
   
   // Water intrusion sensor (debounced digital read with pullup)
   // Debounced state: true = water breached hull, false = hull secure
@@ -738,8 +735,8 @@ void setup() {
   waterDebouncedState = false;  // Start as secure
   waterStateChangeTime = millis();
   
-  // Init battery ADC pin (Core 3.x doesn't require pinMode for ANALOG, but use INPUT to be safe)
-  pinMode(BATTERY_ADC_PIN, INPUT);
+  // Init battery ADC pin - TEMPORARILY DISABLED to diagnose ADC conflict
+  // pinMode(BATTERY_ADC_PIN, INPUT);
   
   // Init RC receiver PWM input pins (no pullup - receiver drives the signal)
   pinMode(THROTTLE_PWM_PIN, INPUT);

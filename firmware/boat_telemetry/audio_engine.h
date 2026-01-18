@@ -8,6 +8,9 @@
 #include <stdint.h>
 #include <cstddef>
 
+// Audio settings (22050 Hz to fit in flash)
+#define AUDIO_SAMPLE_RATE       22050
+
 // Tuning parameters
 #define THROTTLE_SMOOTH_ALPHA   0.15f   // Exponential smoothing (0.1=slow, 0.5=fast)
 #define RATE_MIN                0.8f    // Minimum playback rate (pitch at idle)

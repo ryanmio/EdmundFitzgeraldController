@@ -15,8 +15,8 @@ if ! command -v ffmpeg &> /dev/null; then
     exit 1
 fi
 
-echo "[1/3] Converting engine.mp3 to raw WAV..."
-ffmpeg -y -i engine.mp3 -ac 1 -ar 44100 -c:a pcm_s16le engine_raw_temp.wav -y -loglevel warning
+echo "[1/3] Converting engine.mp3 to raw WAV (22050 Hz for flash space)..."
+ffmpeg -y -i engine.mp3 -ac 1 -ar 22050 -c:a pcm_s16le engine_raw_temp.wav -y -loglevel warning
 
 echo "[2/3] Applying FFT-domain circular High-Pass Filter (300Hz)..."
 # Using the new Python script for zero-phase circular filtering

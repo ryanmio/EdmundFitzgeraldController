@@ -18,7 +18,7 @@ fi
 echo "[1/3] Converting engine.mp3 to raw WAV..."
 ffmpeg -y -i engine.mp3 -ac 1 -ar 44100 -c:a pcm_s16le engine_raw_temp.wav -y -loglevel warning
 
-echo "[2/3] Applying FFT-domain circular High-Pass Filter (300Hz)..."
+echo "[2/3] Applying FFT-domain circular High-Pass Filter (80Hz for bass preservation)..."
 # Using the new Python script for zero-phase circular filtering
 python3 make_engine_filtered_fft.py engine_raw_temp.wav engine_loop.wav
 

@@ -32,8 +32,8 @@
 #define THROTTLE_SMOOTH_ALPHA   0.15f
 #define RATE_MIN                0.8f
 #define RATE_MAX                1.5f
-#define GAIN_MIN                0.6f    // Lower gain at idle
-#define GAIN_MAX                1.0f    // Normal gain progression (idle -> full)
+#define GAIN_MIN                0.55f   // Minimum gain at idle - adequate presence without over-stressing speaker
+#define GAIN_MAX                0.8f    // Maximum gain at full throttle - slightly reduced to prevent speaker rattle
 #define REV_BOOST_RATE          1.25f
 #define REV_BOOST_GAIN          1.4f
 #define REV_DECAY_MS            400

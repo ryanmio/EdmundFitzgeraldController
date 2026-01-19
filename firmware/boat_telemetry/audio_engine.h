@@ -12,8 +12,8 @@
 #define THROTTLE_SMOOTH_ALPHA   0.15f   // Exponential smoothing (0.1=slow, 0.5=fast)
 #define RATE_MIN                0.8f    // Minimum playback rate (pitch at idle)
 #define RATE_MAX                1.5f    // Maximum playback rate (pitch at full throttle)
-#define GAIN_MIN                0.3f    // Minimum gain (volume at idle) - reduced for boat integration
-#define GAIN_MAX                0.6f    // Maximum gain (volume at full throttle)
+#define GAIN_MIN                0.55f   // Minimum gain (volume at idle) - adequate presence without over-stressing speaker
+#define GAIN_MAX                0.8f    // Maximum gain (volume at full throttle) - slightly reduced to prevent speaker rattle
 #define REV_BOOST_RATE          1.25f   // Rate multiplier during rev (25% boost)
 #define REV_BOOST_GAIN          1.4f    // Gain multiplier during rev (40% boost)
 #define REV_RAMP_MS             150     // Rev ramp-in time (milliseconds)

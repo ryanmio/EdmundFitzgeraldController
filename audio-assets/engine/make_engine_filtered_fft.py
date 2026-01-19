@@ -27,7 +27,8 @@ def main():
     freqs = rfftfreq(len(x), 1/sr)
     
     # 5. Apply smooth high-pass magnitude curve (circular)
-    fc = 300.0
+    # 60Hz cutoff: removes subsonic rattle while preserving midrange bass (engine fundamentals 100-200Hz)
+    fc = 60.0
     n = 4
     H = np.zeros_like(freqs)
     H[1:] = 1.0 / np.sqrt(1 + (fc / freqs[1:])**(2*n))

@@ -20,9 +20,9 @@
 
 #include "DFRobot_DF1201S.h"
 
-// Pin definitions - CROSS WIRED!
-#define DFPLAYER_RX_PIN  27  // ESP32 receives from DFPlayer TX
-#define DFPLAYER_TX_PIN  26  // ESP32 transmits to DFPlayer RX
+// Pin definitions for Serial2 communication
+#define DFPLAYER_RX_PIN  27
+#define DFPLAYER_TX_PIN  26
 
 // Create DF1201S object
 DFRobot_DF1201S DF1201S;

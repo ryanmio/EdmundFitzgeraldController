@@ -23,8 +23,8 @@
 #define SERVO_PWM_PIN     19   // RC receiver servo/rudder channel (PWM input)
 
 // DFPlayer Pro pins (serial communication at 115200 baud)
-#define DFPLAYER_RX       27   // ESP32 RX - Connect to DFPlayer TX
-#define DFPLAYER_TX       26   // ESP32 TX - Connect to DFPlayer RX
+#define DFPLAYER_RX       27
+#define DFPLAYER_TX       26
 
 // I2S pins for MAX98357A (engine audio output)
 #define I2S_BCLK_PIN      25   // Bit clock
@@ -36,8 +36,8 @@
 #define RMT_CLK_DIV       80   // 1 MHz tick rate (80 MHz / 80)
 
 // ==================== BUILD IDENTIFICATION ====================
-#define FIRMWARE_VERSION   "3.1.0"
-#define BUILD_ID           "20260118-engine-mute"
+#define FIRMWARE_VERSION   "3.1.1"
+#define BUILD_ID           "20260119-dfplayer-fix"
 
 // ==================== I2S CONFIGURATION ====================
 #define I2S_NUM           I2S_NUM_1   // Switch to I2S_NUM_1 to avoid ADC conflict on I2S_NUM_0
@@ -669,18 +669,65 @@ void handleNotFound() {
 
 // ==================== SETUP ====================
 void setup() {
-  // CRITICAL: Initialize ADC FIRST before any other drivers to prevent conflict
-  // The Arduino Core 3.x uses the new ADC driver, but WiFi/I2S may trigger legacy
+  Serial.begin(115200);
+  delay(2000);  // CRITICAL: 2-second stabilization (match diagnostic timing)
+  
+  Serial.println();
+  Serial.println("=== Boat Telemetry Starting ===");
+  
+  // Init DFPlayer Pro FIRST (before any other peripherals)
+  Serial.println();
+  Serial.println("========================================");
+  Serial.println("DFPlayer Pro Initialization");
+  Serial.println("========================================");
+  Serial.print("RX: GPIO");
+  Serial.print(DFPLAYER_RX);
+  Serial.print(" | TX: GPIO");
+  Serial.println(DFPLAYER_TX);
+  
+  // Initialize Serial2 at 115200 baud for DFPlayer Pro
+  Serial.println("Starting Serial2 at 115200 baud...");
+  Serial2.begin(115200, SERIAL_8N1, DFPLAYER_RX, DFPLAYER_TX);
+  delay(1000);
+  Serial.println("Attempting DF1201S.begin()...");
+  
+  // Initialize DF1201S library
+  if (!DF1201S.begin(Serial2)) {
+    Serial.println("✗ DFPlayer Pro init failed!");
+    Serial.println("  Check: Power, wiring, or try power-cycling ESP32");
+    dfPlayerAvailable = false;
+  } else {
+    Serial.println("✓ DFPlayer Pro connected!");
+    
+    // Switch to MUSIC mode
+    Serial.println("Switching to MUSIC mode...");
+    DF1201S.switchFunction(DF1201S.MUSIC);
+    delay(2000);  // Wait for prompt tone
+    
+    // Set play mode to single (play once)
+    Serial.println("Setting play mode to SINGLE...");
+    DF1201S.setPlayMode(DF1201S.SINGLE);
+    delay(200);
+    
+    // Set initial volume (0-30)
+    Serial.println("Setting volume to 20/30...");
+    DF1201S.setVol(20);
+  delay(200);
+    
+    dfPlayerAvailable = true;
+    Serial.println("✓ DFPlayer Pro ready for playback!");
+  }
+  Serial.println("========================================");
+  
+  // CRITICAL: Initialize ADC now (after DFPlayer, before I2S/WiFi to prevent conflict)
+  Serial.println();
+  Serial.println("Initializing Battery ADC...");
   pinMode(BATTERY_ADC_PIN, INPUT);
   int dummy = analogRead(BATTERY_ADC_PIN);  // Force ADC init before I2S/WiFi
   adcInitialized = true;
-  
-  Serial.begin(115200);
-  delay(1000);
+  Serial.printf("Battery ADC initialized (dummy read: %d)\n", dummy);
   Serial.println();
-  Serial.println("=== Boat Telemetry Starting ===");
-  Serial.printf("Battery ADC pre-initialized (dummy read: %d)\n", dummy);
-
+  
   // Init LED pins
   pinMode(LED_RUNNING_PIN, OUTPUT);
   pinMode(LED_FLOOD_PIN, OUTPUT);
@@ -715,57 +762,6 @@ void setup() {
   Serial.println("========================================");
   audioEngine_init();
   setupAudioTask();
-  Serial.println("========================================");
-  
-  // Init DFPlayer Pro (DF1201S chip, 115200 baud, AT commands)
-  Serial.println();
-  Serial.println("========================================");
-  Serial.println("DFPlayer Pro Initialization");
-  Serial.println("========================================");
-  Serial.print("RX: GPIO");
-  Serial.print(DFPLAYER_RX);
-  Serial.print(" | TX: GPIO");
-  Serial.println(DFPLAYER_TX);
-  
-  // Initialize Serial2 at 115200 baud for DFPlayer Pro
-  Serial.println("Starting Serial2 at 115200 baud...");
-  Serial2.begin(115200, SERIAL_8N1, DFPLAYER_RX, DFPLAYER_TX);
-  Serial.println("Waiting 3 seconds for DFPlayer Pro to stabilize...");
-  delay(3000);  // DFPlayer Pro needs time to boot and stabilize
-  
-  // Clear any startup garbage from buffer
-  while(Serial2.available()) {
-    Serial2.read();
-  }
-  
-  Serial.println("Attempting DF1201S.begin()...");
-  
-  // Initialize DF1201S library
-  if (!DF1201S.begin(Serial2)) {
-    Serial.println("✗ DFPlayer Pro init failed - using PWM fallback");
-    Serial.println("  Check: Power, wiring, or try power-cycling ESP32");
-    dfPlayerAvailable = false;
-  } else {
-    Serial.println("✓ DFPlayer Pro connected!");
-    
-    // Switch to MUSIC mode
-    Serial.println("Switching to MUSIC mode...");
-    DF1201S.switchFunction(DF1201S.MUSIC);
-    delay(2000);  // Wait for prompt tone
-    
-    // Set play mode to single (play once)
-    Serial.println("Setting play mode to SINGLE...");
-    DF1201S.setPlayMode(DF1201S.SINGLE);
-    delay(200);
-    
-    // Set initial volume (0-30)
-    Serial.println("Setting volume to 20/30...");
-    DF1201S.setVol(20);
-  delay(200);
-    
-    dfPlayerAvailable = true;
-    Serial.println("✓ DFPlayer Pro ready for playback!");
-  }
   Serial.println("========================================");
   
   // Init water sensor pin (digital with internal pullup)

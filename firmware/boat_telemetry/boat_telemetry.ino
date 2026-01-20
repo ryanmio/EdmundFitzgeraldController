@@ -36,8 +36,8 @@
 #define RMT_CLK_DIV       80   // 1 MHz tick rate (80 MHz / 80)
 
 // ==================== BUILD IDENTIFICATION ====================
-#define FIRMWARE_VERSION   "3.1.1"
-#define BUILD_ID           "20260119-dfplayer-fix"
+#define FIRMWARE_VERSION   "3.2.0"
+#define BUILD_ID           "20260119-integrated-audio"
 
 // ==================== I2S CONFIGURATION ====================
 #define I2S_NUM           I2S_NUM_1   // Switch to I2S_NUM_1 to avoid ADC conflict on I2S_NUM_0

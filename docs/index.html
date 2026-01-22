@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SS Edmund Fitzgerald - Project Telemetry Showcase</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
+            color: #e2e8f0;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 0;
+            border-bottom: 2px solid #3b82f6;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            color: #60a5fa;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: #94a3b8;
+        }
+
+        .section {
+            margin-bottom: 60px;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 10px;
+            padding: 30px;
+            border: 1px solid #334155;
+        }
+
+        .section h2 {
+            color: #60a5fa;
+            border-bottom: 1px solid #475569;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 2rem;
+        }
+
+        .section p {
+            margin-bottom: 20px;
+            color: #cbd5e1;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .gallery-item {
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #475569;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .gallery-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .gallery-item img, .gallery-item video {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .gallery-item .caption {
+            padding: 15px;
+            font-size: 0.9rem;
+            color: #cbd5e1;
+        }
+
+        .placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            background: rgba(30, 41, 59, 0.8);
+            border: 2px dashed #475569;
+            color: #64748b;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .status.pending {
+            background: #f59e0b;
+            color: #92400e;
+        }
+
+        .status.ready {
+            background: #10b981;
+            color: #064e3b;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 40px 0;
+            border-top: 2px solid #3b82f6;
+            margin-top: 40px;
+        }
+
+        .footer p {
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .gallery {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>SS EDMUND FITZGERALD</h1>
+            <p>PROJECT TELEMETRY // 1:150 SCALE MODEL SHOWCASE</p>
+        </header>
+
+        <section class="section">
+            <h2>⚓ MISSION OVERVIEW <span class="status ready">READY</span></h2>
+            <p>A fully autonomous 1:150 scale model of the legendary SS Edmund Fitzgerald, featuring custom telemetry systems, real-time monitoring, and dual-command interfaces. This project combines marine engineering, embedded systems, and modern mobile technology to create an interactive tribute to Great Lakes maritime history.</p>
+        </section>
+
+        <section class="section">
+            <h2>🏗️ CONSTRUCTION & HARDWARE <span class="status pending">WAITING FOR PHOTOS</span></h2>
+            <p>3D printed hull, custom electronics, and mechanical systems. Add your construction photos to <code>docs/images/</code></p>
+            <div class="gallery">
+                <div class="gallery-item">
+                    <div class="placeholder">
+                        📸 Construction Photos<br><small>Add to docs/images/</small>
+                    </div>
+                    <div class="caption">Boat assembly, 3D printing process, electronics integration</div>
+                </div>
+                <div class="gallery-item">
+                    <div class="placeholder">
+                        🔧 Electronics<br><small>Add to docs/images/</small>
+                    </div>
+                    <div class="caption">ESP32 board, motor controllers, sensors, wiring</div>
+                </div>
+                <div class="gallery-item">
+                    <div class="placeholder">
+                        ⚙️ Mechanical Parts<br><small>Add to docs/images/</small>
+                    </div>
+                    <div class="caption">Rudder mechanism, propeller assembly, mounting hardware</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>📱 MOBILE COMMAND CENTER <span class="status pending">WAITING FOR SCREENSHOTS</span></h2>
+            <p>Expo/TypeScript mobile app for real-time telemetry and control. Add screenshots to <code>docs/screenshots/</code></p>
+            <div class="gallery">
+                <div class="gallery-item">
+                    <div class="placeholder">
+                        📊 Dashboard<br><small>Add to docs/screenshots/</small>
+                    </div>
+                    <div class="caption">Main telemetry dashboard showing battery, systems status</div>
+                </div>
+                <div class="gallery-item">
+                    <div class="placeholder">
+                        🎮 Controls<br><small>Add to docs/screenshots/</small>
+                    </div>
+                    <div class="caption">Navigation controls, motor throttle, rudder steering</div>
+                </div>
+                <div class="gallery-item">
+                    <div class="placeholder">
+                        📡 Connection<br><small>Add to docs/screenshots/</small>
+                    </div>
+                    <div class="caption">WiFi connection setup, device discovery, pairing</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>🎥 DEMONSTRATION VIDEOS <span class="status pending">WAITING FOR VIDEOS</span></h2>
+            <p>Project demonstrations, build timelapses, and testing footage. Add videos to <code>docs/videos/</code></p>
+            <div class="gallery">
+                <div class="gallery-item">
+                    <div class="placeholder">
+                        🚢 Water Tests<br><small>Add to docs/videos/</small>
+                    </div>
+                    <div class="caption">Boat testing in water, propulsion, steering, stability</div>
+                </div>
+                <div class="gallery-item">
+                    <div class="placeholder">
+                        📹 FPV Camera<br><small>Add to docs/videos/</small>
+                    </div>
+                    <div class="caption">First-person view from smokestack camera</div>
+                </div>
+                <div class="gallery-item">
+                    <div class="placeholder">
+                        🔊 Audio Demo<br><small>Add to docs/videos/</small>
+                    </div>
+                    <div class="caption">Engine sound simulation, LED effects, telemetry audio</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>🔧 TECHNICAL SPECIFICATIONS <span class="status ready">READY</span></h2>
+            <p>Complete technical breakdown of the vessel systems and capabilities.</p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
+                <div style="background: rgba(30, 41, 59, 0.8); border-radius: 8px; padding: 20px; border: 1px solid #475569;">
+                    <h3 style="color: #60a5fa; margin-bottom: 10px; font-size: 1.3rem;">⚓ Vessel</h3>
+                    <ul style="list-style: none; padding: 0; color: #cbd5e1;">
+                        <li style="margin-bottom: 8px; padding-left: 15px; position: relative;"><span style="content: '▶'; color: #3b82f6; position: absolute; left: 0;">▶</span> Scale: 1:150 (1.5m length)</li>
+                        <li style="margin-bottom: 8px; padding-left: 15px; position: relative;"><span style="content: '▶'; color: #3b82f6; position: absolute; left: 0;">▶</span> Weight: 22 lbs (loaded)</li>
+                        <li style="margin-bottom: 8px; padding-left: 15px; position: relative;"><span style="content: '▶'; color: #3b82f6; position: absolute; left: 0;">▶</span> Construction: 3D Printed</li>
+                        <li style="margin-bottom: 8px; padding-left: 15px; position: relative;"><span style="content: '▶'; color: #3b82f6; position: absolute; left: 0;">▶</span> Hull: Modified for marine service</li>
+                    </ul>
+                </div>
+
+                <div style="background: rgba(30, 41, 59, 0.8); border-radius: 8px; padding: 20px; border: 1px solid #475569;">
+                    <h3 style="color: #60a5fa; margin-bottom: 10px; font-size: 1.3rem;">⚙️ Electronics</h3>
+                    <ul style="list-style: none; padding: 0; color: #cbd5e1;">
+                        <li style="margin-bottom: 8px; padding-left: 15px; position: relative;"><span style="content: '▶'; color: #3b82f6; position: absolute; left: 0;">▶</span> ESP32 Dual-Core Controller</li>
+                        <li style="margin-bottom: 8px; padding-left: 15px; position: relative;"><span style="content: '▶'; color: #3b82f6; position: absolute; left: 0;">▶</span> 8.4V Battery + 5V UBEC</li>
+                        <li style="margin-bottom: 8px; padding-left: 15px; position: relative;"><span style="content: '▶'; color: #3b82f6; position: absolute; left: 0;">▶</span> Brushed DC Motor via ESC</li>
+                        <li style="margin-bottom: 8px; padding-left: 15px; position: relative;"><span style="content: '▶'; color: #3b82f6; position: absolute; left: 0;">▶</span> ESP32-CAM in smokestack</li>
+                    </ul>
+                </div>
+
+                <div style="background: rgba(30, 41, 59, 0.8); border-radius: 8px; padding: 20px; border: 1px solid #475569;">
+                    <h3 style="color: #60a5fa; margin-bottom: 10px; font-size: 1.3rem;">📡 Systems</h3>
+                    <ul style="list-style: none; padding: 0; color: #cbd5e1;">
+                        <li style="margin-bottom: 8px; padding-left: 15px; position: relative;"><span style="content: '▶'; color: #3b82f6; position: absolute; left: 0;">▶</span> Real-time battery telemetry</li>
+                        <li style="margin-bottom: 8px; padding-left: 15px; position: relative;"><span style="content: '▶'; color: #3b82f6; position: absolute; left: 0;">▶</span> Water intrusion detection</li>
+                        <li style="margin-bottom: 8px; padding-left: 15px; position: relative;"><span style="content: '▶'; color: #3b82f6; position: absolute; left: 0;">▶</span> Full LED suite + Morse buzzer</li>
+                        <li style="margin-bottom: 8px; padding-left: 15px; position: relative;"><span style="content: '▶'; color: #3b82f6; position: absolute; left: 0;">▶</span> FPV video streaming</li>
+                    </ul>
+                </div>
+
+                <div style="background: rgba(30, 41, 59, 0.8); border-radius: 8px; padding: 20px; border: 1px solid #475569;">
+                    <h3 style="color: #60a5fa; margin-bottom: 10px; font-size: 1.3rem;">📱 Software</h3>
+                    <ul style="list-style: none; padding: 0; color: #cbd5e1;">
+                        <li style="margin-bottom: 8px; padding-left: 15px; position: relative;"><span style="content: '▶'; color: #3b82f6; position: absolute; left: 0;">▶</span> Custom C++ firmware</li>
+                        <li style="margin-bottom: 8px; padding-left: 15px; position: relative;"><span style="content: '▶'; color: #3b82f6; position: absolute; left: 0;">▶</span> Expo/TypeScript mobile app</li>
+                        <li style="margin-bottom: 8px; padding-left: 15px; position: relative;"><span style="content: '▶'; color: #3b82f6; position: absolute; left: 0;">▶</span> Dual-band WiFi connectivity</li>
+                        <li style="margin-bottom: 8px; padding-left: 15px; position: relative;"><span style="content: '▶'; color: #3b82f6; position: absolute; left: 0;">▶</span> Real-time telemetry dashboard</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <p>"May the big lake be kind..." - SS Edmund Fitzgerald Project</p>
+            <p style="margin-top: 10px; font-size: 0.9rem;">
+                Built with ❤️ for Great Lakes maritime heritage
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

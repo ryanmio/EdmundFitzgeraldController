@@ -3,21 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Technical Report: SS Edmund Fitzgerald Telemetry Platform</title>
+    <title>1:150 Telemetry Platform | Project Edmund Fitzgerald</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --navy-deep: #001220;
-            --navy-primary: #002B49;
-            --navy-accent: #005F9E;
-            --gold-accent: #C5A059;
-            --text-white: #FFFFFF;
-            --text-gray: #A0AEC0;
-            --border-color: #1A365D;
-            --bg-offwhite: #F8FAFC;
-            --surface-dark: #0A192F;
+            --bg: #000000;
+            --surface: #0a0a0a;
+            --border: #222222;
+            --text-main: #ffffff;
+            --text-dim: #888888;
+            --accent: #ffffff;
+            --font: 'Inter', -apple-system, sans-serif;
         }
 
         * {
@@ -27,240 +25,167 @@
         }
 
         body {
-            font-family: 'IBM Plex Sans', sans-serif;
-            background-color: var(--navy-deep);
-            color: var(--text-white);
+            font-family: var(--font);
+            background-color: var(--bg);
+            color: var(--text-main);
             line-height: 1.5;
             -webkit-font-smoothing: antialiased;
         }
 
-        .mono {
-            font-family: 'IBM Plex Mono', monospace;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
         .container {
-            max-width: 1280px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 0 40px;
         }
 
-        /* --- Header / Project Identification --- */
+        /* --- Project Header --- */
         header {
-            padding: 60px 0;
-            border-bottom: 1px solid var(--border-color);
-            background-image: radial-gradient(circle at 50% 100%, #002B49 0%, #001220 100%);
+            padding: 120px 0 80px;
+            border-bottom: 1px solid var(--border);
         }
 
-        .project-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            margin-bottom: 20px;
-        }
-
-        .report-id {
-            color: var(--gold-accent);
-            font-size: 0.8rem;
+        .label {
+            font-size: 11px;
             font-weight: 600;
-        }
-
-        .security-class {
-            border: 1px solid var(--gold-accent);
-            padding: 2px 8px;
-            color: var(--gold-accent);
-            font-size: 0.7rem;
-            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-dim);
+            margin-bottom: 16px;
+            display: block;
         }
 
         h1 {
-            font-size: 3.5rem;
-            font-weight: 700;
-            line-height: 1.1;
-            margin-bottom: 10px;
-            letter-spacing: -0.01em;
-        }
-
-        .subtitle {
-            font-size: 1.25rem;
-            color: var(--text-gray);
-            max-width: 800px;
-        }
-
-        /* --- Main Content Grid --- */
-        main {
-            padding: 80px 0;
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 60px;
-        }
-
-        section {
-            margin-bottom: 80px;
-        }
-
-        h2 {
-            font-size: 0.75rem;
-            color: var(--gold-accent);
-            text-transform: uppercase;
-            letter-spacing: 0.2em;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-        }
-
-        h2::after {
-            content: "";
-            height: 1px;
-            flex-grow: 1;
-            background-color: var(--border-color);
-            margin-left: 20px;
-        }
-
-        h3 {
-            font-size: 2rem;
-            margin-bottom: 20px;
-        }
-
-        p {
-            color: var(--text-gray);
-            font-size: 1.1rem;
+            font-size: 48px;
+            font-weight: 500;
+            letter-spacing: -0.03em;
             margin-bottom: 24px;
         }
 
-        /* --- Data Panels --- */
-        .specs-panel {
-            background-color: var(--surface-dark);
-            border: 1px solid var(--border-color);
-            padding: 30px;
-            position: sticky;
-            top: 40px;
+        .summary {
+            font-size: 18px;
+            font-weight: 400;
+            color: var(--text-dim);
+            max-width: 600px;
         }
 
-        .specs-panel h4 {
-            font-size: 0.9rem;
-            color: var(--text-white);
-            margin-bottom: 20px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
+        /* --- Main Layout --- */
+        main {
+            padding: 100px 0;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 100px;
         }
 
-        .data-grid {
+        section {
+            margin-bottom: 120px;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            margin-bottom: 32px;
+        }
+
+        p {
+            color: var(--text-dim);
+            font-size: 16px;
+            margin-bottom: 32px;
+            max-width: 580px;
+        }
+
+        /* --- Media Assets --- */
+        .asset-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            gap: 16px;
         }
 
-        .data-item {
-            margin-bottom: 15px;
-        }
-
-        .data-label {
-            font-size: 0.7rem;
-            color: var(--text-gray);
-            text-transform: uppercase;
-            margin-bottom: 4px;
-        }
-
-        .data-value {
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 1.1rem;
-            color: var(--text-white);
-        }
-
-        /* --- Media Gallery --- */
-        .media-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 24px;
-        }
-
-        .media-box {
+        .asset-box {
             aspect-ratio: 16/10;
-            background-color: #05101C;
-            border: 1px solid var(--border-color);
+            background-color: var(--surface);
+            border: 1px solid var(--border);
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
-            transition: border-color 0.3s ease;
+            transition: border-color 0.2s ease;
         }
 
-        .media-box:hover {
-            border-color: var(--navy-accent);
+        .asset-box:hover {
+            border-color: #444;
         }
 
-        .media-box::before {
-            content: "";
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            width: 10px;
-            height: 10px;
-            border-top: 1px solid var(--navy-accent);
-            border-left: 1px solid var(--navy-accent);
+        .asset-info {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-top: 12px;
         }
 
-        .media-box::after {
-            content: "";
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            width: 10px;
-            height: 10px;
-            border-bottom: 1px solid var(--navy-accent);
-            border-right: 1px solid var(--navy-accent);
+        /* --- Specs / Sidebar --- */
+        .specs-group {
+            margin-bottom: 48px;
         }
 
-        .media-placeholder {
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.75rem;
-            color: var(--navy-accent);
+        .specs-group h3 {
+            font-size: 12px;
             text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
         }
 
-        .media-label {
-            margin-top: 10px;
-            font-size: 0.8rem;
-            color: var(--text-gray);
-            text-transform: uppercase;
+        .spec-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #111;
+            font-size: 14px;
+        }
+
+        .spec-label {
+            color: var(--text-dim);
+        }
+
+        .spec-value {
+            color: var(--text-main);
+            font-weight: 500;
         }
 
         /* --- Footer --- */
         footer {
             padding: 80px 0;
-            border-top: 1px solid var(--border-color);
+            border-top: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .status-pill {
+            display: inline-flex;
             align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: #fff;
+            background: #111;
+            padding: 4px 12px;
+            border-radius: 100px;
+            border: 1px solid var(--border);
         }
 
-        .copyright {
-            font-size: 0.8rem;
-            color: var(--text-gray);
-        }
-
-        .social-links a {
-            color: var(--text-gray);
-            margin-left: 20px;
-            text-decoration: none;
-            font-size: 0.8rem;
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background: #00ff00;
+            border-radius: 50%;
+            box-shadow: 0 0 8px rgba(0,255,0,0.5);
         }
 
         @media (max-width: 1024px) {
-            main {
-                grid-template-columns: 1fr;
-            }
-            .specs-panel {
-                position: relative;
-                top: 0;
-            }
-        }
-
-        @media (max-width: 768px) {
-            h1 { font-size: 2.5rem; }
-            .media-grid { grid-template-columns: 1fr; }
+            main { grid-template-columns: 1fr; gap: 80px; }
+            header { padding: 80px 0 60px; }
         }
     </style>
 </head>
@@ -268,113 +193,100 @@
 
 <header>
     <div class="container">
-        <div class="project-meta">
-            <div class="report-id mono">REPORT NO. EF-2026-01-22</div>
-            <div class="security-class mono">UNCLASSIFIED // OPEN ACCESS</div>
-        </div>
-        <h1>SS Edmund Fitzgerald</h1>
-        <div class="subtitle">Advanced 1:150 scale naval telemetry platform for autonomous marine research and systems validation.</div>
+        <span class="label">Project Telemetry Platform</span>
+        <h1>Edmund Fitzgerald 1:150</h1>
+        <p class="summary">A precision naval development platform for real-time telemetry, autonomous system validation, and high-fidelity marine engineering.</p>
     </div>
 </header>
 
 <div class="container">
     <main>
-        <div class="primary-content">
+        <div class="content">
             
-            <section id="abstract">
-                <h2 class="mono">Section 01 // Project Abstract</h2>
-                <h3>Autonomous Naval Systems Integration</h3>
-                <p>
-                    This project represents a comprehensive systems engineering effort to convert a static 1:150 scale vessel into a fully instrumented naval telemetry platform. The platform serves as a testbed for custom ESP32-based RTOS firmware, real-time battery monitoring, and precision marine propulsion control systems.
-                </p>
+            <section>
+                <h2>Development Objective</h2>
+                <p>This initiative focuses on the integration of high-performance embedded systems into a 1:150 scale vessel. The platform serves as a benchmark for real-time data acquisition, power efficiency, and navigational stability under variable maritime conditions.</p>
             </section>
 
-            <section id="engineering">
-                <h2 class="mono">Section 02 // Engineering & Fabrication</h2>
-                <h3>Structural Integrity & Layout</h3>
-                <div class="media-grid">
+            <section>
+                <h2>Hardware Architecture</h2>
+                <div class="asset-grid">
                     <div>
-                        <div class="media-box">
-                            <div class="media-placeholder">[ PLATE_HULL_ASSEMBLY ]</div>
+                        <div class="asset-box">
+                            <span class="label" style="margin: 0;">Hull Assembly</span>
                         </div>
-                        <div class="media-label mono">FIG. 2.1 - Hull Section 01</div>
+                        <div class="asset-info">Structural integration and draft calibration.</div>
                     </div>
                     <div>
-                        <div class="media-box">
-                            <div class="media-placeholder">[ PLATE_ELEC_INTEGRATION ]</div>
+                        <div class="asset-box">
+                            <span class="label" style="margin: 0;">Logic Array</span>
                         </div>
-                        <div class="media-label mono">FIG. 2.2 - System Architecture</div>
+                        <div class="asset-info">Dual-core processing and signal routing.</div>
                     </div>
                 </div>
             </section>
 
-            <section id="mobile">
-                <h2 class="mono">Section 03 // Command & Control Interface</h2>
-                <h3>Vessel Management Suite</h3>
-                <div class="media-grid">
+            <section>
+                <h2>Interface Design</h2>
+                <div class="asset-grid">
                     <div>
-                        <div class="media-box">
-                            <div class="media-placeholder">[ PLATE_UI_DASHBOARD ]</div>
+                        <div class="asset-box">
+                            <span class="label" style="margin: 0;">Command Suite</span>
                         </div>
-                        <div class="media-label mono">FIG. 3.1 - Telemetry Feed</div>
+                        <div class="asset-info">Mobile telemetry visualization and control.</div>
                     </div>
                     <div>
-                        <div class="media-box">
-                            <div class="media-placeholder">[ PLATE_UI_CONTROL ]</div>
+                        <div class="asset-box">
+                            <span class="label" style="margin: 0;">Vision System</span>
                         </div>
-                        <div class="media-label mono">FIG. 3.2 - Navigational Interface</div>
+                        <div class="asset-info">Integrated 2MP FPV optical stream.</div>
                     </div>
                 </div>
             </section>
 
         </div>
 
-        <aside class="sidebar">
-            <div class="specs-panel">
-                <h4 class="mono">Naval Architecture Specs</h4>
-                <div class="data-grid">
-                    <div class="data-item">
-                        <div class="data-label">Scale</div>
-                        <div class="data-value">1:150</div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">Length Overall</div>
-                        <div class="data-value">1,500 mm</div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">Displacement</div>
-                        <div class="data-value">9.98 kg</div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">Draft</div>
-                        <div class="data-value">Variable</div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">Primary Cell</div>
-                        <div class="data-value">8.4V LiPo</div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">Logic Array</div>
-                        <div class="data-value">ESP32-D0WD</div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">Protocol</div>
-                        <div class="data-value">UDP / 802.11n</div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">Optical</div>
-                        <div class="data-value">2MP FPV</div>
-                    </div>
+        <aside>
+            <div class="specs-group">
+                <h3>Vessel Specifications</h3>
+                <div class="spec-row">
+                    <span class="spec-label">Scale</span>
+                    <span class="spec-value">1:150</span>
                 </div>
+                <div class="spec-row">
+                    <span class="spec-label">Length</span>
+                    <span class="spec-value">1,500 mm</span>
+                </div>
+                <div class="spec-row">
+                    <span class="spec-label">Weight</span>
+                    <span class="spec-value">9.98 kg</span>
+                </div>
+                <div class="spec-row">
+                    <span class="spec-label">Power</span>
+                    <span class="spec-value">8.4V Li-Po</span>
+                </div>
+            </div>
 
-                <h4 class="mono" style="margin-top: 40px;">System Status</h4>
-                <div class="data-item">
-                    <div class="data-label">Firmware Build</div>
-                    <div class="data-value" style="font-size: 0.9rem;">20260119-integrated-audio</div>
+            <div class="specs-group">
+                <h3>System Architecture</h3>
+                <div class="spec-row">
+                    <span class="spec-label">Processor</span>
+                    <span class="spec-value">ESP32 Dual-Core</span>
                 </div>
-                <div class="data-item">
-                    <div class="data-label">Operational Status</div>
-                    <div class="data-value" style="color: var(--gold-accent);">STABLE_BETA</div>
+                <div class="spec-row">
+                    <span class="spec-label">Connectivity</span>
+                    <span class="spec-value">UDP / 802.11n</span>
+                </div>
+                <div class="spec-row">
+                    <span class="spec-label">Sensors</span>
+                    <span class="spec-value">Hall Effect / ADC</span>
+                </div>
+                <div class="spec-row">
+                    <span class="spec-label">Status</span>
+                    <span class="status-pill">
+                        <div class="status-dot"></div>
+                        Operational
+                    </span>
                 </div>
             </div>
         </aside>
@@ -382,11 +294,11 @@
 </div>
 
 <footer>
-    <div class="container">
-        <div class="copyright mono">© 2026 Naval Engineering Group // Project EF-Telemetry</div>
-        <div class="social-links mono">
-            <a href="https://github.com/ryanmioduskiimac/EdmundFitzgeraldController">REPOSITORY</a>
-            <a href="#">SYSTEMS_MANUAL</a>
+    <div class="container" style="display: flex; justify-content: space-between; width: 100%;">
+        <div>© 2026 Edmund Fitzgerald Project</div>
+        <div style="display: flex; gap: 24px;">
+            <a href="https://github.com/ryanmioduskiimac/EdmundFitzgeraldController" style="color: inherit; text-decoration: none;">GitHub</a>
+            <span>Technical Documentation</span>
         </div>
     </div>
 </footer>

@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>1:150 Telemetry Platform | Project Edmund Fitzgerald</title>
+    <title>SS Edmund Fitzgerald | 1:150 Scale Project</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #000000;
-            --surface: #0a0a0a;
-            --border: #222222;
-            --text-main: #ffffff;
-            --text-dim: #888888;
-            --accent: #ffffff;
-            --font: 'Inter', -apple-system, sans-serif;
+            --color-bg: #ffffff;
+            --color-text: #1a1a1a;
+            --color-text-dim: #666666;
+            --color-border: #eeeeee;
+            --color-accent: #000000;
+            --spacing-unit: 8px;
+            --container-max: 1000px;
         }
 
         * {
@@ -25,167 +25,150 @@
         }
 
         body {
-            font-family: var(--font);
-            background-color: var(--bg);
-            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
             line-height: 1.5;
             -webkit-font-smoothing: antialiased;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: var(--container-max);
             margin: 0 auto;
-            padding: 0 40px;
+            padding: 0 calc(var(--spacing-unit) * 4);
         }
 
-        /* --- Project Header --- */
         header {
-            padding: 120px 0 80px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .label {
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            color: var(--text-dim);
-            margin-bottom: 16px;
-            display: block;
+            padding: calc(var(--spacing-unit) * 12) 0;
+            border-bottom: 1px solid var(--color-border);
         }
 
         h1 {
-            font-size: 48px;
+            font-size: 2.5rem;
             font-weight: 500;
-            letter-spacing: -0.03em;
-            margin-bottom: 24px;
+            letter-spacing: -0.02em;
+            margin-bottom: calc(var(--spacing-unit) * 2);
         }
 
-        .summary {
-            font-size: 18px;
-            font-weight: 400;
-            color: var(--text-dim);
+        .intro-text {
+            font-size: 1.25rem;
+            font-weight: 300;
+            color: var(--color-text-dim);
             max-width: 600px;
         }
 
-        /* --- Main Layout --- */
         main {
-            padding: 100px 0;
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 100px;
+            padding: calc(var(--spacing-unit) * 8) 0;
         }
 
         section {
-            margin-bottom: 120px;
+            margin-bottom: calc(var(--spacing-unit) * 12);
         }
 
         h2 {
-            font-size: 24px;
-            font-weight: 500;
-            letter-spacing: -0.02em;
-            margin-bottom: 32px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--color-text-dim);
+            margin-bottom: calc(var(--spacing-unit) * 4);
         }
 
-        p {
-            color: var(--text-dim);
-            font-size: 16px;
-            margin-bottom: 32px;
-            max-width: 580px;
-        }
-
-        /* --- Media Assets --- */
-        .asset-grid {
+        .gallery {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: calc(var(--spacing-unit) * 4);
         }
 
-        .asset-box {
-            aspect-ratio: 16/10;
-            background-color: var(--surface);
-            border: 1px solid var(--border);
+        .media-item {
+            position: relative;
+        }
+
+        .media-placeholder {
+            aspect-ratio: 4/3;
+            background-color: #f7f7f7;
+            border: 1px solid var(--color-border);
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: border-color 0.2s ease;
-        }
-
-        .asset-box:hover {
-            border-color: #444;
-        }
-
-        .asset-info {
-            font-size: 12px;
-            color: var(--text-dim);
-            margin-top: 12px;
-        }
-
-        /* --- Specs / Sidebar --- */
-        .specs-group {
-            margin-bottom: 48px;
-        }
-
-        .specs-group h3 {
-            font-size: 12px;
+            color: #cccccc;
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--text-dim);
-            margin-bottom: 24px;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 8px;
+            letter-spacing: 0.05em;
+        }
+
+        .media-info {
+            margin-top: calc(var(--spacing-unit) * 1.5);
+            font-size: 0.875rem;
+        }
+
+        .media-title {
+            font-weight: 500;
+        }
+
+        .media-desc {
+            color: var(--color-text-dim);
+            font-weight: 300;
+        }
+
+        .spec-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: calc(var(--spacing-unit) * 8);
+        }
+
+        .spec-group h3 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            margin-bottom: calc(var(--spacing-unit) * 2);
+        }
+
+        .spec-list {
+            list-style: none;
         }
 
         .spec-row {
             display: flex;
             justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid #111;
-            font-size: 14px;
+            padding: calc(var(--spacing-unit) * 1.5) 0;
+            border-bottom: 1px solid var(--color-border);
+            font-size: 0.875rem;
         }
 
         .spec-label {
-            color: var(--text-dim);
+            color: var(--color-text-dim);
+            font-weight: 300;
         }
 
         .spec-value {
-            color: var(--text-main);
-            font-weight: 500;
+            font-weight: 400;
         }
 
-        /* --- Footer --- */
         footer {
-            padding: 80px 0;
-            border-top: 1px solid var(--border);
+            padding: calc(var(--spacing-unit) * 8) 0;
+            border-top: 1px solid var(--color-border);
+            font-size: 0.75rem;
+            color: var(--color-text-dim);
             display: flex;
             justify-content: space-between;
-            font-size: 12px;
-            color: var(--text-dim);
-        }
-
-        .status-pill {
-            display: inline-flex;
             align-items: center;
-            gap: 8px;
-            font-size: 11px;
-            color: #fff;
-            background: #111;
-            padding: 4px 12px;
-            border-radius: 100px;
-            border: 1px solid var(--border);
         }
 
-        .status-dot {
-            width: 6px;
-            height: 6px;
-            background: #00ff00;
-            border-radius: 50%;
-            box-shadow: 0 0 8px rgba(0,255,0,0.5);
+        a {
+            color: inherit;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.2s ease;
         }
 
-        @media (max-width: 1024px) {
-            main { grid-template-columns: 1fr; gap: 80px; }
-            header { padding: 80px 0 60px; }
+        a:hover {
+            border-bottom-color: var(--color-text-dim);
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2rem; }
+            .gallery, .spec-grid { grid-template-columns: 1fr; }
+            .container { padding: 0 calc(var(--spacing-unit) * 3); }
         }
     </style>
 </head>
@@ -193,112 +176,102 @@
 
 <header>
     <div class="container">
-        <span class="label">Project Telemetry Platform</span>
-        <h1>Edmund Fitzgerald 1:150</h1>
-        <p class="summary">A precision naval development platform for real-time telemetry, autonomous system validation, and high-fidelity marine engineering.</p>
+        <h1>SS Edmund Fitzgerald</h1>
+        <p class="intro-text">An integrated 1:150 scale naval telemetry platform combining custom firmware, marine propulsion, and real-time mobile command.</p>
     </div>
 </header>
 
 <div class="container">
     <main>
-        <div class="content">
-            
-            <section>
-                <h2>Development Objective</h2>
-                <p>This initiative focuses on the integration of high-performance embedded systems into a 1:150 scale vessel. The platform serves as a benchmark for real-time data acquisition, power efficiency, and navigational stability under variable maritime conditions.</p>
-            </section>
-
-            <section>
-                <h2>Hardware Architecture</h2>
-                <div class="asset-grid">
-                    <div>
-                        <div class="asset-box">
-                            <span class="label" style="margin: 0;">Hull Assembly</span>
-                        </div>
-                        <div class="asset-info">Structural integration and draft calibration.</div>
-                    </div>
-                    <div>
-                        <div class="asset-box">
-                            <span class="label" style="margin: 0;">Logic Array</span>
-                        </div>
-                        <div class="asset-info">Dual-core processing and signal routing.</div>
+        
+        <section id="engineering">
+            <h2>Hardware & Assembly</h2>
+            <div class="gallery">
+                <div class="media-item">
+                    <div class="media-placeholder">Engineering Log 01</div>
+                    <div class="media-info">
+                        <p class="media-title">Hull Construction</p>
+                        <p class="media-desc">Structural assembly and 3D printed components.</p>
                     </div>
                 </div>
-            </section>
-
-            <section>
-                <h2>Interface Design</h2>
-                <div class="asset-grid">
-                    <div>
-                        <div class="asset-box">
-                            <span class="label" style="margin: 0;">Command Suite</span>
-                        </div>
-                        <div class="asset-info">Mobile telemetry visualization and control.</div>
+                <div class="media-item">
+                    <div class="media-placeholder">Engineering Log 02</div>
+                    <div class="media-info">
+                        <p class="media-title">System Architecture</p>
+                        <p class="media-desc">Electronics layout and power distribution.</p>
                     </div>
-                    <div>
-                        <div class="asset-box">
-                            <span class="label" style="margin: 0;">Vision System</span>
-                        </div>
-                        <div class="asset-info">Integrated 2MP FPV optical stream.</div>
-                    </div>
-                </div>
-            </section>
-
-        </div>
-
-        <aside>
-            <div class="specs-group">
-                <h3>Vessel Specifications</h3>
-                <div class="spec-row">
-                    <span class="spec-label">Scale</span>
-                    <span class="spec-value">1:150</span>
-                </div>
-                <div class="spec-row">
-                    <span class="spec-label">Length</span>
-                    <span class="spec-value">1,500 mm</span>
-                </div>
-                <div class="spec-row">
-                    <span class="spec-label">Weight</span>
-                    <span class="spec-value">9.98 kg</span>
-                </div>
-                <div class="spec-row">
-                    <span class="spec-label">Power</span>
-                    <span class="spec-value">8.4V Li-Po</span>
                 </div>
             </div>
+        </section>
 
-            <div class="specs-group">
-                <h3>System Architecture</h3>
-                <div class="spec-row">
-                    <span class="spec-label">Processor</span>
-                    <span class="spec-value">ESP32 Dual-Core</span>
+        <section id="interface">
+            <h2>Command Interface</h2>
+            <div class="gallery">
+                <div class="media-item">
+                    <div class="media-placeholder">UI Reference 01</div>
+                    <div class="media-info">
+                        <p class="media-title">Telemetry Dashboard</p>
+                        <p class="media-desc">Real-time monitoring and systems health.</p>
+                    </div>
                 </div>
-                <div class="spec-row">
-                    <span class="spec-label">Connectivity</span>
-                    <span class="spec-value">UDP / 802.11n</span>
-                </div>
-                <div class="spec-row">
-                    <span class="spec-label">Sensors</span>
-                    <span class="spec-value">Hall Effect / ADC</span>
-                </div>
-                <div class="spec-row">
-                    <span class="spec-label">Status</span>
-                    <span class="status-pill">
-                        <div class="status-dot"></div>
-                        Operational
-                    </span>
+                <div class="media-item">
+                    <div class="media-placeholder">UI Reference 02</div>
+                    <div class="media-info">
+                        <p class="media-title">Navigation Controls</p>
+                        <p class="media-desc">Tactile interface for propulsion and steering.</p>
+                    </div>
                 </div>
             </div>
-        </aside>
+        </section>
+
+        <section id="specifications">
+            <h2>Technical Specifications</h2>
+            <div class="spec-grid">
+                <div class="spec-group">
+                    <h3>Naval Architecture</h3>
+                    <div class="spec-list">
+                        <div class="spec-row">
+                            <span class="spec-label">Scale</span>
+                            <span class="spec-value">1:150</span>
+                        </div>
+                        <div class="spec-row">
+                            <span class="spec-label">Length</span>
+                            <span class="spec-value">1.5m</span>
+                        </div>
+                        <div class="spec-row">
+                            <span class="spec-label">Weight</span>
+                            <span class="spec-value">22 lbs</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="spec-group">
+                    <h3>Compute & Power</h3>
+                    <div class="spec-list">
+                        <div class="spec-row">
+                            <span class="spec-label">Controller</span>
+                            <span class="spec-value">ESP32 Dual-Core</span>
+                        </div>
+                        <div class="spec-row">
+                            <span class="spec-label">Communication</span>
+                            <span class="spec-value">Dual-Band WiFi / UDP</span>
+                        </div>
+                        <div class="spec-row">
+                            <span class="spec-label">Power Source</span>
+                            <span class="spec-value">8.4V LiPo</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
     </main>
 </div>
 
 <footer>
-    <div class="container" style="display: flex; justify-content: space-between; width: 100%;">
-        <div>© 2026 Edmund Fitzgerald Project</div>
-        <div style="display: flex; gap: 24px;">
-            <a href="https://github.com/ryanmioduskiimac/EdmundFitzgeraldController" style="color: inherit; text-decoration: none;">GitHub</a>
-            <span>Technical Documentation</span>
+    <div class="container">
+        <p>&copy; 2026 Project Edmund Fitzgerald</p>
+        <div class="links">
+            <a href="https://github.com/ryanmioduskiimac/EdmundFitzgeraldController">Source Repository</a>
         </div>
     </div>
 </footer>

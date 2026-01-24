@@ -9,26 +9,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { COLORS, FONTS } from '../constants/Theme';
-import { getSystemDebug, getEngineDebug } from '../services/esp32Service';
-
-interface SystemDebugInfo {
-  dfplayer_available: boolean;
-  adc_initialized: boolean;
-  firmware_version: string;
-  build_id: string;
-  uptime_ms: number;
-  free_heap: number;
-}
-
-interface EngineDebugInfo {
-  throttle_raw_us: number;
-  throttle_normalized: number;
-  throttle_smoothed: number;
-  engine_rate: number;
-  engine_gain: number;
-  rev_active: boolean;
-  last_update_ms: number;
-}
+import { getTelemetry } from '../services/esp32Service';
+import { TelemetryResponse } from '../types';
 
 interface Props {
   visible: boolean;
@@ -37,8 +19,7 @@ interface Props {
 }
 
 export const SystemDebugModal: React.FC<Props> = ({ visible, onClose, ip }) => {
-  const [systemDebug, setSystemDebug] = useState<SystemDebugInfo | null>(null);
-  const [engineDebug, setEngineDebug] = useState<EngineDebugInfo | null>(null);
+  const [telemetry, setTelemetry] = useState<TelemetryResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
@@ -47,12 +28,8 @@ export const SystemDebugModal: React.FC<Props> = ({ visible, onClose, ip }) => {
     
     setLoading(true);
     try {
-      const [sysInfo, engInfo] = await Promise.all([
-        getSystemDebug(ip),
-        getEngineDebug(ip),
-      ]);
-      setSystemDebug(sysInfo);
-      setEngineDebug(engInfo);
+      const data = await getTelemetry(ip);
+      setTelemetry(data);
       setLastUpdate(new Date());
     } catch (err) {
       console.error('Failed to fetch debug info:', err);
@@ -99,58 +76,48 @@ export const SystemDebugModal: React.FC<Props> = ({ visible, onClose, ip }) => {
           {loading && <ActivityIndicator size="large" color={COLORS.accent} />}
 
           {/* System Info Panel */}
-          {systemDebug && (
+          {telemetry && (
             <View style={styles.panel}>
               <Text style={styles.panelTitle}>SYSTEM INFORMATION</Text>
               
               <View style={styles.row}>
-                <Text style={styles.label}>Firmware Version:</Text>
-                <Text style={styles.value}>{systemDebug.firmware_version}</Text>
-              </View>
-
-              <View style={styles.row}>
-                <Text style={styles.label}>Build ID:</Text>
-                <Text style={styles.value}>{systemDebug.build_id}</Text>
-              </View>
-
-              <View style={styles.row}>
                 <Text style={styles.label}>Uptime:</Text>
-                <Text style={styles.value}>{formatUptime(systemDebug.uptime_ms)}</Text>
+                <Text style={styles.value}>{formatUptime(telemetry.uptime_seconds * 1000)}</Text>
               </View>
 
               <View style={styles.row}>
                 <Text style={styles.label}>Free Heap:</Text>
-                <Text style={styles.value}>{formatHeap(systemDebug.free_heap)}</Text>
+                <Text style={styles.value}>{formatHeap(telemetry.free_heap)}</Text>
+              </View>
+
+              <View style={styles.row}>
+                <Text style={styles.label}>Connection:</Text>
+                <Text style={styles.value}>{telemetry.connection_status}</Text>
+              </View>
+
+              <View style={styles.row}>
+                <Text style={styles.label}>IP Address:</Text>
+                <Text style={styles.value}>{telemetry.ip_address}</Text>
               </View>
             </View>
           )}
 
           {/* DFPlayer Status Panel */}
-          {systemDebug && (
-            <View style={[styles.panel, systemDebug.dfplayer_available ? styles.panelSuccess : styles.panelError]}>
+          {telemetry && (
+            <View style={[styles.panel, telemetry.dfplayer_available ? styles.panelSuccess : styles.panelError]}>
               <Text style={styles.panelTitle}>DFPLAYER PRO STATUS</Text>
               
               <View style={styles.row}>
                 <Text style={styles.label}>Connected:</Text>
                 <Text style={[
                   styles.value,
-                  { color: systemDebug.dfplayer_available ? COLORS.accent : COLORS.alert }
+                  { color: telemetry.dfplayer_available ? COLORS.accent : COLORS.alert }
                 ]}>
-                  {systemDebug.dfplayer_available ? '✓ YES' : '✗ NO'}
+                  {telemetry.dfplayer_available ? '✓ YES' : '✗ NO'}
                 </Text>
               </View>
 
-              <View style={styles.row}>
-                <Text style={styles.label}>ADC Initialized:</Text>
-                <Text style={[
-                  styles.value,
-                  { color: systemDebug.adc_initialized ? COLORS.accent : COLORS.alert }
-                ]}>
-                  {systemDebug.adc_initialized ? '✓ YES' : '✗ NO'}
-                </Text>
-              </View>
-
-              {!systemDebug.dfplayer_available && (
+              {!telemetry.dfplayer_available && (
                 <View style={styles.warningBox}>
                   <Text style={styles.warningTitle}>⚠ DFPlayer NOT Connected</Text>
                   <Text style={styles.warningText}>
@@ -159,6 +126,7 @@ export const SystemDebugModal: React.FC<Props> = ({ visible, onClose, ip }) => {
                     • ESP32 GPIO27 → DFPlayer TX{'\n'}
                     • ESP32 GPIO26 → DFPlayer RX{'\n'}
                     • Audio files on SD card{'\n'}
+                    • Manual PLAY button works?{'\n'}
                     • Try power-cycling the module
                   </Text>
                 </View>
@@ -166,43 +134,28 @@ export const SystemDebugModal: React.FC<Props> = ({ visible, onClose, ip }) => {
             </View>
           )}
 
-          {/* Engine Audio Debug Panel */}
-          {engineDebug && (
+          {/* RC/Throttle Info */}
+          {telemetry && (
             <View style={styles.panel}>
-              <Text style={styles.panelTitle}>ENGINE AUDIO DEBUG</Text>
+              <Text style={styles.panelTitle}>RC RECEIVER INPUT</Text>
               
               <View style={styles.row}>
-                <Text style={styles.label}>Throttle (Raw):</Text>
-                <Text style={styles.value}>{engineDebug.throttle_raw_us} µs</Text>
+                <Text style={styles.label}>Throttle PWM:</Text>
+                <Text style={styles.value}>{telemetry.throttle_pwm} µs</Text>
               </View>
 
               <View style={styles.row}>
-                <Text style={styles.label}>Throttle (Normalized):</Text>
-                <Text style={styles.value}>{engineDebug.throttle_normalized.toFixed(3)}</Text>
+                <Text style={styles.label}>Servo PWM:</Text>
+                <Text style={styles.value}>{telemetry.servo_pwm} µs</Text>
               </View>
 
               <View style={styles.row}>
-                <Text style={styles.label}>Throttle (Smoothed):</Text>
-                <Text style={styles.value}>{engineDebug.throttle_smoothed.toFixed(3)}</Text>
-              </View>
-
-              <View style={styles.row}>
-                <Text style={styles.label}>Engine Rate:</Text>
-                <Text style={styles.value}>{engineDebug.engine_rate.toFixed(3)}</Text>
-              </View>
-
-              <View style={styles.row}>
-                <Text style={styles.label}>Engine Gain:</Text>
-                <Text style={styles.value}>{engineDebug.engine_gain.toFixed(3)}</Text>
-              </View>
-
-              <View style={styles.row}>
-                <Text style={styles.label}>Rev Active:</Text>
+                <Text style={styles.label}>Engine Muted:</Text>
                 <Text style={[
                   styles.value,
-                  { color: engineDebug.rev_active ? COLORS.accent : COLORS.secondary }
+                  { color: telemetry.engine_muted ? COLORS.alert : COLORS.accent }
                 ]}>
-                  {engineDebug.rev_active ? 'YES' : 'NO'}
+                  {telemetry.engine_muted ? 'YES' : 'NO'}
                 </Text>
               </View>
             </View>

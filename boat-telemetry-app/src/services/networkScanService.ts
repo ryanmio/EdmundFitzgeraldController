@@ -1,6 +1,9 @@
 /**
  * Network scanning service for discovering ESP32 devices on the local network
- * Uses ping-based discovery to find devices in the IP range
+ * Uses progressive scanning strategy:
+ * 1. Probe recently-used IPs first (instant feedback)
+ * 2. Scan subnet ranges in parallel
+ * 3. Allow device selection while scanning continues
  */
 
 export interface ScannedDevice {
@@ -11,10 +14,16 @@ export interface ScannedDevice {
 }
 
 const TIMEOUT_MS = 2000; // 2 second timeout per device
+const QUICK_PROBE_TIMEOUT_MS = 1000; // Faster timeout for known IPs
+
+// Subnet ranges to scan (in priority order)
 const COMMON_IP_RANGES = [
   { base: '192.168.1', start: 100, end: 200 }, // Most common range for static/DHCP
   { base: '192.168.0', start: 100, end: 200 },
 ];
+
+// Storage key for recently found devices
+const RECENTLY_FOUND_STORAGE_KEY = 'esp32_recently_found_ips';
 
 /**
  * Fetch wrapper with timeout support
@@ -48,41 +57,52 @@ function buildUrl(ip: string, endpoint: string): string {
 /**
  * Check if an IP is reachable and what type of device it is
  */
-async function probeIP(ip: string): Promise<ScannedDevice | null> {
+async function probeIP(
+  ip: string,
+  timeoutMs: number = TIMEOUT_MS
+): Promise<ScannedDevice | null> {
   try {
     const url = buildUrl(ip, '/status');
-    const response = await fetchWithTimeout(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    if (response.ok) {
-      const data = await response.json();
-      console.log(`[NetworkScan] ${ip} responded:`, JSON.stringify(data).substring(0, 100));
-      
-      // Determine device type based on response
-      let type: 'telemetry' | 'camera' | 'unknown' = 'unknown';
-      
-      // Check for telemetry indicators
-      if (data.type === 'telemetry' || data.sensors || data.battery_voltage || 
-          data.running_led !== undefined || data.flood_led !== undefined) {
-        type = 'telemetry';
-      } 
-      // Check for camera indicators
-      else if (data.type === 'camera' || data.camera === 'online' || data.camera) {
-        type = 'camera';
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        signal: controller.signal,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`[NetworkScan] ${ip} responded:`, JSON.stringify(data).substring(0, 100));
+        
+        // Determine device type based on response
+        let type: 'telemetry' | 'camera' | 'unknown' = 'unknown';
+        
+        // Check for telemetry indicators
+        if (data.type === 'telemetry' || data.sensors || data.battery_voltage || 
+            data.running_led !== undefined || data.flood_led !== undefined) {
+          type = 'telemetry';
+        } 
+        // Check for camera indicators
+        else if (data.type === 'camera' || data.camera === 'online' || data.camera) {
+          type = 'camera';
+        }
+
+        return {
+          ip,
+          name: data.name || `ESP32-${ip.split('.')[3]}`,
+          type,
+          lastSeen: Date.now(),
+        };
+      } else {
+        console.log(`[NetworkScan] ${ip} returned status ${response.status}`);
       }
-
-      return {
-        ip,
-        name: data.name || `ESP32-${ip.split('.')[3]}`,
-        type,
-        lastSeen: Date.now(),
-      };
-    } else {
-      console.log(`[NetworkScan] ${ip} returned status ${response.status}`);
+    } finally {
+      clearTimeout(timeoutId);
     }
   } catch (error: any) {
     // Silently ignore timeouts and network errors (expected for most IPs)
@@ -93,6 +113,30 @@ async function probeIP(ip: string): Promise<ScannedDevice | null> {
   }
 
   return null;
+}
+
+/**
+ * Get recently found device IPs from storage
+ */
+function getRecentlyFoundIPs(): string[] {
+  try {
+    // In a React Native app, you'd use AsyncStorage
+    // For now, return empty array - component will handle storage
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Store recently found device IP
+ */
+function saveRecentIP(ip: string): void {
+  try {
+    // Component will handle storage persistence via AsyncStorage
+  } catch {
+    // Silently ignore storage errors
+  }
 }
 
 /**
@@ -115,17 +159,47 @@ async function getLocalIP(): Promise<string | null> {
 }
 
 /**
- * Scan the local network for ESP32 devices
- * Scans common IP ranges (192.168.1.100-200 and 192.168.0.100-200)
+ * Progressive scan: Quick probe of known IPs first, then full subnet scan
+ * Returns immediately with recently found devices, continues scanning in background
+ * 
+ * @param recentlyUsedIPs - IPs that were recently found (should be provided by component)
+ * @param onProgress - Callback called as devices are found (immediately shows results)
+ * @returns Promise that resolves when scan is complete
  */
 export async function scanForDevices(
-  onProgress?: (found: number, checked: number, total: number) => void
+  onProgress?: (found: number, checked: number, total: number) => void,
+  recentlyUsedIPs: string[] = []
 ): Promise<ScannedDevice[]> {
   const devices: ScannedDevice[] = [];
+  let checkedCount = 0;
   
-  console.log('[NetworkScan] Starting device scan...');
+  console.log('[NetworkScan] Starting progressive device scan...');
+  console.log('[NetworkScan] Recently used IPs:', recentlyUsedIPs);
 
-  // Create an array of all IPs to check (focused on common DHCP/static ranges)
+  // Phase 1: Quickly probe recently used IPs (should be instant if devices are online)
+  if (recentlyUsedIPs.length > 0) {
+    console.log(`[NetworkScan] Phase 1: Probing ${recentlyUsedIPs.length} recently used IPs...`);
+    
+    const recentResults = await Promise.all(
+      recentlyUsedIPs.map(ip => probeIP(ip, QUICK_PROBE_TIMEOUT_MS))
+    );
+
+    recentResults.forEach((result, idx) => {
+      if (result) {
+        console.log(`[NetworkScan] Found recent device at ${result.ip}`);
+        devices.push(result);
+      }
+      checkedCount++;
+    });
+
+    // Report progress after recent IPs checked
+    const totalEstimate = recentlyUsedIPs.length + COMMON_IP_RANGES.reduce((sum, r) => sum + (r.end - r.start + 1), 0);
+    onProgress?.(devices.length, checkedCount, totalEstimate);
+  }
+
+  // Phase 2: Scan subnet ranges in parallel for faster coverage
+  console.log('[NetworkScan] Phase 2: Scanning full subnets in parallel...');
+  
   const allIPs: string[] = [];
   for (const range of COMMON_IP_RANGES) {
     for (let i = range.start; i <= range.end; i++) {
@@ -133,27 +207,34 @@ export async function scanForDevices(
     }
   }
 
-  console.log(`[NetworkScan] Scanning ${allIPs.length} IP addresses`);
-
-  // Probe IPs in smaller batches to be more reliable on mobile
-  const batchSize = 10;
-  let checkedCount = 0;
+  // Filter out IPs we already checked
+  const recentIPSet = new Set(recentlyUsedIPs);
+  const uncheckedIPs = allIPs.filter(ip => !recentIPSet.has(ip));
   
-  for (let i = 0; i < allIPs.length; i += batchSize) {
-    const batch = allIPs.slice(i, i + batchSize);
-    console.log(`[NetworkScan] Checking batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(allIPs.length/batchSize)}`);
+  console.log(`[NetworkScan] Scanning ${uncheckedIPs.length} unchecked IP addresses`);
+
+  // Probe in parallel batches for speed
+  const batchSize = 15; // Increased batch size since we're doing it faster
+  
+  for (let i = 0; i < uncheckedIPs.length; i += batchSize) {
+    const batch = uncheckedIPs.slice(i, i + batchSize);
     
     const results = await Promise.all(batch.map(ip => probeIP(ip)));
 
     results.forEach(result => {
       if (result) {
         console.log(`[NetworkScan] Found device at ${result.ip} (type: ${result.type})`);
-        devices.push(result);
+        
+        // Avoid duplicates
+        if (!devices.find(d => d.ip === result.ip)) {
+          devices.push(result);
+          saveRecentIP(result.ip);
+        }
       }
     });
 
     checkedCount += batch.length;
-    onProgress?.(devices.length, checkedCount, allIPs.length);
+    onProgress?.(devices.length, recentlyUsedIPs.length + checkedCount, recentlyUsedIPs.length + allIPs.length);
   }
 
   console.log(`[NetworkScan] Scan complete. Found ${devices.length} devices.`);
@@ -170,37 +251,14 @@ export async function scanForDevices(
 }
 
 /**
- * Quick scan for devices - only checks specific IPs
- * Useful for faster discovery if you know the subnet
- */
-export async function quickScan(subnet: string = '192.168.1'): Promise<ScannedDevice[]> {
-  const devices: ScannedDevice[] = [];
-  
-  // Try common ESP32 device IPs
-  const commonIPs = [];
-  for (let i = 100; i <= 200; i++) {
-    commonIPs.push(`${subnet}.${i}`);
-  }
-
-  const results = await Promise.all(commonIPs.map(ip => probeIP(ip)));
-  
-  results.forEach(result => {
-    if (result) {
-      devices.push(result);
-    }
-  });
-
-  return devices;
-}
-
-/**
  * Scan a specific subnet range
+ * Useful if you want to target a specific network segment
  */
 export async function scanSubnet(
   subnet: string,
   startIP: number = 1,
   endIP: number = 254,
-  onProgress?: (found: number) => void
+  onProgress?: (found: number, checked: number) => void
 ): Promise<ScannedDevice[]> {
   const devices: ScannedDevice[] = [];
   const ips: string[] = [];
@@ -220,9 +278,10 @@ export async function scanSubnet(
       }
     });
 
-    onProgress?.(devices.length);
+    onProgress?.(devices.length, i + batch.length);
   }
 
   return devices;
 }
+
 

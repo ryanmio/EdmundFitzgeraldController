@@ -7,8 +7,8 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
-  ScrollView,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScannedDevice, scanForDevices } from '../services/networkScanService';
 import { COLORS, FONTS } from '../constants/Theme';
 
@@ -19,6 +19,8 @@ interface DeviceScannerModalProps {
   deviceType?: 'telemetry' | 'camera';
   title?: string;
 }
+
+const RECENTLY_FOUND_STORAGE_KEY = 'esp32_recently_found_ips';
 
 export const DeviceScannerModal: React.FC<DeviceScannerModalProps> = ({
   visible,
@@ -33,12 +35,41 @@ export const DeviceScannerModal: React.FC<DeviceScannerModalProps> = ({
   const [ipsChecked, setIpsChecked] = useState(0);
   const [totalToScan, setTotalToScan] = useState(0);
   const [scanComplete, setScanComplete] = useState(false);
+  const [recentlyUsedIPs, setRecentlyUsedIPs] = useState<string[]>([]);
+
+  // Load recently found IPs on mount
+  useEffect(() => {
+    loadRecentlyFoundIPs();
+  }, []);
 
   useEffect(() => {
     if (visible && !scanning) {
       startScan();
     }
   }, [visible]);
+
+  const loadRecentlyFoundIPs = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(RECENTLY_FOUND_STORAGE_KEY);
+      if (stored) {
+        const ips = JSON.parse(stored) as string[];
+        setRecentlyUsedIPs(ips);
+        console.log('[DeviceScanner] Loaded recently found IPs:', ips);
+      }
+    } catch (error) {
+      console.error('[DeviceScanner] Failed to load recently found IPs:', error);
+    }
+  };
+
+  const saveRecentlyFoundIPs = async (allDevices: ScannedDevice[]) => {
+    try {
+      const ips = allDevices.map(d => d.ip);
+      await AsyncStorage.setItem(RECENTLY_FOUND_STORAGE_KEY, JSON.stringify(ips));
+      console.log('[DeviceScanner] Saved recently found IPs:', ips);
+    } catch (error) {
+      console.error('[DeviceScanner] Failed to save recently found IPs:', error);
+    }
+  };
 
   const startScan = async () => {
     console.log('[DeviceScanner] Starting scan...');
@@ -50,21 +81,25 @@ export const DeviceScannerModal: React.FC<DeviceScannerModalProps> = ({
     setTotalToScan(0);
 
     try {
-      const foundDevices = await scanForDevices((found, checked, total) => {
-        setDevicesFound(found);
-        setIpsChecked(checked);
-        setTotalToScan(total);
-      });
+      const foundDevices = await scanForDevices(
+        (found, checked, total) => {
+          setDevicesFound(found);
+          setIpsChecked(checked);
+          setTotalToScan(total);
+        },
+        recentlyUsedIPs
+      );
       
       console.log(`[DeviceScanner] Scan complete. Found ${foundDevices.length} devices`);
       
       // Filter devices based on type if specified
       let filtered = foundDevices;
-      if (deviceType && deviceType !== 'unknown') {
+      if (deviceType) {
         filtered = foundDevices.filter(d => d.type === deviceType || d.type === 'unknown');
       }
       
       setDevices(filtered);
+      await saveRecentlyFoundIPs(filtered);
     } catch (error) {
       console.error('[DeviceScanner] Scan failed:', error);
     } finally {

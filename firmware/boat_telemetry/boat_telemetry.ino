@@ -518,6 +518,21 @@ void handleEngineMute() {
   server.send(200, "application/json", json);
 }
 
+void handleSystemDebug() {
+  addCORSHeaders();
+  
+  String json = "{";
+  json += "\"dfplayer_available\":" + String(dfPlayerAvailable ? "true" : "false") + ",";
+  json += "\"adc_initialized\":" + String(adcInitialized ? "true" : "false") + ",";
+  json += "\"firmware_version\":\"" + String(FIRMWARE_VERSION) + "\",";
+  json += "\"build_id\":\"" + String(BUILD_ID) + "\",";
+  json += "\"uptime_ms\":" + String(millis()) + ",";
+  json += "\"free_heap\":" + String(ESP.getFreeHeap());
+  json += "}";
+  
+  server.send(200, "application/json", json);
+}
+
 void handleLed() {
   addCORSHeaders();
   if (server.method() != HTTP_POST) {
@@ -797,6 +812,7 @@ void setup() {
   server.on("/easter-egg", HTTP_POST, handleEasterEgg);
   server.on("/engine-debug", HTTP_GET, handleEngineDebug);
   server.on("/engine-mute", HTTP_POST, handleEngineMute);
+  server.on("/system-debug", HTTP_GET, handleSystemDebug);
   server.on("/status", HTTP_OPTIONS, handleOptions);
   server.on("/telemetry", HTTP_OPTIONS, handleOptions);
   server.on("/led", HTTP_OPTIONS, handleOptions);
@@ -806,6 +822,7 @@ void setup() {
   server.on("/easter-egg", HTTP_OPTIONS, handleOptions);
   server.on("/engine-debug", HTTP_OPTIONS, handleOptions);
   server.on("/engine-mute", HTTP_OPTIONS, handleOptions);
+  server.on("/system-debug", HTTP_OPTIONS, handleOptions);
   server.onNotFound(handleNotFound);
 
   server.begin();

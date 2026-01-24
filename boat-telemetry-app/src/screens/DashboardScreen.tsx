@@ -22,6 +22,7 @@ import { getTelemetry, setLED, triggerHorn, triggerSOS, triggerRadio, muteEngine
 import { TelemetryResponse } from '../types';
 import { COLORS, FONTS } from '../constants/Theme';
 import { SystemsCheckModal } from '../components/SystemsCheckModal';
+import { SystemDebugModal } from '../components/SystemDebugModal';
 import { useSystemsCheck } from '../hooks/useSystemsCheck';
 
 interface LogEntry extends TelemetryResponse {
@@ -115,6 +116,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
   const radio3EasterEggTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showSystemsCheck, setShowSystemsCheck] = useState(false);
+  const [showSystemDebug, setShowSystemDebug] = useState(false);
   
   // Animated values for smooth button transitions
   const hornScale = useRef(new Animated.Value(1)).current;
@@ -601,6 +603,12 @@ export default function DashboardScreen({ navigation, route }: Props) {
         scrollRef={systemsCheck.scrollRef}
       />
 
+      <SystemDebugModal
+        visible={showSystemDebug}
+        onClose={() => setShowSystemDebug(false)}
+        ip={ip}
+      />
+
       {/* Connection Lost Banner - positioned above notch */}
       {!isConnected && (
         <SafeAreaView style={styles.safeAreaBanner}>
@@ -637,6 +645,11 @@ export default function DashboardScreen({ navigation, route }: Props) {
               telemetry?.engine_muted && styles.muteButtonActive
             ]}>
               <Text style={styles.muteIcon}>{telemetry?.engine_muted ? '🔇' : '🔊'}</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.debugButton} onPress={() => setShowSystemDebug(true)}>
+            <View style={styles.debugButtonInner}>
+              <Text style={styles.debugIcon}>⚙</Text>
             </View>
           </TouchableOpacity>
           <TouchableOpacity style={styles.diagButton} onPress={() => setShowSystemsCheck(true)}>
@@ -1094,6 +1107,27 @@ const styles = StyleSheet.create({
   diagIcon: {
     fontSize: 20,
     color: COLORS.accent,
+  },
+  debugButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 4,
+    backgroundColor: COLORS.secondary,
+    padding: 2,
+    marginRight: 8,
+  },
+  debugButtonInner: {
+    flex: 1,
+    backgroundColor: '#3a4b63',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 2,
+    borderWidth: 1,
+    borderColor: '#5a6f8f',
+  },
+  debugIcon: {
+    fontSize: 18,
+    color: '#d4a574',
   },
   powerButton: {
     width: 44,

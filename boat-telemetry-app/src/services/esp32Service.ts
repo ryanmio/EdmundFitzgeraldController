@@ -157,3 +157,31 @@ export async function muteEngine(ip: string, muted: boolean): Promise<MuteRespon
   
   return response.json();
 }
+
+/**
+ * Get system debug info (DFPlayer status, firmware version, etc.)
+ */
+export async function getSystemDebug(ip: string): Promise<any> {
+  const url = buildUrl(ip, '/system-debug');
+  const response = await fetchWithTimeout(url);
+  
+  if (!response.ok) {
+    throw new Error(`System debug request failed: ${response.status}`);
+  }
+  
+  return response.json();
+}
+
+/**
+ * Get engine debug info (throttle, rate, gain, etc.)
+ */
+export async function getEngineDebug(ip: string): Promise<any> {
+  const url = buildUrl(ip, '/engine-debug');
+  const response = await fetchWithTimeout(url);
+  
+  if (!response.ok) {
+    throw new Error(`Engine debug request failed: ${response.status}`);
+  }
+  
+  return response.json();
+}

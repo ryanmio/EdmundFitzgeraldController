@@ -1,11 +1,13 @@
 /*
  * boat_telemetry.ino
- * ESP32 boat telemetry and control system with engine audio
+ * ESP32 boat telemetry and control system with engine audio + OTA updates
  * Endpoints: /status, /telemetry, /led, /radio, /horn, /sos, /easter-egg, /engine-debug
+ * OTA: Hostname "edmund-fitzgerald" | Password: "boat2026"
  */
 
 #include <WiFi.h>
 #include <WebServer.h>
+#include <ArduinoOTA.h>         // Over-The-Air firmware updates
 #include "secrets.h"
 #include "DFRobot_DF1201S.h"   // DFPlayer Pro (DF1201S) library
 #include "driver/i2s_std.h"     // ESP-IDF 5.x NEW I2S driver (no ADC conflict)
@@ -36,8 +38,8 @@
 #define RMT_CLK_DIV       80   // 1 MHz tick rate (80 MHz / 80)
 
 // ==================== BUILD IDENTIFICATION ====================
-#define FIRMWARE_VERSION   "3.2.0"
-#define BUILD_ID           "20260119-integrated-audio"
+#define FIRMWARE_VERSION   "3.3.0"
+#define BUILD_ID           "20260124-ota-enabled"
 
 // ==================== I2S CONFIGURATION ====================
 #define I2S_NUM           I2S_NUM_1   // Switch to I2S_NUM_1 to avoid ADC conflict on I2S_NUM_0
@@ -802,6 +804,52 @@ void setup() {
   // Connect WiFi
   connectWiFi();
 
+  // ==================== SETUP OTA (OVER-THE-AIR UPDATES) ====================
+  Serial.println();
+  Serial.println("========================================");
+  Serial.println("OTA (Over-The-Air) Update Setup");
+  Serial.println("========================================");
+  
+  ArduinoOTA.setHostname("edmund-fitzgerald");
+  ArduinoOTA.setPassword("boat2026");  // Password required for OTA uploads
+  
+  ArduinoOTA.onStart([]() {
+    String type;
+    if (ArduinoOTA.getCommand() == U_FLASH) {
+      type = "sketch";
+    } else {  // U_SPIFFS
+      type = "filesystem";
+    }
+    Serial.println("Start updating " + type);
+    
+    // Mute audio engine during update to prevent issues
+    audioEngine_setMuted(true);
+  });
+  
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nOTA Update Complete!");
+  });
+  
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+  });
+  
+  ArduinoOTA.begin();
+  Serial.println("✓ OTA Ready!");
+  Serial.print("  Hostname: edmund-fitzgerald");
+  Serial.print("  IP: ");
+  Serial.println(WiFi.localIP());
+  Serial.println("========================================");
+
   // Setup HTTP routes
   server.on("/status", HTTP_GET, handleStatus);
   server.on("/telemetry", HTTP_GET, handleTelemetry);
@@ -833,6 +881,9 @@ void setup() {
 unsigned long lastWiFiCheck = 0;
 
 void loop() {
+  // Handle OTA updates (must be called frequently)
+  ArduinoOTA.handle();
+  
   // Always handle HTTP requests (whether WiFi is connected or not)
   server.handleClient();
   

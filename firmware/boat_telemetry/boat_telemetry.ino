@@ -581,8 +581,8 @@ void handleHorn() {
     return;
   }
 
-  // Track 4: Horn sound
-  playDFPlayerTrack(4, 100);  // 100% volume
+  // Track 4: Horn sound at 80% volume (reduced to prevent power brownout with concurrent audio)
+  playDFPlayerTrack(4, 80);
   server.send(200, "application/json", "{\"horn_active\":true}");
 }
 

@@ -1473,7 +1473,8 @@ const styles = StyleSheet.create({
   },
   radioButton: {
     width: '100%',
-    paddingVertical: 18,
+    minHeight: 100,
+    paddingVertical: 14,
     paddingHorizontal: 12,
     backgroundColor: '#2a3547',
     borderRadius: 8,
@@ -1489,11 +1490,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.text,
     letterSpacing: 1.5,
+    textAlign: 'center',
   },
   radioButtonSubtext: {
     fontSize: 8,
     fontFamily: FONTS.monospace,
     color: COLORS.secondary,
+    textAlign: 'center',
   },
   loggingContent: {
     width: '100%',

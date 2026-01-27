@@ -620,11 +620,13 @@ export default function DashboardScreen({ navigation, route }: Props) {
 
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.shipName}>S.S. EDMUND FITZGERALD</Text>
-          <Text style={styles.bridgeStatus}>BRIDGE CONSOLE ACITVE</Text>
+        <View style={styles.headerTop}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.shipName}>S.S. EDMUND FITZGERALD</Text>
+            <Text style={styles.bridgeStatus}>BRIDGE CONSOLE ACTIVE</Text>
+          </View>
         </View>
-        <View style={styles.headerRight}>
+        <View style={styles.headerBottom}>
           <View style={styles.chronometerContainer}>
             <Text style={styles.chronometerLabel}>SHIP TIME</Text>
             <Text style={styles.chronometer}>
@@ -635,33 +637,35 @@ export default function DashboardScreen({ navigation, route }: Props) {
               </Text>
             </Text>
           </View>
-          <TouchableOpacity 
-            style={styles.muteButton} 
-            onPress={toggleEngineMute}
-            disabled={togglingMute}
-          >
-            <View style={[
-              styles.muteButtonInner,
-              telemetry?.engine_muted && styles.muteButtonActive
-            ]}>
-              <Text style={styles.muteIcon}>{telemetry?.engine_muted ? '🔇' : '🔊'}</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.debugButton} onPress={() => setShowSystemDebug(true)}>
-            <View style={styles.debugButtonInner}>
-              <Text style={styles.debugIcon}>⚙</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.diagButton} onPress={() => setShowSystemsCheck(true)}>
-            <View style={styles.diagButtonInner}>
-              <Text style={styles.diagIcon}>◈</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.powerButton} onPress={handleDisconnect}>
-            <View style={styles.powerButtonInner}>
-              <Text style={styles.powerIcon}>⏻</Text>
-            </View>
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity 
+              style={styles.muteButton} 
+              onPress={toggleEngineMute}
+              disabled={togglingMute}
+            >
+              <View style={[
+                styles.muteButtonInner,
+                telemetry?.engine_muted && styles.muteButtonActive
+              ]}>
+                <Text style={styles.muteIcon}>{telemetry?.engine_muted ? '🔇' : '🔊'}</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.debugButton} onPress={() => setShowSystemDebug(true)}>
+              <View style={styles.debugButtonInner}>
+                <Text style={styles.debugIcon}>⚙</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.diagButton} onPress={() => setShowSystemsCheck(true)}>
+              <View style={styles.diagButtonInner}>
+                <Text style={styles.diagIcon}>◈</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.powerButton} onPress={handleDisconnect}>
+              <View style={styles.powerButtonInner}>
+                <Text style={styles.powerIcon}>⏻</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -1013,22 +1017,34 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'column',
     paddingHorizontal: 20,
     paddingTop: 56,
     paddingBottom: 20,
     backgroundColor: COLORS.background,
     borderBottomWidth: 2,
     borderBottomColor: COLORS.secondary,
+    gap: 12,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  headerBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   headerLeft: {
     flex: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   shipName: {
     fontSize: 18,
@@ -1044,8 +1060,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   chronometerContainer: {
-    alignItems: 'flex-end',
-    marginRight: 16,
+    alignItems: 'flex-start',
   },
   chronometerLabel: {
     fontSize: 8,
@@ -1069,7 +1084,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: COLORS.secondary,
     padding: 2,
-    marginRight: 8,
   },
   muteButtonInner: {
     flex: 1,
@@ -1093,7 +1107,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: COLORS.secondary,
     padding: 2,
-    marginRight: 8,
   },
   diagButtonInner: {
     flex: 1,
@@ -1114,7 +1127,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: COLORS.secondary,
     padding: 2,
-    marginRight: 8,
   },
   debugButtonInner: {
     flex: 1,

@@ -97,6 +97,32 @@
             letter-spacing: 0.05em;
         }
 
+        .hero-video {
+            width: 100%;
+            margin-bottom: calc(var(--spacing-unit) * 12);
+        }
+
+        .hero-video video {
+            width: 100%;
+            height: auto;
+            display: block;
+            border: 1px solid var(--color-border);
+        }
+
+        .media-item img,
+        .media-item video {
+            width: 100%;
+            height: auto;
+            display: block;
+            border: 1px solid var(--color-border);
+            aspect-ratio: 4/3;
+            object-fit: cover;
+        }
+
+        .gallery-3col {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
         .media-info {
             margin-top: calc(var(--spacing-unit) * 1.5);
             font-size: 0.875rem;
@@ -167,7 +193,7 @@
 
         @media (max-width: 768px) {
             h1 { font-size: 2rem; }
-            .gallery, .spec-grid { grid-template-columns: 1fr; }
+            .gallery, .gallery-3col, .spec-grid { grid-template-columns: 1fr; }
             .container { padding: 0 calc(var(--spacing-unit) * 3); }
         }
     </style>
@@ -183,6 +209,10 @@
 
 <div class="container">
     <main>
+        
+        <section id="hero-video" class="hero-video">
+            <div class="media-placeholder" style="aspect-ratio: 16/9; height: 400px;">Ship Navigating Lake • Coming Soon</div>
+        </section>
         
         <section id="specifications">
             <h2>Platform Overview</h2>
@@ -230,19 +260,107 @@
 
         <section id="engineering">
             <h2>Hardware & Assembly</h2>
-            <div class="gallery">
+            <div class="gallery gallery-3col">
                 <div class="media-item">
-                    <div class="media-placeholder">Engineering Log 01</div>
+                    <img src="images/building-in-sections.jpeg" alt="Building in sections">
                     <div class="media-info">
-                        <p class="media-title">Structural Framework</p>
+                        <p class="media-title">Building in Sections</p>
                         <p class="media-desc">3D printed hull assembly and mechanical drive integration.</p>
                     </div>
                 </div>
                 <div class="media-item">
-                    <div class="media-placeholder">Engineering Log 02</div>
+                    <img src="images/printing-small-parts.jpeg" alt="Printing small parts">
                     <div class="media-info">
-                        <p class="media-title">Electronics Integration</p>
-                        <p class="media-desc">I2S DAC, DFPlayer Pro, and water intrusion sensor array.</p>
+                        <p class="media-title">Printing Small Parts</p>
+                        <p class="media-desc">Fabrication of detailed components and structural elements.</p>
+                    </div>
+                </div>
+                <div class="media-item">
+                    <img src="images/view-into-hull-from-above.jpeg" alt="View into hull from above">
+                    <div class="media-info">
+                        <p class="media-title">Hull Interior</p>
+                        <p class="media-desc">Internal structure and component placement.</p>
+                    </div>
+                </div>
+                <div class="media-item">
+                    <img src="images/interior-model.jpeg" alt="Interior model">
+                    <div class="media-info">
+                        <p class="media-title">Interior Model</p>
+                        <p class="media-desc">Detailed view of internal layout and systems.</p>
+                    </div>
+                </div>
+                <div class="media-item">
+                    <img src="images/assmembling-computer.jpeg" alt="Assembling computer">
+                    <div class="media-info">
+                        <p class="media-title">Electronics Assembly</p>
+                        <p class="media-desc">Computer and control system integration.</p>
+                    </div>
+                </div>
+                <div class="media-item">
+                    <img src="images/forward-audio-component.jpeg" alt="Forward audio component">
+                    <div class="media-info">
+                        <p class="media-title">Forward Audio Component</p>
+                        <p class="media-desc">I2S DAC and audio system installation.</p>
+                    </div>
+                </div>
+                <div class="media-item">
+                    <video controls>
+                        <source src="videos/assembly-progress.mp4" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                    <div class="media-info">
+                        <p class="media-title">Assembly Progress</p>
+                        <p class="media-desc">Time-lapse of construction process.</p>
+                    </div>
+                </div>
+                <div class="media-item">
+                    <video controls>
+                        <source src="videos/aft-audio-component.mp4" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                    <div class="media-info">
+                        <p class="media-title">Aft Audio Component</p>
+                        <p class="media-desc">Rear audio system installation and testing.</p>
+                    </div>
+                </div>
+                <div class="media-item">
+                    <video controls>
+                        <source src="videos/Soldering Watertight Connections.mp4" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                    <div class="media-info">
+                        <p class="media-title">Watertight Connections</p>
+                        <p class="media-desc">Soldering and sealing electrical connections.</p>
+                    </div>
+                </div>
+                <div class="media-item">
+                    <video controls>
+                        <source src="videos/lifeboat-detail.mp4" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                    <div class="media-info">
+                        <p class="media-title">Lifeboat Detail</p>
+                        <p class="media-desc">Detail work on lifeboat components.</p>
+                    </div>
+                </div>
+                <div class="media-item">
+                    <video controls>
+                        <source src="videos/stack cam.mp4" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                    <div class="media-info">
+                        <p class="media-title">Stack Camera</p>
+                        <p class="media-desc">Camera system installation and positioning.</p>
+                    </div>
+                </div>
+                <div class="media-item">
+                    <video controls>
+                        <source src="videos/testing-rudder.mp4" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                    <div class="media-info">
+                        <p class="media-title">Rudder Testing</p>
+                        <p class="media-desc">Control surface testing and calibration.</p>
                     </div>
                 </div>
             </div>
@@ -252,17 +370,43 @@
             <h2>Command Interface</h2>
             <div class="gallery">
                 <div class="media-item">
-                    <div class="media-placeholder">UI Reference 01</div>
+                    <img src="screenshots/screenshot-testflight-email.PNG" alt="TestFlight app interface">
                     <div class="media-info">
-                        <p class="media-title">Bridge Console</p>
-                        <p class="media-desc">Real-time telemetry, signal relay, and analog gauge simulation.</p>
+                        <p class="media-title">Mobile Bridge Console</p>
+                        <p class="media-desc">iOS app for real-time telemetry, signal relay, and system control.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="design">
+            <h2>Design and Schematics</h2>
+            <div class="gallery">
+                <div class="media-item">
+                    <div class="media-placeholder">3D Model Visualization</div>
+                    <div class="media-info">
+                        <p class="media-title">Fusion 360 Model</p>
+                        <p class="media-desc">3D CAD model and flyover animations coming soon.</p>
                     </div>
                 </div>
                 <div class="media-item">
-                    <div class="media-placeholder">UI Reference 02</div>
+                    <div class="media-placeholder">Electronic Schematics</div>
                     <div class="media-info">
-                        <p class="media-title">System Diagnostics</p>
-                        <p class="media-desc">Automated health checks and CSV data logging export.</p>
+                        <p class="media-title">Circuit Diagrams</p>
+                        <p class="media-desc">ESP32, audio, and sensor system schematics coming soon.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="sea-trials">
+            <h2>Sea Trials</h2>
+            <div class="gallery">
+                <div class="media-item">
+                    <div class="media-placeholder">Sea Trial Footage</div>
+                    <div class="media-info">
+                        <p class="media-title">Lake Navigation</p>
+                        <p class="media-desc">Field testing and performance documentation coming soon.</p>
                     </div>
                 </div>
             </div>

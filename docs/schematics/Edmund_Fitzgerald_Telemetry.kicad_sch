@@ -1,0 +1,120 @@
+(kicad_sch (version 20230121) (generator eeschema)
+
+ (uuid "12345678-1234-1234-1234-123456789abc")
+
+ (paper "A3")
+ (title_block
+  (title "Edmund Fitzgerald Telemetry System")
+  (date "2026-01-31")
+  (rev "1.0")
+  (company "Project Edmund Fitzgerald")
+ )
+
+ (sheet (at 0 0) (size 297 210) (uuid "00000000-0000-0000-0000-000000000000"))
+
+ (text "POWER: 8.4V LiPo battery"
+  (at 25 50 0)
+  (effects (font (size 2 2) (thickness 0.15)) (justify left))
+ )
+
+ (text "Main Controller: ESP32 Dual-Core"
+  (at 25 80 0)
+  (effects (font (size 1.5 1.5) (thickness 0.12)) (justify left))
+ )
+
+ (text "Core 0 handles WiFi and HTTP Server"
+  (at 25 95 0)
+  (effects (font (size 1 1) (thickness 0.1)) (justify left))
+ )
+
+ (text "Core 1 runs Audio Engine with real-time I2S"
+  (at 25 110 0)
+  (effects (font (size 1 1) (thickness 0.1)) (justify left))
+ )
+
+ (text "AUDIO SYSTEM"
+  (at 25 140 0)
+  (effects (font (size 1.5 1.5) (thickness 0.12)) (justify left))
+ )
+
+ (text "I2S output on GPIO 25 (BCLK), 22 (LRC), 23 (DIN)"
+  (at 25 155 0)
+  (effects (font (size 1 1) (thickness 0.1)) (justify left))
+ )
+
+ (text "Connected to MAX98357A Class-D Amplifier"
+  (at 25 170 0)
+  (effects (font (size 1 1) (thickness 0.1)) (justify left))
+ )
+
+ (text "DFPlayer Pro on GPIO 27 RX, 26 TX at 115200 baud"
+  (at 25 185 0)
+  (effects (font (size 1 1) (thickness 0.1)) (justify left))
+ )
+
+ (text "SENSORS"
+  (at 25 215 0)
+  (effects (font (size 1.5 1.5) (thickness 0.12)) (justify left))
+ )
+
+ (text "Battery ADC on GPIO 34 with voltage divider"
+  (at 25 230 0)
+  (effects (font (size 1 1) (thickness 0.1)) (justify left))
+ )
+
+ (text "Water intrusion sensor on GPIO 32 with pullup"
+  (at 25 245 0)
+  (effects (font (size 1 1) (thickness 0.1)) (justify left))
+ )
+
+ (text "LED CONTROL"
+  (at 25 275 0)
+  (effects (font (size 1.5 1.5) (thickness 0.12)) (justify left))
+ )
+
+ (text "GPIO 2 and GPIO 16 control running lights"
+  (at 25 290 0)
+  (effects (font (size 1 1) (thickness 0.1)) (justify left))
+ )
+
+ (text "GPIO 4 and GPIO 21 control flood lights"
+  (at 25 305 0)
+  (effects (font (size 1 1) (thickness 0.1)) (justify left))
+ )
+
+ (text "RC RECEIVER"
+  (at 25 335 0)
+  (effects (font (size 1.5 1.5) (thickness 0.12)) (justify left))
+ )
+
+ (text "GPIO 18 captures Throttle PWM signal"
+  (at 25 350 0)
+  (effects (font (size 1 1) (thickness 0.1)) (justify left))
+ )
+
+ (text "GPIO 19 captures Servo Rudder PWM signal"
+  (at 25 365 0)
+  (effects (font (size 1 1) (thickness 0.1)) (justify left))
+ )
+
+ (text "CAMERA SYSTEM"
+  (at 25 395 0)
+  (effects (font (size 1.5 1.5) (thickness 0.12)) (justify left))
+ )
+
+ (text "Separate ESP32-CAM with AI-Thinker OV2640"
+  (at 25 410 0)
+  (effects (font (size 1 1) (thickness 0.1)) (justify left))
+ )
+
+ (text "CONNECTIVITY"
+  (at 25 440 0)
+  (effects (font (size 1.5 1.5) (thickness 0.12)) (justify left))
+ )
+
+ (text "Built-in WiFi 2.4GHz for telemetry and OTA updates"
+  (at 25 455 0)
+  (effects (font (size 1 1) (thickness 0.1)) (justify left))
+ )
+
+)

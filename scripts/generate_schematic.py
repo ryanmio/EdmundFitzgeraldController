@@ -21,6 +21,14 @@ def kicad_label(text, x, y, rot=0):
 def kicad_wire(x1, y1, x2, y2):
     return f'  (wire (pts (xy {x1} {y1}) (xy {x2} {y2})) (stroke (width 0) (type solid)) (uuid "{gen_uuid()}"))'
 
+def kicad_orthogonal_wire(x1, y1, x2, y2, mid_x):
+    """Draws an L-shaped orthogonal wire from (x1,y1) to (x2,y2) via mid_x"""
+    return [
+        kicad_wire(x1, y1, mid_x, y1),
+        kicad_wire(mid_x, y1, mid_x, y2),
+        kicad_wire(mid_x, y2, x2, y2)
+    ]
+
 def kicad_text(text, x, y, size=1.5):
     return f'  (text "{text}" (at {x} {y} 0) (effects (font (size {size} {size}))) (uuid "{gen_uuid()}"))'
 
@@ -104,7 +112,7 @@ content = [
     '(kicad_sch (version 20230121) (generator eeschema)',
     f' (uuid "{gen_uuid()}")',
     ' (paper "A3")',
-    ' (title_block (title "Edmund Fitzgerald - FULL SYSTEM") (company "Project Edmund Fitzgerald") (rev "2.0") (date "2026-01-31"))',
+    ' (title_block (title "Edmund Fitzgerald - FULL SYSTEM") (company "Project Edmund Fitzgerald") (rev "2.3") (date "2026-01-31"))',
     ' (lib_symbols', symbols, ' )',
     '',
 ]
@@ -123,7 +131,7 @@ content.extend([
     f' (symbol (lib_id "Device:R") (at 190 97.46 90) (unit 1) (uuid "{r1_uuid}") (in_bom yes) (on_board yes) (property "Reference" "R1" (at 190 92 0)) (property "Value" "100" (at 190 103 0)))',
     f' (symbol (lib_id "Device:R") (at 210 110 0) (unit 1) (uuid "{r2_uuid}") (in_bom yes) (on_board yes) (property "Reference" "R2" (at 215 110 0)) (property "Value" "10k" (at 215 115 0)))',
     f' (symbol (lib_id "Device:LED") (at 213.81 80 90) (unit 1) (uuid "{d1_uuid}") (in_bom yes) (on_board yes) (property "Reference" "D1" (at 213.81 75 0)) (property "Value" "Running_Light" (at 213.81 85 0)))',
-    kicad_wire(165.24, 97.46, 186.19, 97.46), kicad_wire(193.81, 97.46, 210, 97.46), # Wiring
+    kicad_wire(165.24, 97.46, 186.19, 97.46), kicad_wire(193.81, 97.46, 210, 97.46),
     kicad_wire(210, 97.46, 210, 106.19), kicad_wire(210, 113.81, 210, 120),
     kicad_wire(213.81, 92.38, 213.81, 83.81), kicad_wire(213.81, 76.19, 213.81, 70),
     kicad_wire(213.81, 102.54, 213.81, 120),
@@ -140,7 +148,7 @@ content.extend([
     f' (symbol (lib_id "Device:R") (at 190 147.46 90) (unit 1) (uuid "{r5_uuid}") (in_bom yes) (on_board yes) (property "Reference" "R5" (at 190 142 0)) (property "Value" "100" (at 190 153 0)))',
     f' (symbol (lib_id "Device:R") (at 210 160 0) (unit 1) (uuid "{r6_uuid}") (in_bom yes) (on_board yes) (property "Reference" "R6" (at 215 160 0)) (property "Value" "10k" (at 215 165 0)))',
     f' (symbol (lib_id "Device:LED") (at 213.81 130 90) (unit 1) (uuid "{d2_uuid}") (in_bom yes) (on_board yes) (property "Reference" "D2" (at 213.81 125 0)) (property "Value" "Flood_Light" (at 213.81 135 0)))',
-    kicad_wire(165.24, 110.16, 186.19, 147.46), kicad_wire(193.81, 147.46, 210, 147.46), # Wiring IO21
+    kicad_wire(165.24, 110.16, 186.19, 147.46), kicad_wire(193.81, 147.46, 210, 147.46),
     kicad_wire(210, 147.46, 210, 156.19), kicad_wire(210, 163.81, 210, 170),
     kicad_wire(213.81, 142.38, 213.81, 133.81), kicad_wire(213.81, 126.19, 213.81, 120),
     kicad_wire(213.81, 152.54, 213.81, 170),
@@ -164,30 +172,31 @@ content.extend([
     kicad_wire(134.76, 100, 110, 100), kicad_label("WATER_SENSOR", 110, 100),
 ])
 
-# --- AUDIO MODULES (FIXED COORDS) ---
-amp1_uuid = gen_uuid(); add_instance("U2", 1, "MAX98357A", "", amp1_uuid)
-content.append(f' (symbol (lib_id "Module:MAX98357A") (at 260 140 0) (unit 1) (uuid "{amp1_uuid}") (in_bom yes) (on_board yes) (property "Reference" "U2" (at 260 125 0)) (property "Value" "MAX98357A" (at 260 155 0)))')
-dfp1_uuid = gen_uuid(); add_instance("U3", 1, "DFPlayer_Pro", "", dfp1_uuid)
-content.append(f' (symbol (lib_id "Module:DFPlayer_Pro") (at 260 200 0) (unit 1) (uuid "{dfp1_uuid}") (in_bom yes) (on_board yes) (property "Reference" "U3" (at 260 180 0)) (property "Value" "DFPlayer_Pro" (at 260 220 0)))')
+# --- AUDIO MODULES ---
+u2_uuid = gen_uuid(); add_instance("U2", 1, "MAX98357A", "", u2_uuid)
+content.append(f' (symbol (lib_id "Module:MAX98357A") (at 260 140 0) (unit 1) (uuid "{u2_uuid}") (in_bom yes) (on_board yes) (property "Reference" "U2" (at 260 125 0)) (property "Value" "MAX98357A" (at 260 155 0)))')
+u3_uuid = gen_uuid(); add_instance("U3", 1, "DFPlayer_Pro", "", u3_uuid)
+content.append(f' (symbol (lib_id "Module:DFPlayer_Pro") (at 260 200 0) (unit 1) (uuid "{u3_uuid}") (in_bom yes) (on_board yes) (property "Reference" "U3" (at 260 180 0)) (property "Value" "DFPlayer_Pro" (at 260 220 0)))')
 
+# --- PHYSICAL WIRING (ORTHOGONAL) ---
+# I2S BCLK: ESP Pin 9 (105.08) to Amp Pin 3 (134.92)
+content.extend(kicad_orthogonal_wire(134.76, 105.08, 247.3, 134.92, 140))
+# I2S LRC: ESP Pin 36 (112.7) to Amp Pin 4 (137.46)
+content.extend(kicad_orthogonal_wire(165.24, 112.7, 247.3, 137.46, 240))
+# I2S DIN: ESP Pin 37 (115.24) to Amp Pin 5 (140.00)
+content.extend(kicad_orthogonal_wire(165.24, 115.24, 247.3, 140.00, 242))
+
+# DFP RX: ESP Pin 10 (IO26 TX) to DFP RX Pin 3 (192.38)
+content.extend(kicad_orthogonal_wire(134.76, 107.62, 247.3, 192.38, 142))
+# DFP TX: ESP Pin 11 (IO27 RX) to DFP TX Pin 4 (194.92)
+content.extend(kicad_orthogonal_wire(134.76, 110.16, 247.3, 194.92, 144))
+
+# Power/GND for modules (short taps)
 content.extend([
-    # Amp wiring
-    kicad_wire(247.3, 129.84, 235, 129.84), kicad_label("5V_POWER", 235, 129.84),
-    kicad_wire(247.3, 132.38, 235, 132.38), kicad_label("GND", 235, 132.38),
-    kicad_wire(247.3, 134.92, 235, 134.92), kicad_label("I2S_BCLK", 235, 134.92),
-    kicad_wire(247.3, 137.46, 235, 137.46), kicad_label("I2S_LRC", 235, 137.46),
-    kicad_wire(247.3, 140.00, 235, 140.00), kicad_label("I2S_DIN", 235, 140.00),
-    # DFPlayer wiring
-    kicad_wire(247.3, 187.3, 235, 187.3), kicad_label("5V_POWER", 235, 187.3),
-    kicad_wire(247.3, 189.84, 235, 189.84), kicad_label("GND", 235, 189.84),
-    kicad_wire(247.3, 192.38, 235, 192.38), kicad_label("DFP_RX", 235, 192.38),
-    kicad_wire(247.3, 194.92, 235, 194.92), kicad_label("DFP_TX", 235, 194.92),
-    # ESP32 side wiring
-    kicad_wire(134.76, 105.08, 120, 105.08), kicad_label("I2S_BCLK", 120, 105.08),
-    kicad_wire(134.76, 107.62, 120, 107.62), kicad_label("DFP_TX", 120, 107.62),
-    kicad_wire(134.76, 110.16, 120, 110.16), kicad_label("DFP_RX", 120, 110.16),
-    kicad_wire(165.24, 112.7, 180, 112.7), kicad_label("I2S_LRC", 180, 112.7),
-    kicad_wire(165.24, 115.24, 180, 115.24), kicad_label("I2S_DIN", 180, 115.24),
+    kicad_wire(247.3, 129.84, 240, 129.84), kicad_label("5V_POWER", 240, 129.84),
+    kicad_wire(247.3, 132.38, 240, 132.38), kicad_label("GND", 240, 132.38),
+    kicad_wire(247.3, 187.3, 240, 187.3), kicad_label("5V_POWER", 240, 187.3),
+    kicad_wire(247.3, 189.84, 240, 189.84), kicad_label("GND", 240, 189.84),
 ])
 
 # --- RC RECEIVER ---
@@ -196,6 +205,7 @@ content.extend([
     kicad_wire(165.24, 107.62, 180, 107.62), kicad_label("SERVO_RC", 180, 107.62),
 ])
 
+# --- FINALIZE ---
 content.append(' (sheet_instances (path "/" (page "1")))')
 content.append(' (symbol_instances')
 for inst in instances:
@@ -205,4 +215,4 @@ content.append(')')
 
 with open('/Users/ryanmioduskiimac/Documents/GitHub/EdmundFitzgeraldController/docs/schematics/Edmund_Fitzgerald_Telemetry.kicad_sch', 'w') as f:
     f.write('\n'.join(content))
-print("KiCAD Schematic Fully Restored and Consolidated.")
+print("KiCAD Schematic Surgically Fixed - All previous work restored.")

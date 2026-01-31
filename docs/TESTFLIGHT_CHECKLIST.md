@@ -10,11 +10,11 @@
   - All navigation and storage packages installed ✓
 - [x] **Linter**: No linting errors in src/ directory
 - [x] **App Configuration**: app.json properly configured
-  - App Name: Edmund Fitzgerald RC Controller ✓
+  - App Name: Edmund Fitzgerald ✓
   - Bundle ID: `com.ryanmio.edmundfitzgerald` ✓
   - Version: 1.0.0 ✓
-  - Icon and splash screen assets present ✓
-  - 1975 retro theme aesthetic ✓
+  - Icon: 1024×1024 PNG, RGB format (no transparency) ✓
+  - Splash screen assets present ✓
 - [x] **Screen Components**: All three screens compile
   - ConnectionScreen.tsx ✓
   - DashboardScreen.tsx ✓
@@ -29,12 +29,25 @@
 
 ## 🚀 BUILD & SUBMISSION STEPS
 
-### Step 1: Verify Prerequisites
+### Step 1: Verify Assets
+Before building, verify all assets meet requirements:
 ```bash
-eas --version  # Should be >= 16.28.0
+cd boat-telemetry-app
+node scripts/verify-assets.js
 ```
 
-### Step 2: Build for iOS App Store
+This checks:
+- ✅ App icon is 1024×1024 PNG (RGB, no transparency)
+- ✅ Splash screen is 1024×1024 PNG
+- ✅ All required files exist
+
+### Step 2: Verify Prerequisites
+```bash
+eas --version  # Should be >= 16.28.0
+eas whoami     # Verify you're logged in
+```
+
+### Step 3: Build for iOS App Store
 ```bash
 cd /Users/ryanmioduskiimac/Documents/GitHub/EdmundFitzgeraldController/boat-telemetry-app
 eas build --platform ios --profile production
@@ -43,14 +56,14 @@ eas build --platform ios --profile production
 **Expected time**: 15-20 minutes
 **Will**: Create a release build signed with your Apple certificates
 
-### Step 3: Submit to TestFlight
+### Step 4: Submit to TestFlight
 ```bash
 eas submit --platform ios --latest
 ```
 
 **Expected result**: Build automatically submitted to App Store Connect
 
-### Step 4: Verify in App Store Connect
+### Step 5: Verify in App Store Connect
 1. Go to https://appstoreconnect.apple.com
 2. Select "Boat Telemetry" app
 3. Navigate to TestFlight → iOS builds
@@ -70,7 +83,7 @@ eas submit --platform ios --latest
 
 - **Cost**: Each build uses 1 EAS build credit (you have a paid account)
 - **Build is clean**: No errors, warnings, or dependency issues
-- **Bundle ID is unique**: `com.ryanmio.boattelemetryapp` (registered with Apple)
+- **Bundle ID is unique**: `com.ryanmio.edmundfitzgerald` (registered with Apple)
 - **Version is tracked**: Set to 1.0.0, will auto-increment on next build if needed
 - **All assets present**: Icon, splash screen, boat.png all verified
 

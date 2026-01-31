@@ -39,6 +39,19 @@ if ! eas whoami &> /dev/null; then
 fi
 echo -e "${GREEN}✓ Authenticated${NC}"
 
+# Verify assets
+echo ""
+echo -e "${BLUE}Verifying assets...${NC}"
+if [ -f "scripts/verify-assets.js" ]; then
+    if node scripts/verify-assets.js; then
+        echo -e "${GREEN}✓ Assets verified${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Asset verification failed, but continuing...${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠️  Asset verification script not found, skipping...${NC}"
+fi
+
 # Show build info
 echo ""
 echo -e "${YELLOW}Build Configuration:${NC}"
@@ -60,6 +73,7 @@ fi
 
 echo ""
 echo -e "${BLUE}Step 1: Building iOS app for App Store...${NC}"
+echo -e "${YELLOW}This may take 15-20 minutes...${NC}"
 eas build --platform ios --profile production
 
 echo ""

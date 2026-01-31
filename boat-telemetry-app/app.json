@@ -17,6 +17,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.ryanmio.edmundfitzgerald",
       "buildNumber": "1",
+      "icon": "./assets/icon.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocalNetworkUsageDescription": "This app connects to on-board ESP32 devices (telemetry and camera) on your local Wi‑Fi network.",

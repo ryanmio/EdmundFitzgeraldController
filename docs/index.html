@@ -941,6 +941,16 @@
             const rect = stickElement.getBoundingClientRect();
             const stickWidth = rect.width;
             const stickHeight = rect.height;
+            const centerX = rect.left + stickWidth / 2;
+            const centerY = rect.top + stickHeight / 2;
+
+            // For throttle (vertical only), force X to center
+            if (isThrottle) {
+                x = centerX;
+            } else {
+                // For rudder (horizontal only), force Y to center
+                y = centerY;
+            }
 
             // Normalize to 0-1 range
             let normalizedX = (x - rect.left) / stickWidth;
@@ -978,20 +988,23 @@
             pwmDisplay.textContent = roundedPwm;
             valueDisplay.textContent = roundedPwm + 'µs';
 
-            // Update action label
+            // Calculate percentage from center for action display
+            const percentFromCenter = Math.abs(invertedValue - 0.5) * 2 * 100; // 0-100%
+
+            // Update action label with intensity
             if (isThrottle) {
                 if (roundedPwm < 1400) {
-                    actionDisplay.textContent = 'REVERSE';
+                    actionDisplay.textContent = `REVERSE (${Math.round(percentFromCenter)}%)`;
                 } else if (roundedPwm > 1600) {
-                    actionDisplay.textContent = 'FORWARD';
+                    actionDisplay.textContent = `FORWARD (${Math.round(percentFromCenter)}%)`;
                 } else {
                     actionDisplay.textContent = 'STOP';
                 }
             } else {
                 if (roundedPwm < 1400) {
-                    actionDisplay.textContent = 'LEFT';
+                    actionDisplay.textContent = `LEFT (${Math.round(percentFromCenter)}%)`;
                 } else if (roundedPwm > 1600) {
-                    actionDisplay.textContent = 'RIGHT';
+                    actionDisplay.textContent = `RIGHT (${Math.round(percentFromCenter)}%)`;
                 } else {
                     actionDisplay.textContent = 'CENTER';
                 }
@@ -1024,8 +1037,9 @@
 
         function resetToCenter() {
             if (!isThrottle) { // Only rudder resets to center
-                const centerX = stickElement.getBoundingClientRect().left + stickElement.getBoundingClientRect().width / 2;
-                const centerY = stickElement.getBoundingClientRect().top + stickElement.getBoundingClientRect().height / 2;
+                const rect = stickElement.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
                 updatePosition(centerX, centerY, true); // Animate back to center
             }
             isDragging = false;

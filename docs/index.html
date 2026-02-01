@@ -208,33 +208,35 @@
             background: linear-gradient(135deg, #f7f7f7 0%, #ffffff 100%);
             border: 1px solid var(--color-border);
             border-radius: 4px;
-            padding: calc(var(--spacing-unit) * 4);
+            padding: calc(var(--spacing-unit) * 3);
             margin-bottom: calc(var(--spacing-unit) * 4);
         }
 
-        .engine-viz h3 {
-            font-size: 1rem;
-            font-weight: 500;
-            margin-bottom: calc(var(--spacing-unit) * 2);
-            color: var(--color-text);
+        .engine-controls {
+            display: flex;
+            gap: calc(var(--spacing-unit) * 3);
+            align-items: flex-end;
+            margin-bottom: calc(var(--spacing-unit) * 3);
         }
 
         .throttle-control {
-            margin-bottom: calc(var(--spacing-unit) * 4);
+            flex: 1;
         }
 
         .throttle-label {
             display: flex;
             justify-content: space-between;
-            font-size: 0.875rem;
-            margin-bottom: calc(var(--spacing-unit) * 2);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: calc(var(--spacing-unit) * 1);
             color: var(--color-text-dim);
         }
 
         .throttle-slider {
             width: 100%;
-            height: 8px;
-            border-radius: 4px;
+            height: 6px;
+            border-radius: 3px;
             background: linear-gradient(90deg, #ccc 0%, #666 100%);
             outline: none;
             -webkit-appearance: none;
@@ -244,96 +246,82 @@
         .throttle-slider::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 24px;
-            height: 24px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #000 0%, #333 100%);
+            background: #000;
             cursor: pointer;
             border: 2px solid #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
 
         .throttle-slider::-moz-range-thumb {
-            width: 24px;
-            height: 24px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #000 0%, #333 100%);
+            background: #000;
             cursor: pointer;
             border: 2px solid #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
 
         .engine-params {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: calc(var(--spacing-unit) * 3);
-            margin-bottom: calc(var(--spacing-unit) * 4);
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: calc(var(--spacing-unit) * 2);
+            margin-bottom: calc(var(--spacing-unit) * 2);
         }
 
         .param-box {
-            background: #f0f0f0;
+            background: #f9f9f9;
             border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: calc(var(--spacing-unit) * 2);
+            border-radius: 3px;
+            padding: calc(var(--spacing-unit) * 1.5);
             text-align: center;
         }
 
         .param-label {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.05em;
             color: var(--color-text-dim);
-            margin-bottom: calc(var(--spacing-unit) * 1);
+            margin-bottom: calc(var(--spacing-unit) * 0.5);
         }
 
         .param-value {
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             font-weight: 600;
             color: var(--color-text);
             font-family: 'Courier New', monospace;
         }
 
-        .param-unit {
-            font-size: 0.75rem;
-            color: var(--color-text-dim);
-            margin-top: calc(var(--spacing-unit) * 0.5);
-        }
-
-        .engine-viz-graph {
-            display: flex;
-            gap: calc(var(--spacing-unit) * 4);
-            margin-bottom: calc(var(--spacing-unit) * 3);
-        }
-
-        .graph {
-            flex: 1;
-            background: #fafafa;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: calc(var(--spacing-unit) * 2);
-            text-align: center;
-        }
-
-        .graph-title {
+        .play-button {
+            padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2.5);
+            background: #000;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            font-weight: 600;
             font-size: 0.875rem;
-            font-weight: 500;
-            margin-bottom: calc(var(--spacing-unit) * 2);
-            color: var(--color-text-dim);
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.05em;
+            transition: background 0.2s;
         }
 
-        svg {
-            width: 100%;
-            height: 150px;
+        .play-button:hover {
+            background: #333;
         }
 
-        .info-box {
-            background: #f9f9f9;
-            border-left: 4px solid var(--color-accent);
-            padding: calc(var(--spacing-unit) * 2);
-            font-size: 0.875rem;
+        .play-button:active {
+            background: #666;
+        }
+
+        .info-text {
+            font-size: 0.8rem;
             color: var(--color-text-dim);
-            line-height: 1.6;
+            font-style: italic;
         }
 
         @media (max-width: 768px) {
@@ -364,58 +352,37 @@
         <section id="audio-engine">
             <h2>Audio Engine System</h2>
             <div class="engine-viz">
-                <h3>Real-Time Engine Audio Synthesis</h3>
-                
-                <div class="throttle-control">
-                    <div class="throttle-label">
-                        <span>Throttle Control (0-100%)</span>
-                        <span id="throttlePercent">0%</span>
+                <div class="engine-controls">
+                    <div class="throttle-control">
+                        <div class="throttle-label">
+                            <span>Throttle: <strong id="throttlePercent">0%</strong></span>
+                            <span>Pitch: <strong id="rateValue">0.80×</strong></span>
+                        </div>
+                        <input type="range" id="throttleSlider" class="throttle-slider" min="0" max="100" value="0" />
                     </div>
-                    <input type="range" id="throttleSlider" class="throttle-slider" min="0" max="100" value="0" />
+                    <button id="playButton" class="play-button">▶ PLAY</button>
                 </div>
 
                 <div class="engine-params">
                     <div class="param-box">
-                        <div class="param-label">Playback Rate</div>
-                        <div class="param-value" id="rateValue">0.80×</div>
-                        <div class="param-unit">Pitch Multiplier</div>
+                        <div class="param-label">Throttle</div>
+                        <div class="param-value" id="throttleDisplay">0%</div>
                     </div>
                     <div class="param-box">
-                        <div class="param-label">Gain</div>
-                        <div class="param-value" id="gainValue">0.55</div>
-                        <div class="param-unit">Volume Level</div>
+                        <div class="param-label">Pitch Rate</div>
+                        <div class="param-value" id="rateDisplay">0.80×</div>
+                    </div>
+                    <div class="param-box">
+                        <div class="param-label">Volume</div>
+                        <div class="param-value" id="gainDisplay">0.55</div>
                     </div>
                     <div class="param-box">
                         <div class="param-label">Status</div>
-                        <div class="param-value" id="statusValue">IDLE</div>
-                        <div class="param-unit"></div>
+                        <div class="param-value" id="statusDisplay">IDLE</div>
                     </div>
                 </div>
 
-                <div class="engine-viz-graph">
-                    <div class="graph">
-                        <div class="graph-title">Pitch Response</div>
-                        <svg id="rateGraph" viewBox="0 0 200 100" preserveAspectRatio="xMidYMid meet">
-                            <line x1="10" y1="90" x2="190" y2="90" stroke="#ccc" stroke-width="1" />
-                            <line x1="10" y1="10" x2="10" y2="90" stroke="#ccc" stroke-width="1" />
-                            <polyline id="rateCurve" points="" stroke="#000" stroke-width="2" fill="none" />
-                            <circle id="ratePoint" cx="10" cy="90" r="3" fill="#e74c3c" />
-                        </svg>
-                    </div>
-                    <div class="graph">
-                        <div class="graph-title">Volume Response</div>
-                        <svg id="gainGraph" viewBox="0 0 200 100" preserveAspectRatio="xMidYMid meet">
-                            <line x1="10" y1="90" x2="190" y2="90" stroke="#ccc" stroke-width="1" />
-                            <line x1="10" y1="10" x2="10" y2="90" stroke="#ccc" stroke-width="1" />
-                            <polyline id="gainCurve" points="" stroke="#27ae60" stroke-width="2" fill="none" />
-                            <circle id="gainPoint" cx="10" cy="90" r="3" fill="#e74c3c" />
-                        </svg>
-                    </div>
-                </div>
-
-                <div class="info-box">
-                    <strong>How it works:</strong> The engine audio system reads throttle input and dynamically adjusts the playback rate (pitch) and gain (volume) of a pre-recorded engine sound loop. At idle (0%), the engine runs slowly and quietly. As throttle increases, pitch and volume scale up smoothly. Rev transients (sudden throttle spikes) apply a 25% boost to pitch and 40% boost to volume for realistic engine response.
-                </div>
+                <p class="info-text">Adjust throttle to hear how the engine audio pitch and volume respond in real-time. Engine audio processed with FFT filtering for smooth looping.</p>
             </div>
         </section>
             <h2>Platform Overview</h2>
@@ -624,7 +591,7 @@
 </html>
 
 <script>
-// Audio Engine Visualization
+// Audio Engine Visualization with real engine audio playback
 (function() {
     // Constants from audio_engine.h
     const THROTTLE_SMOOTH_ALPHA = 0.15;
@@ -632,44 +599,93 @@
     const RATE_MAX = 1.5;
     const GAIN_MIN = 0.55;
     const GAIN_MAX = 0.8;
-    const REV_BOOST_RATE = 1.25;
-    const REV_BOOST_GAIN = 1.4;
     const REV_THRESHOLD = 0.15;
 
     let throttleState = 0;
     let smoothedThrottle = 0;
     let prevThrottle = 0;
+    let audioContext = null;
+    let audioSource = null;
+    let gainNode = null;
+    let isPlaying = false;
 
-    function calculateRate(throttle, isRevActive) {
-        const baseRate = RATE_MIN + (throttle * (RATE_MAX - RATE_MIN));
-        return isRevActive ? baseRate * REV_BOOST_RATE : baseRate;
+    function calculateRate(throttle) {
+        return RATE_MIN + (throttle * (RATE_MAX - RATE_MIN));
     }
 
-    function calculateGain(throttle, isRevActive) {
-        const baseGain = GAIN_MIN + (throttle * (GAIN_MAX - GAIN_MIN));
-        return isRevActive ? baseGain * REV_BOOST_GAIN : baseGain;
+    function calculateGain(throttle) {
+        return GAIN_MIN + (throttle * (GAIN_MAX - GAIN_MIN));
     }
 
-    function generateCurve(minVal, maxVal, isRate = false) {
-        let points = [];
-        for (let i = 0; i <= 180; i += 18) {
-            const throttle = i / 180;
-            const value = minVal + (throttle * (maxVal - minVal));
-            
-            // Scale to graph (180 width, 80 height range)
-            const x = 10 + (i / 180) * 180;
-            const y = 90 - (value - minVal) / (maxVal - minVal) * 80;
-            points.push(`${x},${y}`);
+    function initAudio() {
+        if (audioContext) return;
+        
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        gainNode = audioContext.createGain();
+        gainNode.connect(audioContext.destination);
+    }
+
+    function playEngine() {
+        if (isPlaying) return;
+        
+        initAudio();
+        
+        // Fetch and decode the engine audio
+        fetch('audio-assets/engine/engine.mp3')
+            .then(response => response.arrayBuffer())
+            .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+            .then(audioBuffer => {
+                isPlaying = true;
+                document.getElementById('playButton').textContent = '⏸ STOP';
+                
+                // Create buffer source
+                audioSource = audioContext.createBufferSource();
+                audioSource.buffer = audioBuffer;
+                audioSource.loop = true;
+                audioSource.playbackRate.value = calculateRate(smoothedThrottle);
+                audioSource.connect(gainNode);
+                gainNode.gain.value = calculateGain(smoothedThrottle);
+                
+                audioSource.start(0);
+                
+                // Update audio as throttle changes
+                const updateInterval = setInterval(() => {
+                    if (!isPlaying) {
+                        clearInterval(updateInterval);
+                        return;
+                    }
+                    
+                    const rate = calculateRate(smoothedThrottle);
+                    const gain = calculateGain(smoothedThrottle);
+                    
+                    audioSource.playbackRate.value = rate;
+                    gainNode.gain.value = gain;
+                }, 50);
+            })
+            .catch(err => {
+                console.error('Error loading engine audio:', err);
+                alert('Could not load engine audio file');
+                isPlaying = false;
+                document.getElementById('playButton').textContent = '▶ PLAY';
+            });
+    }
+
+    function stopEngine() {
+        if (!isPlaying || !audioSource) return;
+        
+        audioSource.stop();
+        isPlaying = false;
+        document.getElementById('playButton').textContent = '▶ PLAY';
+    }
+
+    // Play/Stop button
+    document.getElementById('playButton').addEventListener('click', () => {
+        if (isPlaying) {
+            stopEngine();
+        } else {
+            playEngine();
         }
-        return points.join(' ');
-    }
-
-    // Initialize curves
-    const rateCurve = generateCurve(RATE_MIN, RATE_MAX, true);
-    const gainCurve = generateCurve(GAIN_MIN, GAIN_MAX);
-
-    document.getElementById('rateCurve').setAttribute('points', rateCurve);
-    document.getElementById('gainCurve').setAttribute('points', gainCurve);
+    });
 
     // Slider interaction
     const slider = document.getElementById('throttleSlider');
@@ -677,32 +693,30 @@
         throttleState = parseInt(e.target.value) / 100;
         smoothedThrottle += THROTTLE_SMOOTH_ALPHA * (throttleState - smoothedThrottle);
         
-        // Check for rev transient
+        const throttlePercent = Math.round(throttleState * 100);
+        const rate = calculateRate(smoothedThrottle);
+        const gain = calculateGain(smoothedThrottle);
         const throttleDelta = Math.abs(throttleState - prevThrottle);
         const isRev = throttleDelta > REV_THRESHOLD;
         
         prevThrottle = throttleState;
 
-        const rate = calculateRate(smoothedThrottle, isRev);
-        const gain = calculateGain(smoothedThrottle, isRev);
-
         // Update display
-        document.getElementById('throttlePercent').textContent = Math.round(throttleState * 100) + '%';
+        document.getElementById('throttlePercent').textContent = throttlePercent + '%';
+        document.getElementById('throttleDisplay').textContent = throttlePercent + '%';
         document.getElementById('rateValue').textContent = rate.toFixed(2) + '×';
-        document.getElementById('gainValue').textContent = gain.toFixed(2);
-        document.getElementById('statusValue').textContent = isRev ? 'REVVING' : (throttleState > 0 ? 'RUNNING' : 'IDLE');
+        document.getElementById('rateDisplay').textContent = rate.toFixed(2) + '×';
+        document.getElementById('gainDisplay').textContent = gain.toFixed(2);
+        document.getElementById('statusDisplay').textContent = isRev ? 'REVVING' : (throttleState > 0 ? 'RUNNING' : 'IDLE');
+    });
 
-        // Update graph points
-        const rateX = 10 + (smoothedThrottle * 180);
-        const rateY = 90 - ((rate - RATE_MIN) / (RATE_MAX - RATE_MIN) * 80);
-        document.getElementById('ratePoint').setAttribute('cx', rateX);
-        document.getElementById('ratePoint').setAttribute('cy', rateY);
-
-        const gainX = 10 + (smoothedThrottle * 180);
-        const gainY = 90 - ((gain - GAIN_MIN) / (GAIN_MAX - GAIN_MIN) * 80);
-        document.getElementById('gainPoint').setAttribute('cx', gainX);
-        document.getElementById('gainPoint').setAttribute('cy', gainY);
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        if (audioSource) {
+            stopEngine();
+        }
     });
 })();
 </script>
+
 

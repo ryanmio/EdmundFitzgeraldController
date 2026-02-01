@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.0.1/model-viewer.min.js"></script>
     <style>
         :root {
             --color-bg: #ffffff;
@@ -203,6 +204,32 @@
             .gallery, .gallery-3col, .spec-grid { grid-template-columns: 1fr; }
             .container { padding: 0 calc(var(--spacing-unit) * 3); }
         }
+
+        model-viewer {
+            width: 100%;
+            height: 500px;
+            border: 1px solid var(--color-border);
+            background: linear-gradient(135deg, #f7f7f7 0%, #ffffff 100%);
+        }
+
+        .model-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: calc(var(--spacing-unit) * 4);
+        }
+
+        .model-item {
+            position: relative;
+        }
+
+        @media (max-width: 768px) {
+            .model-grid {
+                grid-template-columns: 1fr;
+            }
+            model-viewer {
+                height: 400px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -396,11 +423,57 @@
                         <p class="media-desc">Complete electronics system showing ESP32, audio, sensors, and control signals.</p>
                     </div>
                 </div>
-                <div class="media-item">
-                    <div class="media-placeholder">3D Model Visualization</div>
+            </div>
+
+            <h2 style="margin-top: calc(var(--spacing-unit) * 12);">Custom 3D Components</h2>
+            <p style="color: var(--color-text-dim); margin-bottom: calc(var(--spacing-unit) * 4);">Interactive 3D models of custom-designed components. Rotate, zoom, and pan to explore the details.</p>
+            <div class="model-grid">
+                <div class="model-item">
+                    <model-viewer src="models/forward-audio-box.stl" auto-rotate camera-controls touch-action="pan-y" ar-status="not-presenting">
+                    </model-viewer>
                     <div class="media-info">
-                        <p class="media-title">Fusion 360 Models</p>
-                        <p class="media-desc">3D CAD model assembly and exploded views coming soon.</p>
+                        <p class="media-title">Forward Audio Box</p>
+                        <p class="media-desc">Housing for front I2S DAC and amplifier components.</p>
+                    </div>
+                </div>
+                <div class="model-item">
+                    <model-viewer src="models/aft-audio-box.stl" auto-rotate camera-controls touch-action="pan-y" ar-status="not-presenting">
+                    </model-viewer>
+                    <div class="media-info">
+                        <p class="media-title">Aft Audio Box</p>
+                        <p class="media-desc">Rear compartment for DFPlayer Pro audio module.</p>
+                    </div>
+                </div>
+                <div class="model-item">
+                    <model-viewer src="models/esp32-housing.stl" auto-rotate camera-controls touch-action="pan-y" ar-status="not-presenting">
+                    </model-viewer>
+                    <div class="media-info">
+                        <p class="media-title">ESP32 Housing</p>
+                        <p class="media-desc">Protective enclosure for main control processor and power management.</p>
+                    </div>
+                </div>
+                <div class="model-item">
+                    <model-viewer src="models/Plug Hatch.stl" auto-rotate camera-controls touch-action="pan-y" ar-status="not-presenting">
+                    </model-viewer>
+                    <div class="media-info">
+                        <p class="media-title">Plug Hatch</p>
+                        <p class="media-desc">Watertight access point for battery and sensor connections.</p>
+                    </div>
+                </div>
+                <div class="model-item">
+                    <model-viewer src="models/Plug Hatch lid.stl" auto-rotate camera-controls touch-action="pan-y" ar-status="not-presenting">
+                    </model-viewer>
+                    <div class="media-info">
+                        <p class="media-title">Plug Hatch Lid</p>
+                        <p class="media-desc">Sealing cover for the main access hatch.</p>
+                    </div>
+                </div>
+                <div class="model-item">
+                    <model-viewer src="models/computer lid v3.stl" auto-rotate camera-controls touch-action="pan-y" ar-status="not-presenting">
+                    </model-viewer>
+                    <div class="media-info">
+                        <p class="media-title">Computer Lid v3</p>
+                        <p class="media-desc">Cover for electronics compartment with mounting interface.</p>
                     </div>
                 </div>
             </div>

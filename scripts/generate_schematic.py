@@ -106,6 +106,14 @@ symbols = """
     (pin output line (at 12.7 12.7 180) (length 2.54) (name "L-OUT" (effects (font (size 1.27 1.27)))) (number "5"))
     (pin output line (at 12.7 10.16 180) (length 2.54) (name "R-OUT" (effects (font (size 1.27 1.27)))) (number "6")))
   )
+  (symbol "Module:ESP32-CAM" (in_bom yes) (on_board yes)
+   (property "Reference" "U" (at 0 15.24 0)) (property "Value" "ESP32-CAM" (at 0 12.7 0))
+   (symbol "ESP32-CAM_0_1" (rectangle (start -10.16 -12.7) (end 10.16 12.7) (stroke (width 0.254)) (fill (type background))))
+   (symbol "ESP32-CAM_1_1"
+    (pin power_in line (at -12.7 10.16 0) (length 2.54) (name "5V" (effects (font (size 1.27 1.27)))) (number "1"))
+    (pin power_in line (at -12.7 7.62 0) (length 2.54) (name "GND" (effects (font (size 1.27 1.27)))) (number "2"))
+    (pin input line (at -12.7 5.08 0) (length 2.54) (name "U0R" (effects (font (size 1.27 1.27)))) (number "3"))
+    (pin output line (at -12.7 2.54 0) (length 2.54) (name "U0T" (effects (font (size 1.27 1.27)))) (number "4"))))
 """
 
 content = [
@@ -203,6 +211,14 @@ content.extend([
 content.extend([
     kicad_wire(165.24, 105.08, 180, 105.08), kicad_label("THROTTLE_RC", 180, 105.08),
     kicad_wire(165.24, 107.62, 180, 107.62), kicad_label("SERVO_RC", 180, 107.62),
+])
+
+# --- CAMERA MODULE ---
+u4_uuid = gen_uuid(); add_instance("U4", 1, "ESP32-CAM", "", u4_uuid)
+content.append(f' (symbol (lib_id "Module:ESP32-CAM") (at 260 260 0) (unit 1) (uuid "{u4_uuid}") (in_bom yes) (on_board yes) (property "Reference" "U4" (at 260 245 0)) (property "Value" "ESP32-CAM" (at 260 275 0)))')
+content.extend([
+    kicad_wire(247.3, 250, 240, 250), kicad_label("5V_POWER", 240, 250),
+    kicad_wire(247.3, 252.54, 240, 252.54), kicad_label("GND", 240, 252.54),
 ])
 
 # --- FINALIZE ---

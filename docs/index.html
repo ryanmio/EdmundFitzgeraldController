@@ -386,6 +386,143 @@
             font-style: italic;
         }
 
+        .rc-controls {
+            background: linear-gradient(135deg, #f7f7f7 0%, #ffffff 100%);
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            padding: calc(var(--spacing-unit) * 3);
+            margin-bottom: calc(var(--spacing-unit) * 2);
+        }
+
+        .rc-sticks-container {
+            display: flex;
+            gap: calc(var(--spacing-unit) * 6);
+            justify-content: center;
+            margin-bottom: calc(var(--spacing-unit) * 3);
+            flex-wrap: wrap;
+        }
+
+        .stick-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: calc(var(--spacing-unit) * 2);
+        }
+
+        .stick-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--color-text-dim);
+        }
+
+        .stick-visual {
+            width: 120px;
+            height: 120px;
+            border: 2px solid var(--color-text);
+            border-radius: 8px;
+            background: #f9f9f9;
+            position: relative;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .stick-visual:active {
+            cursor: grabbing;
+        }
+
+        .stick-crosshair {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .stick-crosshair-h {
+            position: absolute;
+            width: 100%;
+            height: 1px;
+            top: 50%;
+            left: 0;
+            background: #ddd;
+        }
+
+        .stick-crosshair-v {
+            position: absolute;
+            height: 100%;
+            width: 1px;
+            top: 0;
+            left: 50%;
+            background: #ddd;
+        }
+
+        .stick-handle {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: #000;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 2px solid #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+
+        .stick-value {
+            font-size: 0.75rem;
+            font-family: 'Courier New', monospace;
+            color: var(--color-text-dim);
+            text-align: center;
+            min-height: 30px;
+        }
+
+        .pwm-display {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: calc(var(--spacing-unit) * 3);
+            margin-bottom: calc(var(--spacing-unit) * 2);
+        }
+
+        .pwm-box {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: calc(var(--spacing-unit) * 2);
+            text-align: center;
+        }
+
+        .pwm-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--color-text-dim);
+            margin-bottom: calc(var(--spacing-unit) * 1);
+        }
+
+        .pwm-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+            color: var(--color-text);
+        }
+
+        .pwm-range {
+            font-size: 0.65rem;
+            color: var(--color-text-dim);
+            margin-top: calc(var(--spacing-unit) * 0.5);
+        }
+
+        .rc-info-text {
+            font-size: 0.8rem;
+            color: var(--color-text-dim);
+            text-align: center;
+            font-style: italic;
+        }
+
         @media (max-width: 768px) {
             h1 { font-size: 2rem; }
             .gallery, .gallery-3col, .spec-grid { grid-template-columns: 1fr; }
@@ -700,10 +837,47 @@
                     </div>
                 </div>
                 <div class="media-item">
-                    <div class="media-placeholder">System Schematic #2 • Coming Soon</div>
-                    <div class="media-info">
-                        <p class="media-title">System Schematic #2</p>
-                        <p class="media-desc">Power distribution and peripheral integration details.</p>
+                    <div class="rc-controls">
+                        <h3 style="text-align: center; margin-bottom: calc(var(--spacing-unit) * 2);">RC Transmitter Controls</h3>
+                        <div class="rc-sticks-container">
+                            <div class="stick-group">
+                                <div class="stick-label">Throttle</div>
+                                <div class="stick-visual" id="throttleStick">
+                                    <div class="stick-crosshair">
+                                        <div class="stick-crosshair-h"></div>
+                                        <div class="stick-crosshair-v"></div>
+                                    </div>
+                                    <div class="stick-handle" id="throttleHandle"></div>
+                                </div>
+                                <div class="stick-value" id="throttleValue">1500µs</div>
+                            </div>
+                            <div class="stick-group">
+                                <div class="stick-label">Rudder</div>
+                                <div class="stick-visual" id="rudderStick">
+                                    <div class="stick-crosshair">
+                                        <div class="stick-crosshair-h"></div>
+                                        <div class="stick-crosshair-v"></div>
+                                    </div>
+                                    <div class="stick-handle" id="rudderHandle"></div>
+                                </div>
+                                <div class="stick-value" id="rudderValue">1500µs</div>
+                            </div>
+                        </div>
+
+                        <div class="pwm-display">
+                            <div class="pwm-box">
+                                <div class="pwm-label">Throttle PWM</div>
+                                <div class="pwm-value" id="throttlePwm">1500</div>
+                                <div class="pwm-range">µs (GPIO18)</div>
+                            </div>
+                            <div class="pwm-box">
+                                <div class="pwm-label">Rudder PWM</div>
+                                <div class="pwm-value" id="rudderPwm">1500</div>
+                                <div class="pwm-range">µs (GPIO19)</div>
+                            </div>
+                        </div>
+
+                        <p class="rc-info-text">Drag the sticks to simulate RC transmitter input. Range: 1000µs (full reverse/left) to 2000µs (full forward/right).</p>
                     </div>
                 </div>
             </div>
@@ -743,6 +917,103 @@
 
 </body>
 </html>
+
+<script>
+// RC Control Visualization
+(function() {
+    const PWM_MIN = 1000;
+    const PWM_MAX = 2000;
+    const PWM_CENTER = 1500;
+
+    function setupStick(stickId, handlerId, pwmDisplayId, valueDisplayId) {
+        const stickElement = document.getElementById(stickId);
+        const handleElement = document.getElementById(handlerId);
+        const pwmDisplay = document.getElementById(pwmDisplayId);
+        const valueDisplay = document.getElementById(valueDisplayId);
+
+        let isDragging = false;
+
+        function updatePosition(x, y) {
+            // Get stick bounds
+            const rect = stickElement.getBoundingClientRect();
+            const stickWidth = rect.width;
+            const stickHeight = rect.height;
+
+            // Normalize to 0-1 range
+            let normalizedX = (x - rect.left) / stickWidth;
+            let normalizedY = (y - rect.top) / stickHeight;
+
+            // Clamp to 0-1
+            normalizedX = Math.max(0, Math.min(1, normalizedX));
+            normalizedY = Math.max(0, Math.min(1, normalizedY));
+
+            // For throttle (vertical), only Y matters
+            // For rudder (horizontal), only X matters
+            const isThrottle = stickId.includes('throttle');
+            const normalizedValue = isThrottle ? normalizedY : normalizedX;
+
+            // Invert Y for throttle (up = forward/2000)
+            const invertedValue = isThrottle ? (1 - normalizedValue) : normalizedValue;
+
+            // Convert to PWM range
+            const pwmValue = PWM_MIN + (invertedValue * (PWM_MAX - PWM_MIN));
+
+            // Update handle position
+            const handleX = normalizedX * 100;
+            const handleY = normalizedY * 100;
+            handleElement.style.left = handleX + '%';
+            handleElement.style.top = handleY + '%';
+            handleElement.style.transform = 'translate(-50%, -50%)';
+
+            // Update displays
+            const roundedPwm = Math.round(pwmValue);
+            pwmDisplay.textContent = roundedPwm;
+            valueDisplay.textContent = roundedPwm + 'µs';
+        }
+
+        stickElement.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            updatePosition(e.clientX, e.clientY);
+        });
+
+        stickElement.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            if (e.touches.length > 0) {
+                updatePosition(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                updatePosition(e.clientX, e.clientY);
+            }
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (isDragging && e.touches.length > 0) {
+                updatePosition(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        document.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        // Initialize to center position
+        updatePosition(stickElement.getBoundingClientRect().left + stickElement.getBoundingClientRect().width / 2,
+                      stickElement.getBoundingClientRect().top + stickElement.getBoundingClientRect().height / 2);
+    }
+
+    // Setup both sticks
+    setupStick('throttleStick', 'throttleHandle', 'throttlePwm', 'throttleValue');
+    setupStick('rudderStick', 'rudderHandle', 'rudderPwm', 'rudderValue');
+})();
+</script>
+
 
 <script>
 // Audio Engine Visualization with real engine audio playback

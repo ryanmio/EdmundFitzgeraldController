@@ -850,6 +850,7 @@
                                     <div class="stick-handle" id="throttleHandle"></div>
                                 </div>
                                 <div class="stick-value" id="throttleValue">1500µs</div>
+                                <div class="stick-value" style="font-size: 0.7rem; color: var(--color-accent); font-weight: 600;">STOP</div>
                             </div>
                             <div class="stick-group">
                                 <div class="stick-label">Rudder</div>
@@ -861,6 +862,7 @@
                                     <div class="stick-handle" id="rudderHandle"></div>
                                 </div>
                                 <div class="stick-value" id="rudderValue">1500µs</div>
+                                <div class="stick-value" style="font-size: 0.7rem; color: var(--color-accent); font-weight: 600;">CENTER</div>
                             </div>
                         </div>
 
@@ -925,15 +927,16 @@
     const PWM_MAX = 2000;
     const PWM_CENTER = 1500;
 
-    function setupStick(stickId, handlerId, pwmDisplayId, valueDisplayId) {
+    function setupStick(stickId, handlerId, pwmDisplayId, valueDisplayId, isThrottle) {
         const stickElement = document.getElementById(stickId);
         const handleElement = document.getElementById(handlerId);
         const pwmDisplay = document.getElementById(pwmDisplayId);
         const valueDisplay = document.getElementById(valueDisplayId);
+        const actionDisplay = valueDisplay.nextElementSibling; // Get the action label element
 
         let isDragging = false;
 
-        function updatePosition(x, y) {
+        function updatePosition(x, y, animate = false) {
             // Get stick bounds
             const rect = stickElement.getBoundingClientRect();
             const stickWidth = rect.width;
@@ -947,9 +950,7 @@
             normalizedX = Math.max(0, Math.min(1, normalizedX));
             normalizedY = Math.max(0, Math.min(1, normalizedY));
 
-            // For throttle (vertical), only Y matters
-            // For rudder (horizontal), only X matters
-            const isThrottle = stickId.includes('throttle');
+            // Get the relevant axis value
             const normalizedValue = isThrottle ? normalizedY : normalizedX;
 
             // Invert Y for throttle (up = forward/2000)
@@ -961,6 +962,13 @@
             // Update handle position
             const handleX = normalizedX * 100;
             const handleY = normalizedY * 100;
+            
+            if (animate) {
+                handleElement.style.transition = 'all 0.3s ease-out';
+            } else {
+                handleElement.style.transition = 'none';
+            }
+            
             handleElement.style.left = handleX + '%';
             handleElement.style.top = handleY + '%';
             handleElement.style.transform = 'translate(-50%, -50%)';
@@ -969,48 +977,71 @@
             const roundedPwm = Math.round(pwmValue);
             pwmDisplay.textContent = roundedPwm;
             valueDisplay.textContent = roundedPwm + 'µs';
+
+            // Update action label
+            if (isThrottle) {
+                if (roundedPwm < 1400) {
+                    actionDisplay.textContent = 'REVERSE';
+                } else if (roundedPwm > 1600) {
+                    actionDisplay.textContent = 'FORWARD';
+                } else {
+                    actionDisplay.textContent = 'STOP';
+                }
+            } else {
+                if (roundedPwm < 1400) {
+                    actionDisplay.textContent = 'LEFT';
+                } else if (roundedPwm > 1600) {
+                    actionDisplay.textContent = 'RIGHT';
+                } else {
+                    actionDisplay.textContent = 'CENTER';
+                }
+            }
         }
 
         stickElement.addEventListener('mousedown', (e) => {
             isDragging = true;
-            updatePosition(e.clientX, e.clientY);
+            updatePosition(e.clientX, e.clientY, false);
         });
 
         stickElement.addEventListener('touchstart', (e) => {
             isDragging = true;
             if (e.touches.length > 0) {
-                updatePosition(e.touches[0].clientX, e.touches[0].clientY);
+                updatePosition(e.touches[0].clientX, e.touches[0].clientY, false);
             }
         });
 
         document.addEventListener('mousemove', (e) => {
             if (isDragging) {
-                updatePosition(e.clientX, e.clientY);
+                updatePosition(e.clientX, e.clientY, false);
             }
         });
 
         document.addEventListener('touchmove', (e) => {
             if (isDragging && e.touches.length > 0) {
-                updatePosition(e.touches[0].clientX, e.touches[0].clientY);
+                updatePosition(e.touches[0].clientX, e.touches[0].clientY, false);
             }
         });
 
-        document.addEventListener('mouseup', () => {
+        function resetToCenter() {
+            if (!isThrottle) { // Only rudder resets to center
+                const centerX = stickElement.getBoundingClientRect().left + stickElement.getBoundingClientRect().width / 2;
+                const centerY = stickElement.getBoundingClientRect().top + stickElement.getBoundingClientRect().height / 2;
+                updatePosition(centerX, centerY, true); // Animate back to center
+            }
             isDragging = false;
-        });
+        }
 
-        document.addEventListener('touchend', () => {
-            isDragging = false;
-        });
+        document.addEventListener('mouseup', resetToCenter);
+        document.addEventListener('touchend', resetToCenter);
 
         // Initialize to center position
-        updatePosition(stickElement.getBoundingClientRect().left + stickElement.getBoundingClientRect().width / 2,
-                      stickElement.getBoundingClientRect().top + stickElement.getBoundingClientRect().height / 2);
+        const rect = stickElement.getBoundingClientRect();
+        updatePosition(rect.left + rect.width / 2, rect.top + rect.height / 2, false);
     }
 
-    // Setup both sticks
-    setupStick('throttleStick', 'throttleHandle', 'throttlePwm', 'throttleValue');
-    setupStick('rudderStick', 'rudderHandle', 'rudderPwm', 'rudderValue');
+    // Setup both sticks (throttle stays, rudder resets to center)
+    setupStick('throttleStick', 'throttleHandle', 'throttlePwm', 'throttleValue', true);
+    setupStick('rudderStick', 'rudderHandle', 'rudderPwm', 'rudderValue', false);
 })();
 </script>
 

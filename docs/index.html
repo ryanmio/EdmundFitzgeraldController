@@ -269,7 +269,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             gap: calc(var(--spacing-unit) * 2);
-            margin-bottom: calc(var(--spacing-unit) * 2);
+            margin-bottom: calc(var(--spacing-unit) * 3);
         }
 
         .param-box {
@@ -294,6 +294,33 @@
             font-weight: 600;
             color: var(--color-text);
             font-family: 'Courier New', monospace;
+        }
+
+        .response-graphs {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: calc(var(--spacing-unit) * 2);
+            margin-bottom: calc(var(--spacing-unit) * 2);
+        }
+
+        .response-graph {
+            background: #fafafa;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: calc(var(--spacing-unit) * 1);
+        }
+
+        .graph-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--color-text-dim);
+            margin-bottom: calc(var(--spacing-unit) * 1);
+        }
+
+        .response-graph svg {
+            width: 100%;
+            height: 100px;
         }
 
         .play-button {
@@ -379,6 +406,33 @@
                     <div class="param-box">
                         <div class="param-label">Status</div>
                         <div class="param-value" id="statusDisplay">IDLE</div>
+                    </div>
+                </div>
+
+                <div class="response-graphs">
+                    <div class="response-graph">
+                        <div class="graph-title">Pitch Response</div>
+                        <svg viewBox="0 0 160 80" preserveAspectRatio="xMidYMid meet">
+                            <!-- Axes -->
+                            <line x1="15" y1="70" x2="155" y2="70" stroke="#ccc" stroke-width="1" />
+                            <line x1="15" y1="10" x2="15" y2="70" stroke="#ccc" stroke-width="1" />
+                            <!-- Curve -->
+                            <polyline id="pitchCurve" points="" stroke="#2c3e50" stroke-width="2" fill="none" />
+                            <!-- Current point -->
+                            <circle id="pitchPoint" cx="15" cy="70" r="2" fill="#e74c3c" />
+                        </svg>
+                    </div>
+                    <div class="response-graph">
+                        <div class="graph-title">Volume Response</div>
+                        <svg viewBox="0 0 160 80" preserveAspectRatio="xMidYMid meet">
+                            <!-- Axes -->
+                            <line x1="15" y1="70" x2="155" y2="70" stroke="#ccc" stroke-width="1" />
+                            <line x1="15" y1="10" x2="15" y2="70" stroke="#ccc" stroke-width="1" />
+                            <!-- Curve -->
+                            <polyline id="volumeCurve" points="" stroke="#27ae60" stroke-width="2" fill="none" />
+                            <!-- Current point -->
+                            <circle id="volumePoint" cx="15" cy="70" r="2" fill="#e74c3c" />
+                        </svg>
                     </div>
                 </div>
 
@@ -623,6 +677,32 @@
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         gainNode = audioContext.createGain();
         gainNode.connect(audioContext.destination);
+        
+        // Generate and render response curves
+        generateResponseCurves();
+    }
+
+    function generateResponseCurves() {
+        let pitchPoints = [];
+        let volumePoints = [];
+        
+        // Generate curves from 0% to 100% throttle
+        for (let i = 0; i <= 10; i++) {
+            const throttle = i / 10;
+            const rate = calculateRate(throttle);
+            const gain = calculateGain(throttle);
+            
+            // Map to SVG coordinates (160px width, 60px height range)
+            const x = 15 + (throttle * 140);
+            const pitchY = 70 - ((rate - RATE_MIN) / (RATE_MAX - RATE_MIN) * 60);
+            const volumeY = 70 - ((gain - GAIN_MIN) / (GAIN_MAX - GAIN_MIN) * 60);
+            
+            pitchPoints.push(`${x},${pitchY}`);
+            volumePoints.push(`${x},${volumeY}`);
+        }
+        
+        document.getElementById('pitchCurve').setAttribute('points', pitchPoints.join(' '));
+        document.getElementById('volumeCurve').setAttribute('points', volumePoints.join(' '));
     }
 
     function playEngine() {
@@ -631,7 +711,7 @@
         initAudio();
         
         // Fetch and decode the engine audio
-        fetch('audio-assets/engine/engine.mp3')
+        fetch('engine.mp3')
             .then(response => response.arrayBuffer())
             .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
             .then(audioBuffer => {
@@ -708,6 +788,17 @@
         document.getElementById('rateDisplay').textContent = rate.toFixed(2) + '×';
         document.getElementById('gainDisplay').textContent = gain.toFixed(2);
         document.getElementById('statusDisplay').textContent = isRev ? 'REVVING' : (throttleState > 0 ? 'RUNNING' : 'IDLE');
+        
+        // Update graph points
+        const pitchX = 15 + (smoothedThrottle * 140);
+        const pitchY = 70 - ((rate - RATE_MIN) / (RATE_MAX - RATE_MIN) * 60);
+        document.getElementById('pitchPoint').setAttribute('cx', pitchX);
+        document.getElementById('pitchPoint').setAttribute('cy', pitchY);
+        
+        const volumeX = 15 + (smoothedThrottle * 140);
+        const volumeY = 70 - ((gain - GAIN_MIN) / (GAIN_MAX - GAIN_MIN) * 60);
+        document.getElementById('volumePoint').setAttribute('cx', volumeX);
+        document.getElementById('volumePoint').setAttribute('cy', volumeY);
     });
 
     // Cleanup on page unload

@@ -323,6 +323,41 @@
             height: 100px;
         }
 
+        .graph-axis {
+            stroke: #999;
+            stroke-width: 1;
+        }
+
+        .graph-grid {
+            stroke: #e8e8e8;
+            stroke-width: 0.5;
+        }
+
+        .graph-curve {
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .graph-label {
+            font-size: 10px;
+            font-family: 'Courier New', monospace;
+            fill: #666;
+            text-anchor: middle;
+        }
+
+        .graph-value {
+            font-size: 8px;
+            font-family: 'Courier New', monospace;
+            fill: #999;
+        }
+
+        .equation-text {
+            font-size: 8px;
+            font-family: 'Courier New', monospace;
+            fill: #333;
+            font-weight: bold;
+        }
+
         .play-button {
             padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2.5);
             background: #000;
@@ -411,27 +446,75 @@
 
                 <div class="response-graphs">
                     <div class="response-graph">
-                        <div class="graph-title">Pitch Response</div>
-                        <svg viewBox="0 0 160 80" preserveAspectRatio="xMidYMid meet">
-                            <!-- Axes -->
-                            <line x1="15" y1="70" x2="155" y2="70" stroke="#ccc" stroke-width="1" />
-                            <line x1="15" y1="10" x2="15" y2="70" stroke="#ccc" stroke-width="1" />
+                        <div class="graph-title">Pitch Rate = 0.8 + (throttle × 0.7)</div>
+                        <svg viewBox="0 0 180 100" preserveAspectRatio="xMidYMid meet">
+                            <!-- Grid -->
+                            <line x1="20" y1="20" x2="20" y2="80" class="graph-axis" />
+                            <line x1="20" y1="80" x2="170" y2="80" class="graph-axis" />
+                            
+                            <!-- Grid lines (vertical) -->
+                            <line x1="50" y1="75" x2="50" y2="85" class="graph-axis" />
+                            <line x1="80" y1="75" x2="80" y2="85" class="graph-axis" />
+                            <line x1="110" y1="75" x2="110" y2="85" class="graph-axis" />
+                            <line x1="140" y1="75" x2="140" y2="85" class="graph-axis" />
+                            <line x1="170" y1="75" x2="170" y2="85" class="graph-axis" />
+                            
+                            <!-- Grid lines (horizontal) -->
+                            <line x1="15" y1="50" x2="175" y2="50" class="graph-grid" />
+                            
+                            <!-- Y-axis labels (rate values) -->
+                            <text x="8" y="82" class="graph-value">0.8</text>
+                            <text x="8" y="52" class="graph-value">1.15</text>
+                            <text x="8" y="22" class="graph-value">1.5</text>
+                            
+                            <!-- X-axis labels (throttle %) -->
+                            <text x="20" y="95" class="graph-value">0%</text>
+                            <text x="50" y="95" class="graph-value">25%</text>
+                            <text x="80" y="95" class="graph-value">50%</text>
+                            <text x="110" y="95" class="graph-value">75%</text>
+                            <text x="170" y="95" class="graph-value">100%</text>
+                            
                             <!-- Curve -->
-                            <polyline id="pitchCurve" points="" stroke="#2c3e50" stroke-width="2" fill="none" />
+                            <polyline id="pitchCurve" points="" class="graph-curve" stroke="#2c3e50" />
+                            
                             <!-- Current point -->
-                            <circle id="pitchPoint" cx="15" cy="70" r="2" fill="#e74c3c" />
+                            <circle id="pitchPoint" cx="20" cy="80" r="2.5" fill="#e74c3c" stroke="#fff" stroke-width="1" />
                         </svg>
                     </div>
                     <div class="response-graph">
-                        <div class="graph-title">Volume Response</div>
-                        <svg viewBox="0 0 160 80" preserveAspectRatio="xMidYMid meet">
-                            <!-- Axes -->
-                            <line x1="15" y1="70" x2="155" y2="70" stroke="#ccc" stroke-width="1" />
-                            <line x1="15" y1="10" x2="15" y2="70" stroke="#ccc" stroke-width="1" />
+                        <div class="graph-title">Volume = 0.55 + (throttle × 0.25)</div>
+                        <svg viewBox="0 0 180 100" preserveAspectRatio="xMidYMid meet">
+                            <!-- Grid -->
+                            <line x1="20" y1="20" x2="20" y2="80" class="graph-axis" />
+                            <line x1="20" y1="80" x2="170" y2="80" class="graph-axis" />
+                            
+                            <!-- Grid lines (vertical) -->
+                            <line x1="50" y1="75" x2="50" y2="85" class="graph-axis" />
+                            <line x1="80" y1="75" x2="80" y2="85" class="graph-axis" />
+                            <line x1="110" y1="75" x2="110" y2="85" class="graph-axis" />
+                            <line x1="140" y1="75" x2="140" y2="85" class="graph-axis" />
+                            <line x1="170" y1="75" x2="170" y2="85" class="graph-axis" />
+                            
+                            <!-- Grid lines (horizontal) -->
+                            <line x1="15" y1="50" x2="175" y2="50" class="graph-grid" />
+                            
+                            <!-- Y-axis labels (gain values) -->
+                            <text x="8" y="82" class="graph-value">0.55</text>
+                            <text x="8" y="52" class="graph-value">0.675</text>
+                            <text x="8" y="22" class="graph-value">0.8</text>
+                            
+                            <!-- X-axis labels (throttle %) -->
+                            <text x="20" y="95" class="graph-value">0%</text>
+                            <text x="50" y="95" class="graph-value">25%</text>
+                            <text x="80" y="95" class="graph-value">50%</text>
+                            <text x="110" y="95" class="graph-value">75%</text>
+                            <text x="170" y="95" class="graph-value">100%</text>
+                            
                             <!-- Curve -->
-                            <polyline id="volumeCurve" points="" stroke="#27ae60" stroke-width="2" fill="none" />
+                            <polyline id="volumeCurve" points="" class="graph-curve" stroke="#27ae60" />
+                            
                             <!-- Current point -->
-                            <circle id="volumePoint" cx="15" cy="70" r="2" fill="#e74c3c" />
+                            <circle id="volumePoint" cx="20" cy="80" r="2.5" fill="#e74c3c" stroke="#fff" stroke-width="1" />
                         </svg>
                     </div>
                 </div>
@@ -692,10 +775,10 @@
             const rate = calculateRate(throttle);
             const gain = calculateGain(throttle);
             
-            // Map to SVG coordinates (160px width, 60px height range)
-            const x = 15 + (throttle * 140);
-            const pitchY = 70 - ((rate - RATE_MIN) / (RATE_MAX - RATE_MIN) * 60);
-            const volumeY = 70 - ((gain - GAIN_MIN) / (GAIN_MAX - GAIN_MIN) * 60);
+            // Map to SVG coordinates (150px width from x=20 to x=170, 60px height from y=80 to y=20)
+            const x = 20 + (throttle * 150);
+            const pitchY = 80 - ((rate - RATE_MIN) / (RATE_MAX - RATE_MIN) * 60);
+            const volumeY = 80 - ((gain - GAIN_MIN) / (GAIN_MAX - GAIN_MIN) * 60);
             
             pitchPoints.push(`${x},${pitchY}`);
             volumePoints.push(`${x},${volumeY}`);
@@ -790,13 +873,13 @@
         document.getElementById('statusDisplay').textContent = isRev ? 'REVVING' : (throttleState > 0 ? 'RUNNING' : 'IDLE');
         
         // Update graph points
-        const pitchX = 15 + (smoothedThrottle * 140);
-        const pitchY = 70 - ((rate - RATE_MIN) / (RATE_MAX - RATE_MIN) * 60);
+        const pitchX = 20 + (smoothedThrottle * 150);
+        const pitchY = 80 - ((rate - RATE_MIN) / (RATE_MAX - RATE_MIN) * 60);
         document.getElementById('pitchPoint').setAttribute('cx', pitchX);
         document.getElementById('pitchPoint').setAttribute('cy', pitchY);
         
-        const volumeX = 15 + (smoothedThrottle * 140);
-        const volumeY = 70 - ((gain - GAIN_MIN) / (GAIN_MAX - GAIN_MIN) * 60);
+        const volumeX = 20 + (smoothedThrottle * 150);
+        const volumeY = 80 - ((gain - GAIN_MIN) / (GAIN_MAX - GAIN_MIN) * 60);
         document.getElementById('volumePoint').setAttribute('cx', volumeX);
         document.getElementById('volumePoint').setAttribute('cy', volumeY);
     });

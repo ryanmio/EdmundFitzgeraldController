@@ -114,6 +114,20 @@ symbols = """
     (pin power_in line (at -12.7 7.62 0) (length 2.54) (name "GND" (effects (font (size 1.27 1.27)))) (number "2"))
     (pin input line (at -12.7 5.08 0) (length 2.54) (name "U0R" (effects (font (size 1.27 1.27)))) (number "3"))
     (pin output line (at -12.7 2.54 0) (length 2.54) (name "U0T" (effects (font (size 1.27 1.27)))) (number "4"))))
+  (symbol "Connector:Conn_01x03_Male" (pin_names (offset 1.016) hide) (in_bom yes) (on_board yes)
+   (property "Reference" "J" (at 0 5.08 0)) (property "Value" "RC_Pin" (at 0 -2.54 0))
+   (symbol "Conn_01x03_Male_0_1" (rectangle (start -1.27 -1.27) (end 1.27 6.35) (stroke (width 0.254)) (fill (type none))))
+   (symbol "Conn_01x03_Male_1_1"
+    (pin passive line (at -5.08 5.08 0) (length 3.81) (name "1" (effects (font (size 1.27 1.27)))) (number "1"))
+    (pin passive line (at -5.08 2.54 0) (length 3.81) (name "2" (effects (font (size 1.27 1.27)))) (number "2"))
+    (pin passive line (at -5.08 0 0) (length 3.81) (name "3" (effects (font (size 1.27 1.27)))) (number "3"))))
+  (symbol "Motor:Servo" (pin_names (offset 1.016) hide) (in_bom yes) (on_board yes)
+   (property "Reference" "M" (at 0 5.08 0)) (property "Value" "Rudder_Servo" (at 0 -2.54 0))
+   (symbol "Servo_0_1" (rectangle (start -2.54 -2.54) (end 2.54 5.08) (stroke (width 0.254)) (fill (type none))))
+   (symbol "Servo_1_1"
+    (pin input line (at -5.08 2.54 0) (length 2.54) (name "PWM" (effects (font (size 1.27 1.27)))) (number "1"))
+    (pin power_in line (at -5.08 0 0) (length 2.54) (name "VCC" (effects (font (size 1.27 1.27)))) (number "2"))
+    (pin power_in line (at -5.08 -2.54 0) (length 2.54) (name "GND" (effects (font (size 1.27 1.27)))) (number "3"))))
 """
 
 content = [
@@ -208,9 +222,30 @@ content.extend([
 ])
 
 # --- RC RECEIVER ---
+# (Removing the old label-only section to replace with physical wiring)
+
+# --- RC INTERFACE (RECEIVER & SERVOS) ---
+# J1: Receiver Connector (Source of PWM)
+j1_uuid = gen_uuid(); add_instance("J1", 1, "RC_Receiver", "", j1_uuid)
+content.append(f' (symbol (lib_id "Connector:Conn_01x03_Male") (at 80 150 0) (unit 1) (uuid "{j1_uuid}") (in_bom yes) (on_board yes) (property "Reference" "J1" (at 80 142 0)) (property "Value" "RC_Receiver" (at 80 158 0)))')
+
+# M1: Rudder Servo (Target of PWM)
+m1_uuid = gen_uuid(); add_instance("M1", 1, "Rudder_Servo", "", m1_uuid)
+content.append(f' (symbol (lib_id "Motor:Servo") (at 80 180 0) (unit 1) (uuid "{m1_uuid}") (in_bom yes) (on_board yes) (property "Reference" "M1" (at 80 172 0)) (property "Value" "Rudder_Servo" (at 80 188 0)))')
+
+# PHYSICAL WIRING FOR RC PATH
+# Pin 1 of J1 (Throttle) to ESP IO18 (Pin 30: 165.24, 105.08)
+content.extend(kicad_orthogonal_wire(74.92, 144.92, 165.24, 105.08, 90))
+# Pin 2 of J1 (Servo) to ESP IO19 (Pin 31: 165.24, 107.62) AND M1 Pin 1
+content.extend(kicad_orthogonal_wire(74.92, 147.46, 165.24, 107.62, 92))
+content.extend(kicad_orthogonal_wire(74.92, 147.46, 74.92, 177.46, 70)) # Tap from J1 to M1 Servo
+
+# Power for RC/Servo
 content.extend([
-    kicad_wire(165.24, 105.08, 180, 105.08), kicad_label("THROTTLE_RC", 180, 105.08),
-    kicad_wire(165.24, 107.62, 180, 107.62), kicad_label("SERVO_RC", 180, 107.62),
+    kicad_wire(74.92, 150, 65, 150), kicad_label("5V_POWER", 65, 150, 180),
+    kicad_wire(74.92, 152.54, 65, 152.54), kicad_label("GND", 65, 152.54, 180),
+    kicad_wire(74.92, 180, 65, 180), kicad_label("5V_POWER", 65, 180, 180),
+    kicad_wire(74.92, 182.54, 65, 182.54), kicad_label("GND", 65, 182.54, 180),
 ])
 
 # --- CAMERA MODULE ---

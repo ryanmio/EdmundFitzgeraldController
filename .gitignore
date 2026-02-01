@@ -10,3 +10,12 @@ boat-telemetry-app/.expo/
 boat-telemetry-app/dist/
 boat-telemetry-app/npm-debug.*
 boat-telemetry-app/web-build/
+
+# KiCAD temporary files
+*.kicad_prl
+*.kicad_sch.lck
+#auto_saved_files#
+
+# Original video files (converted to MP4)
+*.mov
+*.MOV

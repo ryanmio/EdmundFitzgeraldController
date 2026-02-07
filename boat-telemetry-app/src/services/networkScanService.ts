@@ -18,7 +18,8 @@ const QUICK_PROBE_TIMEOUT_MS = 1000; // Faster timeout for known IPs
 
 // Subnet ranges to scan (in priority order)
 const COMMON_IP_RANGES = [
-  { base: '192.168.1', start: 100, end: 200 }, // Most common range for static/DHCP
+  { base: '172.20.10', start: 1, end: 15 },    // iPhone hotspot subnet (highest priority, small range = fast)
+  { base: '192.168.1', start: 100, end: 200 },  // Most common range for static/DHCP
   { base: '192.168.0', start: 100, end: 200 },
 ];
 

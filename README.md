@@ -35,6 +35,9 @@ SIGNAL: DUAL-BAND WIFI WITH AUTO-FAILOVER STOP
 /boat-telemetry-app    - TYPESCRIPT EXPO COMMAND INTERFACE STOP
 /docs                  - LOGS AND BUILD GUIDES STOP
 
+### PROJECT DOCUMENTATION
+**[View the Project Website](https://ryanmio.github.io/EdmundFitzgeraldController/)** - Interactive telemetry dashboard, specifications, and test documentation STOP
+
 ---
 
 **MAY THE BIG LAKE BE KIND STOP**

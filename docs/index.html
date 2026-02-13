@@ -61,6 +61,10 @@
             max-width: 600px;
         }
 
+        .intro-text a {
+            font-size: 0.875rem;
+        }
+
         main {
             padding: calc(var(--spacing-unit) * 8) 0;
         }
@@ -558,9 +562,18 @@
             gap: calc(var(--spacing-unit) * 2);
             flex-wrap: wrap;
             font-size: 0.8rem;
-            margin-top: calc(var(--spacing-unit) * 3);
-            padding-top: calc(var(--spacing-unit) * 3);
-            border-top: 1px solid var(--color-border);
+            margin-top: calc(var(--spacing-unit) * 2);
+            padding-top: calc(var(--spacing-unit) * 2);
+        }
+
+        .toc::before {
+            content: "JUMP TO";
+            font-weight: 600;
+            color: var(--color-text-dim);
+            width: 100%;
+            margin-bottom: calc(var(--spacing-unit) * 1);
+            letter-spacing: 0.1em;
+            font-size: 0.75rem;
         }
 
         .toc a {

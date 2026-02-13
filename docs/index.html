@@ -559,21 +559,15 @@
 
         .toc {
             display: flex;
-            gap: calc(var(--spacing-unit) * 2);
+            gap: calc(var(--spacing-unit) * 3);
             flex-wrap: wrap;
-            font-size: 0.8rem;
-            margin-top: calc(var(--spacing-unit) * 2);
+            font-size: 0.75rem;
+            margin-top: calc(var(--spacing-unit) * 3);
             padding-top: calc(var(--spacing-unit) * 2);
         }
 
         .toc::before {
-            content: "JUMP TO";
-            font-weight: 600;
-            color: var(--color-text-dim);
-            width: 100%;
-            margin-bottom: calc(var(--spacing-unit) * 1);
-            letter-spacing: 0.1em;
-            font-size: 0.75rem;
+            content: "";
         }
 
         .toc a {
@@ -597,9 +591,9 @@
 <header>
     <div class="container">
         <h1>SS Edmund Fitzgerald</h1>
-        <p class="intro-text">A 1:150 scale naval telemetry platform integrating custom dual-core ESP32 firmware, real-time audio synthesis, and MJPEG vision systems. <a href="https://github.com/ryanmio/EdmundFitzgeraldController" style="color: inherit; border-bottom: 1px solid var(--color-text-dim);">Project by Ryan Mioduski</a></p>
+        <p class="intro-text">A 1:150 scale naval telemetry platform integrating custom dual-core ESP32 firmware, real-time audio synthesis, and MJPEG vision systems.</p>
+        <p class="intro-text" style="font-size: 0.875rem; color: var(--color-text-dim); margin-top: calc(var(--spacing-unit) * 1);"><a href="https://github.com/ryanmio/EdmundFitzgeraldController" style="color: inherit; border-bottom: 1px solid var(--color-text-dim);">Open Source on GitHub</a></p>
         <nav class="toc">
-            <a href="#specifications">Specifications</a>
             <a href="#engineering">Hardware & Assembly</a>
             <a href="#audio-engine">Audio Engine</a>
             <a href="#interface">Command Interface</a>

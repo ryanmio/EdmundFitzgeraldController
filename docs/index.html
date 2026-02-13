@@ -551,22 +551,27 @@
 
         .toc {
             display: flex;
-            gap: calc(var(--spacing-unit) * 3);
+            gap: calc(var(--spacing-unit) * 2);
             flex-wrap: wrap;
-            font-size: 0.875rem;
-            margin-top: calc(var(--spacing-unit) * 2);
+            font-size: 0.8rem;
+            margin-top: calc(var(--spacing-unit) * 3);
+            padding-top: calc(var(--spacing-unit) * 3);
+            border-top: 1px solid var(--color-border);
         }
 
         .toc a {
-            color: var(--color-text-dim);
+            color: var(--color-accent);
             text-decoration: none;
-            border-bottom: 1px solid transparent;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            border-bottom: 2px solid transparent;
             transition: all 0.2s ease;
+            padding-bottom: 2px;
         }
 
         .toc a:hover {
-            color: var(--color-text);
-            border-bottom-color: var(--color-text-dim);
+            border-bottom-color: var(--color-accent);
         }
     </style>
 </head>

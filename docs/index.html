@@ -548,6 +548,26 @@
             .engine-params { grid-template-columns: 1fr; }
             .engine-viz-graph { flex-direction: column; }
         }
+
+        .toc {
+            display: flex;
+            gap: calc(var(--spacing-unit) * 3);
+            flex-wrap: wrap;
+            font-size: 0.875rem;
+            margin-top: calc(var(--spacing-unit) * 2);
+        }
+
+        .toc a {
+            color: var(--color-text-dim);
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .toc a:hover {
+            color: var(--color-text);
+            border-bottom-color: var(--color-text-dim);
+        }
     </style>
 </head>
 <body>
@@ -557,6 +577,15 @@
         <h1>SS Edmund Fitzgerald</h1>
         <p class="intro-text">A 1:150 scale naval telemetry platform integrating custom dual-core ESP32 firmware, real-time audio synthesis, and MJPEG vision systems.</p>
         <p class="intro-text" style="font-size: 0.875rem; color: var(--color-text-dim); margin-top: calc(var(--spacing-unit) * 2);"><a href="https://github.com/ryanmio/EdmundFitzgeraldController" style="color: inherit; border-bottom: 1px solid var(--color-text-dim);">Project by Ryan Mioduski</a></p>
+        <nav class="toc">
+            <a href="#specifications">Specifications</a>
+            <a href="#engineering">Hardware & Assembly</a>
+            <a href="#audio-engine">Audio Engine</a>
+            <a href="#interface">Command Interface</a>
+            <a href="#design">Design</a>
+            <a href="#pool-testing">Pool Testing</a>
+            <a href="#sea-trials">Sea Trials</a>
+        </nav>
     </div>
 </header>
 

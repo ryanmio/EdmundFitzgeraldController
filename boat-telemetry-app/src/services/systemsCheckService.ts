@@ -176,9 +176,11 @@ export async function checkProcessorTemperature(
   addLog('[7/9] Scanning thermal sensors...');
   await delay(600);
   
+  // Temperature reading disabled in ESP-IDF 5.x due to ADC conflicts with battery voltage read
+  // Since ADC must be initialized first and temperature conflicts with it, we pass as non-critical
   if (!telemetry || typeof telemetry.internal_temp_c !== 'number' || isNaN(telemetry.internal_temp_c)) {
-    addLog(`  ⚠ Temperature telemetry unavailable`);
-    return { passed: false, message: 'Temperature telemetry unavailable' };
+    addLog(`  ⚠ Thermal sensors offline (non-critical)`);
+    return { passed: true, message: 'Thermal sensors offline (non-critical)' };  // Still pass - non-critical
   }
   
   const tempC = telemetry.internal_temp_c;

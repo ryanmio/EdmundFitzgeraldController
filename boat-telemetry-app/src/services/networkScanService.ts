@@ -51,7 +51,10 @@ async function fetchWithTimeout(
  * Build base URL from IP address
  */
 function buildUrl(ip: string, endpoint: string): string {
+  // #region agent log
   const cleanIp = ip.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  fetch('http://127.0.0.1:7242/ingest/d3a9473c-c512-41da-a870-4c36bb5dd5ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'networkScanService.ts:55',message:'buildUrl called',data:{ip,cleanIp,endpoint},timestamp:Date.now(),hypothesisId:'H1_buildurl_cleanip'})}).catch(()=>{});
+  // #endregion
   return `http://${cleanIp}${endpoint}`;
 }
 
@@ -62,6 +65,10 @@ async function probeIP(
   ip: string,
   timeoutMs: number = TIMEOUT_MS
 ): Promise<ScannedDevice | null> {
+  // #region agent log - probe entry
+  fetch('http://127.0.0.1:7242/ingest/d3a9473c-c512-41da-a870-4c36bb5dd5ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'networkScanService.ts:68',message:'probeIP start',data:{ip,timeoutMs},timestamp:Date.now(),hypothesisId:'H2_probe_flow'})}).catch(()=>{});
+  // #endregion
+  
   try {
     const url = buildUrl(ip, '/status');
     const controller = new AbortController();
@@ -80,6 +87,10 @@ async function probeIP(
         const data = await response.json();
         console.log(`[NetworkScan] ${ip} responded:`, JSON.stringify(data).substring(0, 100));
         
+        // #region agent log - response data
+        fetch('http://127.0.0.1:7242/ingest/d3a9473c-c512-41da-a870-4c36bb5dd5ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'networkScanService.ts:90',message:'probeIP response received',data:{ip,dataKeys:Object.keys(data)},timestamp:Date.now(),hypothesisId:'H2_probe_flow'})}).catch(()=>{});
+        // #endregion
+        
         // Determine device type based on response
         let type: 'telemetry' | 'camera' | 'unknown' = 'unknown';
         
@@ -93,12 +104,18 @@ async function probeIP(
           type = 'camera';
         }
 
-        return {
+        const result = {
           ip,
           name: data.name || `ESP32-${ip.split('.')[3]}`,
           type,
           lastSeen: Date.now(),
         };
+        
+        // #region agent log - probe success
+        fetch('http://127.0.0.1:7242/ingest/d3a9473c-c512-41da-a870-4c36bb5dd5ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'networkScanService.ts:110',message:'probeIP success',data:{ip,type,name:result.name},timestamp:Date.now(),hypothesisId:'H2_probe_flow'})}).catch(()=>{});
+        // #endregion
+        
+        return result;
       } else {
         console.log(`[NetworkScan] ${ip} returned status ${response.status}`);
       }
@@ -110,6 +127,9 @@ async function probeIP(
     // Only log if it's not a timeout/network error
     if (error?.message && !error.message.includes('aborted') && !error.message.includes('Network')) {
       console.log(`[NetworkScan] ${ip} error:`, error.message);
+      // #region agent log - probe error
+      fetch('http://127.0.0.1:7242/ingest/d3a9473c-c512-41da-a870-4c36bb5dd5ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'networkScanService.ts:126',message:'probeIP error',data:{ip,errorMsg:error?.message},timestamp:Date.now(),hypothesisId:'H2_probe_flow'})}).catch(()=>{});
+      // #endregion
     }
   }
 
@@ -174,6 +194,10 @@ export async function scanForDevices(
   const devices: ScannedDevice[] = [];
   let checkedCount = 0;
   
+  // #region agent log - scan start
+  fetch('http://127.0.0.1:7242/ingest/d3a9473c-c512-41da-a870-4c36bb5dd5ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'networkScanService.ts:195',message:'scanForDevices start',data:{recentIPsLength:recentlyUsedIPs.length},timestamp:Date.now(),hypothesisId:'H3_scan_progress'})}).catch(()=>{});
+  // #endregion
+  
   console.log('[NetworkScan] Starting progressive device scan...');
   console.log('[NetworkScan] Recently used IPs:', recentlyUsedIPs);
 
@@ -192,6 +216,10 @@ export async function scanForDevices(
       }
       checkedCount++;
     });
+
+    // #region agent log - phase 1 complete
+    fetch('http://127.0.0.1:7242/ingest/d3a9473c-c512-41da-a870-4c36bb5dd5ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'networkScanService.ts:219',message:'Phase 1 complete',data:{devicesFound:devices.length,checkedCount},timestamp:Date.now(),hypothesisId:'H3_scan_progress'})}).catch(()=>{});
+    // #endregion
 
     // Report progress after recent IPs checked
     const totalEstimate = recentlyUsedIPs.length + COMMON_IP_RANGES.reduce((sum, r) => sum + (r.end - r.start + 1), 0);
@@ -214,6 +242,10 @@ export async function scanForDevices(
   
   console.log(`[NetworkScan] Scanning ${uncheckedIPs.length} unchecked IP addresses`);
 
+  // #region agent log - phase 2 start
+  fetch('http://127.0.0.1:7242/ingest/d3a9473c-c512-41da-a870-4c36bb5dd5ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'networkScanService.ts:244',message:'Phase 2 start',data:{uncheckedIPsLength:uncheckedIPs.length},timestamp:Date.now(),hypothesisId:'H3_scan_progress'})}).catch(()=>{});
+  // #endregion
+
   // Probe in parallel batches for speed
   const batchSize = 15; // Increased batch size since we're doing it faster
   
@@ -235,10 +267,19 @@ export async function scanForDevices(
     });
 
     checkedCount += batch.length;
+    
+    // #region agent log - batch progress
+    fetch('http://127.0.0.1:7242/ingest/d3a9473c-c512-41da-a870-4c36bb5dd5ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'networkScanService.ts:270',message:'Batch processed',data:{batchIndex:i/batchSize,devicesFound:devices.length,totalChecked:recentlyUsedIPs.length+checkedCount},timestamp:Date.now(),hypothesisId:'H3_scan_progress'})}).catch(()=>{});
+    // #endregion
+    
     onProgress?.(devices.length, recentlyUsedIPs.length + checkedCount, recentlyUsedIPs.length + allIPs.length);
   }
 
   console.log(`[NetworkScan] Scan complete. Found ${devices.length} devices.`);
+
+  // #region agent log - scan complete
+  fetch('http://127.0.0.1:7242/ingest/d3a9473c-c512-41da-a870-4c36bb5dd5ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'networkScanService.ts:279',message:'Scan complete',data:{devicesFound:devices.length},timestamp:Date.now(),hypothesisId:'H3_scan_progress'})}).catch(()=>{});
+  // #endregion
 
   // Sort by type (telemetry first), then by IP
   devices.sort((a, b) => {

@@ -80,26 +80,33 @@ export const DeviceScannerModal: React.FC<DeviceScannerModalProps> = ({
     setIpsChecked(0);
     setTotalToScan(0);
 
+    const discoveredDevices: ScannedDevice[] = [];
+
     try {
-      const foundDevices = await scanForDevices(
+      await scanForDevices(
         (found, checked, total) => {
+          // Update scan progress
           setDevicesFound(found);
           setIpsChecked(checked);
           setTotalToScan(total);
+          
+          // (Real-time device updates would require scanner to pass discovered devices
+          // to this callback. For now, updates happen when scan completes.)
         },
         recentlyUsedIPs
-      );
+      ).then((foundDevices) => {
+        // Apply type filtering and update UI with all discovered devices
+        let filtered = foundDevices;
+        if (deviceType) {
+          filtered = foundDevices.filter(d => d.type === deviceType || d.type === 'unknown');
+        }
+        
+        discoveredDevices.push(...filtered);
+        setDevices(filtered);
+      });
       
-      console.log(`[DeviceScanner] Scan complete. Found ${foundDevices.length} devices`);
-      
-      // Filter devices based on type if specified
-      let filtered = foundDevices;
-      if (deviceType) {
-        filtered = foundDevices.filter(d => d.type === deviceType || d.type === 'unknown');
-      }
-      
-      setDevices(filtered);
-      await saveRecentlyFoundIPs(filtered);
+      console.log(`[DeviceScanner] Scan complete. Found ${discoveredDevices.length} devices`);
+      await saveRecentlyFoundIPs(discoveredDevices);
     } catch (error) {
       console.error('[DeviceScanner] Scan failed:', error);
     } finally {
@@ -164,7 +171,25 @@ export const DeviceScannerModal: React.FC<DeviceScannerModalProps> = ({
 
           {/* Content */}
           <View style={styles.content}>
-            {scanning ? (
+            {/* Show devices if any found, OR show scanning spinner */}
+            {devices.length > 0 ? (
+              <>
+                <FlatList
+                  data={devices}
+                  renderItem={renderDeviceItem}
+                  keyExtractor={(item) => item.ip}
+                  scrollEnabled={true}
+                  style={styles.deviceList}
+                />
+                {scanning && (
+                  <View style={styles.scanProgressBar}>
+                    <Text style={styles.scanProgressText}>
+                      Scanning... {ipsChecked} / {totalToScan} IPs
+                    </Text>
+                  </View>
+                )}
+              </>
+            ) : scanning ? (
               <View style={styles.scanningContainer}>
                 <ActivityIndicator
                   size="large"
@@ -181,28 +206,16 @@ export const DeviceScannerModal: React.FC<DeviceScannerModalProps> = ({
                   DEVICES FOUND: {devicesFound}
                 </Text>
               </View>
-            ) : (
-              <>
-                {devices.length > 0 ? (
-                  <FlatList
-                    data={devices}
-                    renderItem={renderDeviceItem}
-                    keyExtractor={(item) => item.ip}
-                    scrollEnabled={true}
-                    style={styles.deviceList}
-                  />
-                ) : scanComplete ? (
-                  <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>
-                      NO DEVICES FOUND
-                    </Text>
-                    <Text style={styles.emptyHint}>
-                      ENSURE ESP32 IS CONNECTED TO NETWORK
-                    </Text>
-                  </View>
-                ) : null}
-              </>
-            )}
+            ) : scanComplete ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>
+                  NO DEVICES FOUND
+                </Text>
+                <Text style={styles.emptyHint}>
+                  ENSURE ESP32 IS CONNECTED TO NETWORK
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           {/* Footer */}
@@ -301,6 +314,19 @@ const styles = StyleSheet.create({
   deviceList: {
     paddingHorizontal: 8,
     maxHeight: 350,
+  },
+  scanProgressBar: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#05070a',
+    borderTopWidth: 1,
+    borderTopColor: COLORS.secondary,
+  },
+  scanProgressText: {
+    fontSize: 10,
+    color: COLORS.secondary,
+    fontFamily: FONTS.monospace,
+    textAlign: 'center',
   },
   deviceItem: {
     flexDirection: 'row',

@@ -65,11 +65,21 @@ bool waterLastRawState = true;     // Last raw sensor reading (true = DRY, false
 unsigned long waterStateChangeTime = 0;  // Time when current raw state started
 const unsigned long WATER_DEBOUNCE_TIME = 10000;  // 10 seconds in milliseconds
 
+// WiFi connection state (persists for retry logic)
+String lastConnectedSSID = "";
+String lastConnectedPassword = "";
+
 // ==================== WIFI CONNECT (SCAN + MATCH) ====================
+// Scans available networks and connects in priority order:
+//   1. Home WiFi (HOME_WIFI_SSID exact match)
+//   2. iPhone hotspot (any SSID containing "iPhone", or exact WIFI_SSID match)
+//   3. Fallback to hardcoded WIFI_SSID
 void connectWiFi() {
   Serial.println();
   Serial.println("Scanning for WiFi networks...");
 
+  WiFi.disconnect(true);  // Clean disconnect before scanning
+  delay(100);
   WiFi.mode(WIFI_STA);
   int numNetworks = WiFi.scanNetworks();
   
@@ -77,9 +87,10 @@ void connectWiFi() {
   Serial.println(numNetworks);
   
   String ssidToConnect = "";
+  String passwordToUse = "";
   bool foundHomeWiFi = false;
   
-  // First pass: look for home WiFi (.hidden network)
+  // First pass: look for home WiFi (exact match)
   for (int i = 0; i < numNetworks; i++) {
     String scannedSSID = WiFi.SSID(i);
     Serial.print("[");
@@ -89,8 +100,9 @@ void connectWiFi() {
     Serial.print("' | RSSI: ");
     Serial.println(WiFi.RSSI(i));
     
-    if (scannedSSID == ".hidden") {
+    if (scannedSSID == HOME_WIFI_SSID) {
       ssidToConnect = scannedSSID;
+      passwordToUse = HOME_WIFI_PASSWORD;
       foundHomeWiFi = true;
       Serial.print("Matched home WiFi: ");
       Serial.println(ssidToConnect);
@@ -102,9 +114,11 @@ void connectWiFi() {
   if (!foundHomeWiFi) {
     for (int i = 0; i < numNetworks; i++) {
       String scannedSSID = WiFi.SSID(i);
-      if (scannedSSID.indexOf("iPhone") >= 0) {
+      // Match any SSID containing "iPhone" OR exact match of configured hotspot SSID
+      if (scannedSSID.indexOf("iPhone") >= 0 || scannedSSID == WIFI_SSID) {
         ssidToConnect = scannedSSID;
-        Serial.print("Home WiFi not found. Using iPhone hotspot: ");
+        passwordToUse = WIFI_PASSWORD;
+        Serial.print("Home WiFi not found. Using hotspot: ");
         Serial.println(ssidToConnect);
         break;
       }
@@ -112,23 +126,19 @@ void connectWiFi() {
   }
   
   if (ssidToConnect.length() == 0) {
-    // Final fallback: use the configured SSID directly
+    // Final fallback: use the configured SSID directly (blind connect)
     ssidToConnect = WIFI_SSID;
-    Serial.print("No known networks found. Using configured SSID: ");
+    passwordToUse = WIFI_PASSWORD;
+    Serial.print("No known networks found in scan. Blind-connecting to: ");
     Serial.println(ssidToConnect);
   }
 
+  // Store for retry logic
+  lastConnectedSSID = ssidToConnect;
+  lastConnectedPassword = passwordToUse;
+
   Serial.print("Connecting to: ");
   Serial.println(ssidToConnect);
-  
-  // Use appropriate password based on which network we're connecting to
-  String passwordToUse = WIFI_PASSWORD;
-  if (foundHomeWiFi) {
-    Serial.println("Using HOME_WIFI_PASSWORD");
-    passwordToUse = HOME_WIFI_PASSWORD;
-  } else {
-    Serial.println("Using WIFI_PASSWORD (iPhone hotspot)");
-  }
   
   WiFi.begin(ssidToConnect.c_str(), passwordToUse.c_str());
   Serial.print("Attempting connection");
@@ -153,7 +163,7 @@ void connectWiFi() {
     Serial.println();
     Serial.print("WiFi connection failed. Status: ");
     Serial.println(WiFi.status());
-    Serial.println("Server will start anyway. Will retry WiFi in loop.");
+    Serial.println("Server will start anyway. Will retry WiFi with full re-scan in loop.");
   }
 }
 
@@ -409,6 +419,8 @@ void handleStatus() {
   addCORSHeaders();
   unsigned long uptimeSec = (millis() - startTime) / 1000;
   String json = "{";
+  json += "\"type\":\"telemetry\",";
+  json += "\"name\":\"Edmund Fitzgerald Telemetry\",";
   json += "\"firmware_version\":\"" + String(FIRMWARE_VERSION) + "\",";
   json += "\"build_id\":\"" + String(BUILD_ID) + "\",";
   json += "\"connected\":" + String(WiFi.status() == WL_CONNECTED ? "true" : "false") + ",";
@@ -893,13 +905,11 @@ void loop() {
   // Update water sensor debouncing
   updateWaterSensorDebounce();
 
-  // Retry WiFi every 30 seconds if disconnected
+  // Retry WiFi every 30 seconds if disconnected — full re-scan to find any available network
   if (WiFi.status() != WL_CONNECTED && millis() - lastWiFiCheck > 30000) {
     lastWiFiCheck = millis();
-    Serial.println("WiFi disconnected. Reconnecting...");
-    WiFi.disconnect();
-    delay(100);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    Serial.println("\nWiFi disconnected. Running full re-scan...");
+    connectWiFi();
   }
 
   // Keep alive marker every 5 seconds

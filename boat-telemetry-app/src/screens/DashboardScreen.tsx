@@ -109,6 +109,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
   const [logData, setLogData] = useState<LogEntry[]>([]);
   const [logStartTime, setLogStartTime] = useState<Date | null>(null);
   const [lowBatteryAlertShown, setLowBatteryAlertShown] = useState(false);
+  const [waterIntrusionAlertShown, setWaterIntrusionAlertShown] = useState(false);
   
   // Refs for long-press interval tracking
   const hornIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -237,6 +238,28 @@ export default function DashboardScreen({ navigation, route }: Props) {
         setLowBatteryAlertShown(false);
       }
       
+      // Check for water intrusion and alert user
+      if (data.water_intrusion && !waterIntrusionAlertShown) {
+        // Strong haptic feedback for critical alert
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        setWaterIntrusionAlertShown(true);
+        
+        if (Platform.OS === 'web') {
+          window.alert('🚨 WATER INTRUSION DETECTED\n\nWater sensor triggered! Check hull integrity and return to shore immediately.');
+        } else {
+          Alert.alert(
+            '🚨 WATER INTRUSION DETECTED',
+            'Water sensor triggered! Check hull integrity and return to shore immediately.',
+            [{ text: 'OK', style: 'destructive' }]
+          );
+        }
+      }
+      
+      // Reset water alert if sensor clears
+      if (!data.water_intrusion && waterIntrusionAlertShown) {
+        setWaterIntrusionAlertShown(false);
+      }
+      
       // Log data if logging is enabled
       if (isLogging) {
         const entry: LogEntry = {
@@ -251,7 +274,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
       // Clear stale telemetry data when connection is lost
       setTelemetry(null);
     }
-  }, [ip, isLogging, lowBatteryAlertShown]);
+  }, [ip, isLogging, lowBatteryAlertShown, waterIntrusionAlertShown]);
 
   useEffect(() => {
     fetchTelemetry();

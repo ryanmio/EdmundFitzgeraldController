@@ -18,6 +18,7 @@ import { WebView } from 'react-native-webview';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 import { getTelemetry, setLED, triggerHorn, triggerSOS, triggerRadio, muteEngine } from '../services/esp32Service';
 import { TelemetryResponse } from '../types';
 import { COLORS, FONTS } from '../constants/Theme';
@@ -254,6 +255,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
 
   const toggleRunningLED = async () => {
     if (!telemetry || togglingRunning) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setTogglingRunning(true);
     try {
       const newState = !telemetry.running_mode_state;
@@ -268,6 +270,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
 
   const toggleFloodLED = async () => {
     if (!telemetry || togglingFlood) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setTogglingFlood(true);
     try {
       const newState = !telemetry.flood_mode_state;
@@ -282,6 +285,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
 
   const toggleEngineMute = async () => {
     if (!telemetry || togglingMute) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setTogglingMute(true);
     try {
       const newState = !telemetry.engine_muted;
@@ -308,6 +312,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
   };
 
   const handleHornPressIn = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     animateButton(hornScale, 0.95);
     // Start immediate trigger
     handleHornPress();
@@ -340,6 +345,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
   };
 
   const handleSOSPressIn = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     animateButton(sosScale, 0.97);
     // Start immediate trigger
     handleSOSPress();
@@ -373,6 +379,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
   };
 
   const handleRadio1PressIn = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     animateButton(radio1Scale, 0.97);
     handleRadioPress(1, setTriggeringRadio1);
     // Repeat every 3s if held (assuming ~2.5s radio clip)
@@ -390,6 +397,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
   };
 
   const handleRadio2PressIn = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     animateButton(radio2Scale, 0.97);
     handleRadioPress(2, setTriggeringRadio2);
     radio2IntervalRef.current = setInterval(() => {
@@ -427,6 +435,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
   };
 
   const handleRadio3PressIn = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     animateButton(radio3Scale, 0.97);
     
     // Normal radio playback (immediate)

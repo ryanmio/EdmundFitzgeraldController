@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ScannedDevice, scanForDevices } from '../services/networkScanService';
+import { ScannedDevice, scanForDevices, ScanController } from '../services/networkScanService';
 import { COLORS, FONTS } from '../constants/Theme';
 
 interface DeviceScannerModalProps {
@@ -36,6 +36,7 @@ export const DeviceScannerModal: React.FC<DeviceScannerModalProps> = ({
   const [totalToScan, setTotalToScan] = useState(0);
   const [scanComplete, setScanComplete] = useState(false);
   const [recentlyUsedIPs, setRecentlyUsedIPs] = useState<string[]>([]);
+  const scanControllerRef = useRef<ScanController | null>(null);
 
   // Load recently found IPs on mount
   useEffect(() => {
@@ -81,7 +82,7 @@ export const DeviceScannerModal: React.FC<DeviceScannerModalProps> = ({
     setTotalToScan(0);
 
     try {
-      const finalDevices = await scanForDevices(
+      const controller = scanForDevices(
         (foundDevices, checked, total) => {
           // Real-time updates: show devices as they're found
           setIpsChecked(checked);
@@ -99,6 +100,11 @@ export const DeviceScannerModal: React.FC<DeviceScannerModalProps> = ({
         recentlyUsedIPs
       );
       
+      // Store controller so we can cancel scan later
+      scanControllerRef.current = controller;
+      
+      const finalDevices = await controller.promise;
+      
       console.log(`[DeviceScanner] Scan complete. Found ${finalDevices.length} devices`);
       
       // Final update with type filtering
@@ -114,15 +120,24 @@ export const DeviceScannerModal: React.FC<DeviceScannerModalProps> = ({
     } finally {
       setScanning(false);
       setScanComplete(true);
+      scanControllerRef.current = null;
     }
   };
 
   const handleSelectDevice = (ip: string) => {
+    // Cancel ongoing scan when device is selected
+    if (scanControllerRef.current) {
+      scanControllerRef.current.cancel();
+    }
     onSelectDevice(ip);
     handleClose();
   };
 
   const handleClose = () => {
+    // Cancel ongoing scan when modal is closed
+    if (scanControllerRef.current) {
+      scanControllerRef.current.cancel();
+    }
     setDevices([]);
     setDevicesFound(0);
     setScanComplete(false);

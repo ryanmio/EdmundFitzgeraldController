@@ -13,6 +13,11 @@ export interface ScannedDevice {
   lastSeen: number;
 }
 
+export interface ScanController {
+  cancel: () => void;
+  promise: Promise<ScannedDevice[]>;
+}
+
 const TIMEOUT_MS = 2000; // 2 second timeout per device
 const QUICK_PROBE_TIMEOUT_MS = 1000; // Faster timeout for known IPs
 
@@ -185,108 +190,109 @@ async function getLocalIP(): Promise<string | null> {
  * 
  * @param onProgress - Callback called as devices are found (passes devices array for real-time display)
  * @param recentlyUsedIPs - IPs that were recently found (should be provided by component)
- * @returns Promise that resolves when scan is complete
+ * @returns ScanController with cancel() and promise
  */
-export async function scanForDevices(
+export function scanForDevices(
   onProgress?: (devices: ScannedDevice[], checked: number, total: number) => void,
   recentlyUsedIPs: string[] = []
-): Promise<ScannedDevice[]> {
-  const devices: ScannedDevice[] = [];
-  let checkedCount = 0;
+): ScanController {
+  let cancelled = false;
   
-  // #region agent log - scan start
-  fetch('http://127.0.0.1:7242/ingest/d3a9473c-c512-41da-a870-4c36bb5dd5ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'networkScanService.ts:195',message:'scanForDevices start',data:{recentIPsLength:recentlyUsedIPs.length},timestamp:Date.now(),hypothesisId:'H3_scan_progress'})}).catch(()=>{});
-  // #endregion
-  
-  console.log('[NetworkScan] Starting progressive device scan...');
-  console.log('[NetworkScan] Recently used IPs:', recentlyUsedIPs);
-
-  // Phase 1: Quickly probe recently used IPs (should be instant if devices are online)
-  if (recentlyUsedIPs.length > 0) {
-    console.log(`[NetworkScan] Phase 1: Probing ${recentlyUsedIPs.length} recently used IPs...`);
+  const promise = (async (): Promise<ScannedDevice[]> => {
+    const devices: ScannedDevice[] = [];
+    let checkedCount = 0;
     
-    const recentResults = await Promise.all(
-      recentlyUsedIPs.map(ip => probeIP(ip, QUICK_PROBE_TIMEOUT_MS))
-    );
+    console.log('[NetworkScan] Starting progressive device scan...');
+    console.log('[NetworkScan] Recently used IPs:', recentlyUsedIPs);
 
-    recentResults.forEach((result, idx) => {
-      if (result) {
-        console.log(`[NetworkScan] Found recent device at ${result.ip}`);
-        devices.push(result);
-      }
-      checkedCount++;
-    });
+    // Phase 1: Quickly probe recently used IPs (should be instant if devices are online)
+    if (recentlyUsedIPs.length > 0) {
+      console.log(`[NetworkScan] Phase 1: Probing ${recentlyUsedIPs.length} recently used IPs...`);
+      
+      const recentResults = await Promise.all(
+        recentlyUsedIPs.map(ip => probeIP(ip, QUICK_PROBE_TIMEOUT_MS))
+      );
 
-    // #region agent log - phase 1 complete
-    fetch('http://127.0.0.1:7242/ingest/d3a9473c-c512-41da-a870-4c36bb5dd5ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'networkScanService.ts:219',message:'Phase 1 complete',data:{devicesFound:devices.length,checkedCount},timestamp:Date.now(),hypothesisId:'H3_scan_progress'})}).catch(()=>{});
-    // #endregion
-
-    // Report progress after recent IPs checked - pass devices array for real-time display
-    const totalEstimate = recentlyUsedIPs.length + COMMON_IP_RANGES.reduce((sum, r) => sum + (r.end - r.start + 1), 0);
-    onProgress?.([...devices], checkedCount, totalEstimate);
-  }
-
-  // Phase 2: Scan subnet ranges in parallel for faster coverage
-  console.log('[NetworkScan] Phase 2: Scanning full subnets in parallel...');
-  
-  const allIPs: string[] = [];
-  for (const range of COMMON_IP_RANGES) {
-    for (let i = range.start; i <= range.end; i++) {
-      allIPs.push(`${range.base}.${i}`);
-    }
-  }
-
-  // Filter out IPs we already checked
-  const recentIPSet = new Set(recentlyUsedIPs);
-  const uncheckedIPs = allIPs.filter(ip => !recentIPSet.has(ip));
-  
-  console.log(`[NetworkScan] Scanning ${uncheckedIPs.length} unchecked IP addresses`);
-
-  // #region agent log - phase 2 start
-  fetch('http://127.0.0.1:7242/ingest/d3a9473c-c512-41da-a870-4c36bb5dd5ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'networkScanService.ts:244',message:'Phase 2 start',data:{uncheckedIPsLength:uncheckedIPs.length},timestamp:Date.now(),hypothesisId:'H3_scan_progress'})}).catch(()=>{});
-  // #endregion
-
-  // Probe in parallel batches for speed
-  const batchSize = 15; // Increased batch size since we're doing it faster
-  
-  for (let i = 0; i < uncheckedIPs.length; i += batchSize) {
-    const batch = uncheckedIPs.slice(i, i + batchSize);
-    
-    const results = await Promise.all(batch.map(ip => probeIP(ip)));
-
-    results.forEach(result => {
-      if (result) {
-        console.log(`[NetworkScan] Found device at ${result.ip} (type: ${result.type})`);
-        
-        // Avoid duplicates
-        if (!devices.find(d => d.ip === result.ip)) {
+      recentResults.forEach((result, idx) => {
+        if (result) {
+          console.log(`[NetworkScan] Found recent device at ${result.ip}`);
           devices.push(result);
-          saveRecentIP(result.ip);
         }
+        checkedCount++;
+      });
+
+      // Report progress after recent IPs checked - pass devices array for real-time display
+      const totalEstimate = recentlyUsedIPs.length + COMMON_IP_RANGES.reduce((sum, r) => sum + (r.end - r.start + 1), 0);
+      onProgress?.([...devices], checkedCount, totalEstimate);
+    }
+
+    // Phase 2: Scan subnet ranges in parallel for faster coverage
+    console.log('[NetworkScan] Phase 2: Scanning full subnets in parallel...');
+    
+    const allIPs: string[] = [];
+    for (const range of COMMON_IP_RANGES) {
+      for (let i = range.start; i <= range.end; i++) {
+        allIPs.push(`${range.base}.${i}`);
       }
+    }
+
+    // Filter out IPs we already checked
+    const recentIPSet = new Set(recentlyUsedIPs);
+    const uncheckedIPs = allIPs.filter(ip => !recentIPSet.has(ip));
+    
+    console.log(`[NetworkScan] Scanning ${uncheckedIPs.length} unchecked IP addresses`);
+
+    // Probe in parallel batches for speed
+    const batchSize = 15;
+    
+    for (let i = 0; i < uncheckedIPs.length; i += batchSize) {
+      // Check if scan was cancelled
+      if (cancelled) {
+        console.log('[NetworkScan] Scan cancelled by user');
+        break;
+      }
+      
+      const batch = uncheckedIPs.slice(i, i + batchSize);
+      
+      const results = await Promise.all(batch.map(ip => probeIP(ip)));
+
+      results.forEach(result => {
+        if (result) {
+          console.log(`[NetworkScan] Found device at ${result.ip} (type: ${result.type})`);
+          
+          // Avoid duplicates
+          if (!devices.find(d => d.ip === result.ip)) {
+            devices.push(result);
+            saveRecentIP(result.ip);
+          }
+        }
+      });
+
+      checkedCount += batch.length;
+      
+      // Call progress callback with current devices array for real-time UI updates
+      onProgress?.([...devices], recentlyUsedIPs.length + checkedCount, recentlyUsedIPs.length + allIPs.length);
+    }
+
+    console.log(`[NetworkScan] Scan ${cancelled ? 'cancelled' : 'complete'}. Found ${devices.length} devices.`);
+
+    // Sort by type (telemetry first), then by IP
+    devices.sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === 'telemetry' ? -1 : 1;
+      }
+      return a.ip.localeCompare(b.ip);
     });
 
-    checkedCount += batch.length;
-    
-    // Call progress callback with current devices array for real-time UI updates
-    onProgress?.([...devices], recentlyUsedIPs.length + checkedCount, recentlyUsedIPs.length + allIPs.length);
-  }
-
-  console.log(`[NetworkScan] Scan complete. Found ${devices.length} devices.`);
-
-  // #region agent log - scan complete
-  fetch('http://127.0.0.1:7242/ingest/d3a9473c-c512-41da-a870-4c36bb5dd5ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'networkScanService.ts:279',message:'Scan complete',data:{devicesFound:devices.length},timestamp:Date.now(),hypothesisId:'H3_scan_progress'})}).catch(()=>{});
-  // #endregion
-
-  // Sort by type (telemetry first), then by IP
-  devices.sort((a, b) => {
-    if (a.type !== b.type) {
-      return a.type === 'telemetry' ? -1 : 1;
-    }
-    return a.ip.localeCompare(b.ip);
-  });
-
-  return devices;
+    return devices;
+  })();
+  
+  return {
+    cancel: () => {
+      cancelled = true;
+    },
+    promise,
+  };
 }
 
 /**

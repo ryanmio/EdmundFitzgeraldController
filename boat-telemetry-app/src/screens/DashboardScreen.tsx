@@ -108,6 +108,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
   const [isLogging, setIsLogging] = useState(false);
   const [logData, setLogData] = useState<LogEntry[]>([]);
   const [logStartTime, setLogStartTime] = useState<Date | null>(null);
+  const [lowBatteryAlertShown, setLowBatteryAlertShown] = useState(false);
   
   // Refs for long-press interval tracking
   const hornIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -212,6 +213,30 @@ export default function DashboardScreen({ navigation, route }: Props) {
       setLastError(null);
       setIsConnected(true);
       
+      // Check for low battery and alert user
+      const batteryVoltage = parseFloat(data.battery_voltage.replace('V', ''));
+      const LOW_BATTERY_THRESHOLD = 6.5; // Volts
+      
+      if (batteryVoltage < LOW_BATTERY_THRESHOLD && !lowBatteryAlertShown) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        setLowBatteryAlertShown(true);
+        
+        if (Platform.OS === 'web') {
+          window.alert(`⚠️ LOW BATTERY WARNING\n\nBattery voltage: ${data.battery_voltage}\nThreshold: ${LOW_BATTERY_THRESHOLD}V\n\nReturn to shore soon.`);
+        } else {
+          Alert.alert(
+            '⚠️ LOW BATTERY WARNING',
+            `Battery voltage: ${data.battery_voltage}\nThreshold: ${LOW_BATTERY_THRESHOLD}V\n\nReturn to shore soon.`,
+            [{ text: 'OK', style: 'default' }]
+          );
+        }
+      }
+      
+      // Reset alert flag if battery recovers
+      if (batteryVoltage >= LOW_BATTERY_THRESHOLD + 0.2) {
+        setLowBatteryAlertShown(false);
+      }
+      
       // Log data if logging is enabled
       if (isLogging) {
         const entry: LogEntry = {
@@ -226,7 +251,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
       // Clear stale telemetry data when connection is lost
       setTelemetry(null);
     }
-  }, [ip, isLogging]);
+  }, [ip, isLogging, lowBatteryAlertShown]);
 
   useEffect(() => {
     fetchTelemetry();

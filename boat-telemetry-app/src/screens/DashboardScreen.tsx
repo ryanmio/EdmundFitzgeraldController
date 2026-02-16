@@ -110,6 +110,8 @@ export default function DashboardScreen({ navigation, route }: Props) {
   const [logStartTime, setLogStartTime] = useState<Date | null>(null);
   const [lowBatteryAlertShown, setLowBatteryAlertShown] = useState(false);
   const [waterIntrusionAlertShown, setWaterIntrusionAlertShown] = useState(false);
+  const [lowBatteryDebounceCount, setLowBatteryDebounceCount] = useState(0);
+  const [highBatteryDebounceCount, setHighBatteryDebounceCount] = useState(0);
   
   // Refs for long-press interval tracking
   const hornIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -214,28 +216,42 @@ export default function DashboardScreen({ navigation, route }: Props) {
       setLastError(null);
       setIsConnected(true);
       
-      // Check for low battery and alert user
+      // Check for low battery with debouncing (10 consecutive readings)
       const batteryVoltage = parseFloat(data.battery_voltage.replace('V', ''));
       const LOW_BATTERY_THRESHOLD = 6.5; // Volts
+      const DEBOUNCE_REQUIRED = 10; // Require 10 consecutive readings (10 seconds)
       
-      if (batteryVoltage < LOW_BATTERY_THRESHOLD && !lowBatteryAlertShown) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        setLowBatteryAlertShown(true);
+      if (batteryVoltage < LOW_BATTERY_THRESHOLD) {
+        // Increment low battery counter
+        setLowBatteryDebounceCount(prev => prev + 1);
+        setHighBatteryDebounceCount(0); // Reset high counter
         
-        if (Platform.OS === 'web') {
-          window.alert(`⚠️ LOW BATTERY WARNING\n\nBattery voltage: ${data.battery_voltage}\nThreshold: ${LOW_BATTERY_THRESHOLD}V\n\nReturn to shore soon.`);
-        } else {
-          Alert.alert(
-            '⚠️ LOW BATTERY WARNING',
-            `Battery voltage: ${data.battery_voltage}\nThreshold: ${LOW_BATTERY_THRESHOLD}V\n\nReturn to shore soon.`,
-            [{ text: 'OK', style: 'default' }]
-          );
+        // Only alert after 10 consecutive low readings
+        if (lowBatteryDebounceCount >= DEBOUNCE_REQUIRED && !lowBatteryAlertShown) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          setLowBatteryAlertShown(true);
+          
+          if (Platform.OS === 'web') {
+            window.alert(`⚠️ LOW BATTERY WARNING\n\nBattery voltage: ${data.battery_voltage}\nThreshold: ${LOW_BATTERY_THRESHOLD}V\n\nReturn to shore soon.`);
+          } else {
+            Alert.alert(
+              '⚠️ LOW BATTERY WARNING',
+              `Battery voltage: ${data.battery_voltage}\nThreshold: ${LOW_BATTERY_THRESHOLD}V\n\nReturn to shore soon.`,
+              [{ text: 'OK', style: 'default' }]
+            );
+          }
         }
-      }
-      
-      // Reset alert flag if battery recovers
-      if (batteryVoltage >= LOW_BATTERY_THRESHOLD + 0.2) {
-        setLowBatteryAlertShown(false);
+      } else if (batteryVoltage >= LOW_BATTERY_THRESHOLD + 0.3) {
+        // Increment high battery counter (0.3V hysteresis to prevent bouncing)
+        setHighBatteryDebounceCount(prev => prev + 1);
+        setLowBatteryDebounceCount(0); // Reset low counter
+        
+        // Reset alert flag after 10 consecutive high readings
+        if (highBatteryDebounceCount >= DEBOUNCE_REQUIRED && lowBatteryAlertShown) {
+          setLowBatteryAlertShown(false);
+        }
+      } else {
+        // Voltage is in the hysteresis zone - don't change counters
       }
       
       // Check for water intrusion and alert user
@@ -274,7 +290,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
       // Clear stale telemetry data when connection is lost
       setTelemetry(null);
     }
-  }, [ip, isLogging, lowBatteryAlertShown, waterIntrusionAlertShown]);
+  }, [ip, isLogging, lowBatteryAlertShown, waterIntrusionAlertShown, lowBatteryDebounceCount, highBatteryDebounceCount]);
 
   useEffect(() => {
     fetchTelemetry();

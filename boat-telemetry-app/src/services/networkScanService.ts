@@ -183,12 +183,12 @@ async function getLocalIP(): Promise<string | null> {
  * Progressive scan: Quick probe of known IPs first, then full subnet scan
  * Returns immediately with recently found devices, continues scanning in background
  * 
+ * @param onProgress - Callback called as devices are found (passes devices array for real-time display)
  * @param recentlyUsedIPs - IPs that were recently found (should be provided by component)
- * @param onProgress - Callback called as devices are found (immediately shows results)
  * @returns Promise that resolves when scan is complete
  */
 export async function scanForDevices(
-  onProgress?: (found: number, checked: number, total: number) => void,
+  onProgress?: (devices: ScannedDevice[], checked: number, total: number) => void,
   recentlyUsedIPs: string[] = []
 ): Promise<ScannedDevice[]> {
   const devices: ScannedDevice[] = [];
@@ -221,9 +221,9 @@ export async function scanForDevices(
     fetch('http://127.0.0.1:7242/ingest/d3a9473c-c512-41da-a870-4c36bb5dd5ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'networkScanService.ts:219',message:'Phase 1 complete',data:{devicesFound:devices.length,checkedCount},timestamp:Date.now(),hypothesisId:'H3_scan_progress'})}).catch(()=>{});
     // #endregion
 
-    // Report progress after recent IPs checked
+    // Report progress after recent IPs checked - pass devices array for real-time display
     const totalEstimate = recentlyUsedIPs.length + COMMON_IP_RANGES.reduce((sum, r) => sum + (r.end - r.start + 1), 0);
-    onProgress?.(devices.length, checkedCount, totalEstimate);
+    onProgress?.([...devices], checkedCount, totalEstimate);
   }
 
   // Phase 2: Scan subnet ranges in parallel for faster coverage
@@ -268,11 +268,8 @@ export async function scanForDevices(
 
     checkedCount += batch.length;
     
-    // #region agent log - batch progress
-    fetch('http://127.0.0.1:7242/ingest/d3a9473c-c512-41da-a870-4c36bb5dd5ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'networkScanService.ts:270',message:'Batch processed',data:{batchIndex:i/batchSize,devicesFound:devices.length,totalChecked:recentlyUsedIPs.length+checkedCount},timestamp:Date.now(),hypothesisId:'H3_scan_progress'})}).catch(()=>{});
-    // #endregion
-    
-    onProgress?.(devices.length, recentlyUsedIPs.length + checkedCount, recentlyUsedIPs.length + allIPs.length);
+    // Call progress callback with current devices array for real-time UI updates
+    onProgress?.([...devices], recentlyUsedIPs.length + checkedCount, recentlyUsedIPs.length + allIPs.length);
   }
 
   console.log(`[NetworkScan] Scan complete. Found ${devices.length} devices.`);

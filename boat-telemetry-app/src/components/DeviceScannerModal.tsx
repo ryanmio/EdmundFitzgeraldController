@@ -80,33 +80,35 @@ export const DeviceScannerModal: React.FC<DeviceScannerModalProps> = ({
     setIpsChecked(0);
     setTotalToScan(0);
 
-    const discoveredDevices: ScannedDevice[] = [];
-
     try {
-      await scanForDevices(
-        (found, checked, total) => {
-          // Update scan progress
-          setDevicesFound(found);
+      const finalDevices = await scanForDevices(
+        (foundDevices, checked, total) => {
+          // Real-time updates: show devices as they're found
           setIpsChecked(checked);
           setTotalToScan(total);
+          setDevicesFound(foundDevices.length);
           
-          // (Real-time device updates would require scanner to pass discovered devices
-          // to this callback. For now, updates happen when scan completes.)
+          // Apply type filtering and update UI immediately
+          let filtered = foundDevices;
+          if (deviceType) {
+            filtered = foundDevices.filter(d => d.type === deviceType || d.type === 'unknown');
+          }
+          
+          setDevices(filtered);
         },
         recentlyUsedIPs
-      ).then((foundDevices) => {
-        // Apply type filtering and update UI with all discovered devices
-        let filtered = foundDevices;
-        if (deviceType) {
-          filtered = foundDevices.filter(d => d.type === deviceType || d.type === 'unknown');
-        }
-        
-        discoveredDevices.push(...filtered);
-        setDevices(filtered);
-      });
+      );
       
-      console.log(`[DeviceScanner] Scan complete. Found ${discoveredDevices.length} devices`);
-      await saveRecentlyFoundIPs(discoveredDevices);
+      console.log(`[DeviceScanner] Scan complete. Found ${finalDevices.length} devices`);
+      
+      // Final update with type filtering
+      let filtered = finalDevices;
+      if (deviceType) {
+        filtered = finalDevices.filter(d => d.type === deviceType || d.type === 'unknown');
+      }
+      
+      setDevices(filtered);
+      await saveRecentlyFoundIPs(filtered);
     } catch (error) {
       console.error('[DeviceScanner] Scan failed:', error);
     } finally {

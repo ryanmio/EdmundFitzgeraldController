@@ -217,8 +217,10 @@ export default function DashboardScreen({ navigation, route }: Props) {
       setIsConnected(true);
       
       // Check for low battery with debouncing (10 consecutive readings)
+      // ADC has ±0.5V noise, so use 1.0V hysteresis to prevent bouncing
       const batteryVoltage = parseFloat(data.battery_voltage.replace('V', ''));
       const LOW_BATTERY_THRESHOLD = 6.5; // Volts
+      const HYSTERESIS = 1.0; // 1.0V gap to handle ±0.5V noise
       const DEBOUNCE_REQUIRED = 10; // Require 10 consecutive readings (10 seconds)
       
       if (batteryVoltage < LOW_BATTERY_THRESHOLD) {
@@ -241,8 +243,8 @@ export default function DashboardScreen({ navigation, route }: Props) {
             );
           }
         }
-      } else if (batteryVoltage >= LOW_BATTERY_THRESHOLD + 0.3) {
-        // Increment high battery counter (0.3V hysteresis to prevent bouncing)
+      } else if (batteryVoltage >= LOW_BATTERY_THRESHOLD + HYSTERESIS) {
+        // Increment high battery counter (1.0V hysteresis to handle ADC noise)
         setHighBatteryDebounceCount(prev => prev + 1);
         setLowBatteryDebounceCount(0); // Reset low counter
         
@@ -251,7 +253,7 @@ export default function DashboardScreen({ navigation, route }: Props) {
           setLowBatteryAlertShown(false);
         }
       } else {
-        // Voltage is in the hysteresis zone - don't change counters
+        // Voltage is in the hysteresis zone (6.5V - 7.5V) - don't change counters
       }
       
       // Check for water intrusion and alert user
